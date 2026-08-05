@@ -20,7 +20,8 @@ Detalle completo en **[RUNBOOK-LOCAL.md](RUNBOOK-LOCAL.md)**.
 ```bash
 npm run test:unit          # 29 · funciones puras, sin red
 supabase test db           # 96 · RLS, RBAC, i18n, historial (BLOQUEANTE)
-npm run test:integration    # 53 · pila real, requiere la app en :3000
+npm run test:integration   # 72 · pila real, requiere la app en :3000
+npm run sdk:build          # compila packages/kontororu-client
 npx tsc --noEmit && npx eslint .
 ```
 
@@ -45,17 +46,18 @@ despliegue: ver **[TESTING-RLS.md](TESTING-RLS.md)**.
 | Panel SuperAdmin: alta de clientes, planes, límites, auditoría | ✅ |
 | Almacenamiento S3/R2 | ✅ migración sin ventana de corte |
 | Multi-idioma | ✅ grupo de traducción |
+| SDK `@rukma/kontororu-client` | ✅ cliente tipado + verificación de webhooks |
 
 ## Qué falta
 
 **Fase 3 pendiente**, por orden de dependencia:
 
-1. **SDK `@rukma/kontororu-client`** — envoltorio tipado sobre la API. El más
-   barato y el que más ahorra a cada cliente nuevo.
-2. **GraphQL** en `/api/v1/graphql` — otro envoltorio sobre lo mismo.
-3. **Analítica de contenido** — requiere decidir antes qué se quiere medir.
-4. **Stripe** — sólo tiene sentido con precios reales que cobrar.
-5. **Observabilidad** (Sentry / Logflare).
+1. **GraphQL** en `/api/v1/graphql` — envoltorio sobre la API que ya existe.
+2. **Analítica de contenido** — requiere decidir antes qué se quiere medir.
+3. **Stripe** — sólo tiene sentido con precios reales que cobrar.
+4. **Observabilidad** (Sentry / Logflare).
+5. **Publicar el SDK a npm** — hoy vive en `packages/`, compila y está
+   probado, pero nadie lo ha publicado todavía.
 
 **Deuda menor conocida:**
 
@@ -97,6 +99,10 @@ ningún error visible en el CMS**.
 **Sin `?locale=` la API devuelve el idioma principal, no todos.** Es lo que
 evita que una web ya conectada empiece a ver artículos duplicados cuando su
 cliente active un segundo idioma.
+
+**El SDK se prueba desde su código fuente, no desde `dist`.** Alias `@sdk` en
+`tsconfig` y en `vitest`: así un cambio que rompa el contrato de la API falla
+en el acto, sin recompilar el paquete.
 
 **Los webhooks se encolan, no se envían.** Un trigger escribe en
 `webhook_deliveries`; un worker drena. Llamar por HTTP dentro del `UPDATE`
