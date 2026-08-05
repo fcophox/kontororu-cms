@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # ===================================================================
+  # Job bloqueante. Ningún despliegue sale sin que esto pase en verde:
+  # una fuga entre tenants es una fuga de datos de un cliente a otro.
+  # ===================================================================
+  rls-isolation:
+    name: Aislamiento multi-tenant (bloqueante)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Levantar Supabase local
+        run: supabase start
+
+      - name: Tests pgTAP (RLS, RBAC, escalada de privilegios)
+        run: supabase test db
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Exportar credenciales locales
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "CRON_SECRET=ci-secret"
+          } >> "$GITHUB_ENV"
+
+      - name: Build de la app
+        run: npm run build
+
+      - name: Arrancar la app
+        run: |
+          npm run start &
+          npx wait-on http://localhost:3000 --timeout 60000
+
+      - name: Tests de integración (PostgREST · Storage · API headless)
+        run: npm run test:integration
+
+  quality:
+    name: Lint · tipos · fugas de credenciales
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - name: Guardia de service role key
+        run: ./scripts/check-service-role-leak.sh

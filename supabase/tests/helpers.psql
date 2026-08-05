@@ -1,0 +1,192 @@
+-- =====================================================================
+-- Helpers para los tests de aislamiento (pgTAP)
+--
+-- Se cargan con `\ir helpers.sql` al inicio de cada archivo de test.
+-- Todo vive en el esquema `tests`, dentro de la transacción del test,
+-- por lo que NUNCA llega a producción.
+-- =====================================================================
+
+create extension if not exists pgtap with schema extensions;
+
+create schema if not exists tests;
+
+-- Los tests se ejecutan suplantando a `authenticated`, que por defecto no
+-- alcanza este esquema. Sin esto, cada aserción tras login_as() falla con
+-- "permission denied for schema tests" — que parece un fallo de RLS y no lo es.
+grant usage on schema tests to public;
+
+-- ---------------------------------------------------------------------
+-- Suplantación de usuario
+--
+-- `set_config('role', ..., true)` en vez de `SET LOCAL ROLE`: dentro de una
+-- función plpgsql, SET ROLE se revierte al salir; set_config con is_local=true
+-- persiste hasta el fin de la transacción, que es exactamente el alcance
+-- que necesita un test.
+-- ---------------------------------------------------------------------
+create or replace function tests.login_as(p_user uuid)
+returns void language plpgsql as $$
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'sub', p_user::text,
+      'role', 'authenticated',
+      'aud', 'authenticated'
+    )::text,
+    true
+  );
+end;
+$$;
+
+-- Sesión anónima: sin JWT, como un visitante cualquiera.
+create or replace function tests.login_as_anon()
+returns void language plpgsql as $$
+begin
+  perform set_config('role', 'anon', true);
+  perform set_config('request.jwt.claims', null, true);
+end;
+$$;
+
+-- Vuelve a superusuario para seedear datos entre bloques de aserciones.
+create or replace function tests.logout()
+returns void language plpgsql as $$
+begin
+  perform set_config('role', 'postgres', true);
+  perform set_config('request.jwt.claims', null, true);
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- Factories
+-- ---------------------------------------------------------------------
+create or replace function tests.create_user(p_email text, p_superadmin boolean default false)
+returns uuid language plpgsql as $$
+declare
+  v_id uuid := gen_random_uuid();
+begin
+  insert into auth.users (
+    id, instance_id, aud, role, email,
+    encrypted_password, email_confirmed_at,
+    raw_app_meta_data, raw_user_meta_data,
+    created_at, updated_at,
+    -- Cadena vacía, no NULL: GoTrue falla al escanear estas columnas.
+    confirmation_token, recovery_token,
+    email_change_token_new, email_change_token_current,
+    email_change, phone_change, phone_change_token, reauthentication_token
+  ) values (
+    v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+    -- Sufijo único: el seed de desarrollo ya ocupa alice@…, bob@…, root@…
+    -- y auth.users tiene un índice único sobre email.
+    split_part(p_email, '@', 1) || '+' || left(v_id::text, 8) || '@' || split_part(p_email, '@', 2),
+    extensions.crypt('password123', extensions.gen_salt('bf')), now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    json_build_object('full_name', split_part(p_email, '@', 1))::jsonb,
+    now(), now(),
+    '', '', '', '', '', '', '', ''
+  );
+
+  -- El trigger on_auth_user_created ya insertó el perfil.
+  if p_superadmin then
+    update public.users_profiles set is_superadmin = true where id = v_id;
+  end if;
+
+  return v_id;
+end;
+$$;
+
+create or replace function tests.create_tenant(p_slug text, p_name text default null)
+returns uuid language plpgsql as $$
+declare
+  v_id uuid;
+begin
+  -- Slug único por la misma razón que los emails: el seed ya ocupa
+  -- 'rukma' y 'acme', y tenants.slug es UNIQUE.
+  insert into public.tenants (slug, name, status, plan)
+  values (p_slug || '-' || left(replace(gen_random_uuid()::text, '-', ''), 8),
+          coalesce(p_name, initcap(p_slug)), 'ACTIVE', 'PRO')
+  returning id into v_id;
+  return v_id;
+end;
+$$;
+
+create or replace function tests.add_member(p_tenant uuid, p_user uuid, p_role tenant_role)
+returns uuid language plpgsql as $$
+declare
+  v_id uuid;
+begin
+  insert into public.tenant_users (tenant_id, user_id, role, accepted_at)
+  values (p_tenant, p_user, p_role, now())
+  returning id into v_id;
+  return v_id;
+end;
+$$;
+
+/**
+ * Crea el set completo de contenido de un tenant: categoría, tag, media,
+ * post publicado, API key y webhook. Devuelve los ids en un jsonb para
+ * que el test pueda referenciarlos.
+ */
+create or replace function tests.seed_content(p_tenant uuid, p_author uuid)
+returns jsonb language plpgsql as $$
+declare
+  v_cat uuid; v_tag uuid; v_media uuid; v_post uuid; v_key uuid; v_hook uuid;
+begin
+  insert into public.categories (tenant_id, kind, slug, name)
+  values (p_tenant, 'BLOG', 'blog-' || left(p_tenant::text, 8), 'Blog')
+  returning id into v_cat;
+
+  insert into public.tags (tenant_id, slug, name)
+  values (p_tenant, 'tag-' || left(p_tenant::text, 8), 'Etiqueta')
+  returning id into v_tag;
+
+  insert into public.media (tenant_id, bucket, path, mime_type, size_bytes, uploaded_by)
+  values (p_tenant, 'tenant-media', p_tenant::text || '/2026/08/' || gen_random_uuid() || '.webp',
+          'image/webp', 12345, p_author)
+  returning id into v_media;
+
+  insert into public.posts (
+    tenant_id, category_id, author_id, cover_media_id,
+    slug, title, status, published_at, custom_fields
+  ) values (
+    p_tenant, v_cat, p_author, v_media,
+    'post-' || left(p_tenant::text, 8), 'Post de prueba', 'PUBLISHED', now(),
+    '{"cliente":"ACME","duracion":"3 meses"}'::jsonb
+  ) returning id into v_post;
+
+  insert into public.post_tags (post_id, tag_id) values (v_post, v_tag);
+
+  insert into public.api_keys (tenant_id, name, key_prefix, key_hash, created_by)
+  values (p_tenant, 'default', 'kntr_live_' || left(replace(gen_random_uuid()::text, '-', ''), 12),
+          extensions.crypt('secret', extensions.gen_salt('bf', 4)), p_author)
+  returning id into v_key;
+
+  insert into public.webhooks (tenant_id, name, url)
+  values (p_tenant, 'revalidate', 'https://example.com/api/revalidate')
+  returning id into v_hook;
+
+  insert into public.audit_logs (tenant_id, actor_id, action, entity, entity_id)
+  values (p_tenant, p_author, 'post.publish', 'posts', v_post);
+
+  return jsonb_build_object(
+    'category', v_cat, 'tag', v_tag, 'media', v_media,
+    'post', v_post, 'apiKey', v_key, 'webhook', v_hook
+  );
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- Aserción de alto nivel: "el usuario actual no ve NADA de este tenant"
+-- ---------------------------------------------------------------------
+create or replace function tests.rows_visible(p_table text, p_tenant uuid)
+returns bigint language plpgsql as $$
+declare
+  v_count bigint;
+  -- `tenants` se identifica por su propia PK; el resto por tenant_id.
+  v_col text := case when p_table = 'tenants' then 'id' else 'tenant_id' end;
+begin
+  execute format('select count(*) from public.%I where %I = $1', p_table, v_col)
+    into v_count using p_tenant;
+  return v_count;
+end;
+$$;

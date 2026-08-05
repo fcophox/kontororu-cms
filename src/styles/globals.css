@@ -1,0 +1,142 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design system de Rukma Studio.
+ *
+ * Los tokens de marca (--primary, --secondary, --accent, --ring, --radius)
+ * los SOBREESCRIBE <TenantTheme> por tenant en runtime. El resto —neutrales,
+ * tipografía, radios derivados, superficies— es territorio de Rukma Studio y
+ * no es personalizable: es lo que permite desplegar un rediseño a todos los
+ * clientes a la vez sin romperle la interfaz a nadie.
+ */
+:root {
+  --radius: 0.625rem;
+
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  --primary: #111827;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #111827;
+
+  --sidebar: #fafafa;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #111827;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-border: #e4e4e7;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #171717;
+  --card-foreground: #fafafa;
+  --popover: #171717;
+  --popover-foreground: #fafafa;
+
+  --primary: #fafafa;
+  --primary-foreground: #18181b;
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+  --destructive: #7f1d1d;
+  --destructive-foreground: #fafafa;
+
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #d4d4d8;
+
+  --sidebar: #171717;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #fafafa;
+  --sidebar-primary-foreground: #18181b;
+  --sidebar-border: #27272a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+/* -------------------------------------------------------------------
+ * Contenido del editor Tiptap.
+ * Estos estilos aplican DENTRO del CMS. El front-end del cliente recibe
+ * el HTML con las mismas clases (`kntr-*`) y las estila a su gusto.
+ * ------------------------------------------------------------------- */
+@layer components {
+  .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    @apply pointer-events-none float-left h-0 text-muted-foreground;
+  }
+
+  .kntr-callout {
+    @apply my-4 rounded-[var(--radius)] border-l-4 bg-muted px-4 py-3;
+    border-left-color: var(--brand-secondary, var(--primary));
+  }
+  .kntr-callout[data-variant="warn"]    { @apply border-l-amber-500 bg-amber-50 dark:bg-amber-950/30; }
+  .kntr-callout[data-variant="success"] { @apply border-l-emerald-500 bg-emerald-50 dark:bg-emerald-950/30; }
+  .kntr-callout[data-variant="danger"]  { @apply border-l-red-500 bg-red-50 dark:bg-red-950/30; }
+
+  .kntr-image {
+    @apply my-4 h-auto max-w-full rounded-[var(--radius)];
+  }
+}

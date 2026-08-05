@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/internal/webhooks/dispatch",
+      "schedule": "* * * * *"
+    }
+  ],
+  "functions": {
+    "src/app/api/internal/webhooks/dispatch/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}
