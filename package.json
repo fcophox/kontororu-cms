@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "sdk:build": "npm --prefix packages/kontororu-client run build",
+    "sdk:check": "./scripts/check-sdk-package.sh",
     "db:reset": "supabase db reset",
     "db:types": "./scripts/gen-types.sh",
     "env:local": "eval \"$(supabase status -o env)\" && printf 'NEXT_PUBLIC_SUPABASE_URL=%s\\nNEXT_PUBLIC_SUPABASE_ANON_KEY=%s\\nSUPABASE_SERVICE_ROLE_KEY=%s\\nCRON_SECRET=dev-secret\\nNEXT_PUBLIC_APP_URL=http://localhost:3000\\n' \"$API_URL\" \"$ANON_KEY\" \"$SERVICE_ROLE_KEY\" > .env.local",

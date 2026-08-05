@@ -22,6 +22,7 @@ npm run test:unit          # 37 · funciones puras, sin red
 supabase test db           # 96 · RLS, RBAC, i18n, historial (BLOQUEANTE)
 npm run test:integration   # 99 · pila real, requiere la app en :3000
 npm run sdk:build          # compila packages/kontororu-client
+npm run sdk:check          # empaqueta, instala y lo importa desde fuera
 npx tsc --noEmit && npx eslint .
 ```
 
@@ -56,8 +57,9 @@ despliegue: ver **[TESTING-RLS.md](TESTING-RLS.md)**.
 1. **Analítica de contenido** — requiere decidir antes qué se quiere medir.
 2. **Stripe** — sólo tiene sentido con precios reales que cobrar.
 3. **Observabilidad** (Sentry / Logflare).
-4. **Publicar el SDK a npm** — hoy vive en `packages/`, compila y está
-   probado, pero nadie lo ha publicado todavía.
+4. **Publicar el SDK a npm** — el paquete ya está listo (MIT, `access:
+   public`, `sdk:check` en verde). Sólo falta el `npm publish`, que necesita tu
+   sesión de npm: ver **[RELEASE-SDK.md](RELEASE-SDK.md)**.
 
 **Deuda menor conocida:**
 
@@ -167,3 +169,4 @@ falta MinIO ni una cuenta de AWS; las credenciales salen de
 | [API.md](API.md) | Quien conecta una web al CMS |
 | [TESTING-RLS.md](TESTING-RLS.md) | Antes de tocar RLS o añadir una tabla |
 | [RUNBOOK-LOCAL.md](RUNBOOK-LOCAL.md) | Primera puesta en marcha |
+| [RELEASE-SDK.md](RELEASE-SDK.md) | Antes de publicar el SDK a npm |

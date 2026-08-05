@@ -7,6 +7,11 @@ webhooks, sin dependencias.
 npm i @rukma/kontororu-client
 ```
 
+**Es un paquete ESM.** Con Next.js, Vite o cualquier bundler moderno no tienes
+que hacer nada. Desde Node a pelo, tu proyecto necesita `"type": "module"` en
+su `package.json` o usar `import()` dinámico: `require()` sólo funciona a
+partir de Node 22.
+
 ## Empezar
 
 ```ts
