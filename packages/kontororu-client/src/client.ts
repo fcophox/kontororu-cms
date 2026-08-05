@@ -1,5 +1,6 @@
 import { KontororuError, type KontororuErrorCode } from "./errors.js";
 import type {
+  GraphQLResult,
   Category,
   ListCategoriesOptions,
   ListMediaOptions,
@@ -124,9 +125,44 @@ export class KontororuClient {
   }
 
   // -------------------------------------------------------------------
+  // GraphQL
+  // -------------------------------------------------------------------
+  /**
+   * Una consulta GraphQL contra la misma API.
+   *
+   * Devuelve `{ data, errors }` en vez de lanzar cuando la consulta falla, y
+   * es a propósito: en esta API los permisos se comprueban campo a campo, así
+   * que una respuesta puede traer el contenido y a la vez denegar los medios.
+   * Un método que lanzase tiraría la mitad que sí llegó.
+   *
+   * Los fallos de transporte —clave inválida, cupo agotado, 5xx— sí lanzan
+   * `KontororuError`, igual que en el resto del cliente: ahí no hay nada
+   * parcial que conservar.
+   *
+   * ```ts
+   * const { data } = await client.graphql<{ posts: { nodes: PostSummary[] } }>(`
+   *   query Portada($limit: Int) {
+   *     posts(limit: $limit) { nodes { slug title cover { url } } }
+   *   }
+   * `, { limit: 10 });
+   * ```
+   */
+  graphql<T = unknown>(
+    query: string,
+    variables?: Record<string, unknown>,
+    extras?: RequestExtras,
+  ): Promise<GraphQLResult<T>> {
+    return this.send<GraphQLResult<T>>(
+      new URL(`${this.base}/graphql`),
+      { method: "POST", body: JSON.stringify({ query, variables }) },
+      { tags: ["graphql"], ...extras },
+    );
+  }
+
+  // -------------------------------------------------------------------
   // Transporte
   // -------------------------------------------------------------------
-  private async get<T>(
+  private get<T>(
     path: string,
     params: Record<string, unknown>,
     extras: RequestExtras = {},
@@ -136,11 +172,19 @@ export class KontororuClient {
       if (value !== undefined && value !== null) url.searchParams.set(key, String(value));
     }
 
+    return this.send<T>(url, {}, extras);
+  }
+
+  private async send<T>(
+    url: URL,
+    init: RequestInit,
+    extras: RequestExtras = {},
+  ): Promise<T> {
     let lastError: KontororuError | null = null;
 
     for (let attempt = 0; attempt <= this.retries; attempt++) {
       try {
-        return await this.attempt<T>(url, extras);
+        return await this.attempt<T>(url, init, extras);
       } catch (error) {
         if (!(error instanceof KontororuError) || !error.isRetryable) throw error;
 
@@ -157,7 +201,7 @@ export class KontororuClient {
     throw lastError;
   }
 
-  private async attempt<T>(url: URL, extras: RequestExtras): Promise<T> {
+  private async attempt<T>(url: URL, init: RequestInit, extras: RequestExtras): Promise<T> {
     // Timeout propio combinado con el signal del llamante: sin esto, una
     // petición colgada bloquea el build entero sin decir por qué.
     const controller = new AbortController();
@@ -168,9 +212,11 @@ export class KontororuClient {
     try {
       response = await fetch(url, {
         ...this.fetchOptions,
+        ...init,
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
           Accept: "application/json",
+          ...(init.body ? { "Content-Type": "application/json" } : {}),
           ...this.fetchOptions.headers,
         },
         signal: controller.signal,

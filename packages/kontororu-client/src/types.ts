@@ -7,6 +7,8 @@
  * columna rompería a los clientes— y expondría campos que nunca salen.
  */
 
+import type { KontororuErrorCode } from "./errors.js";
+
 export type Locale = string;
 
 export type Media = {
@@ -107,4 +109,29 @@ export type RateLimit = {
   limit: number;
   remaining: number;
   resetAt: Date;
+};
+
+/**
+ * Un error de una consulta GraphQL.
+ *
+ * `extensions.code` trae el mismo código que usa REST, así que un
+ * `not_found` o un `forbidden` se tratan igual vengan por donde vengan.
+ */
+export type GraphQLError = {
+  message: string;
+  path?: (string | number)[];
+  extensions?: { code?: KontororuErrorCode };
+};
+
+/**
+ * Respuesta de una consulta GraphQL.
+ *
+ * `data` y `errors` pueden venir los dos a la vez: los permisos se comprueban
+ * campo a campo, así que una consulta que pide contenido y medios con una
+ * clave que sólo tiene contenido recibe lo primero y el error de lo segundo.
+ * Los campos denegados llegan como `null`.
+ */
+export type GraphQLResult<T = unknown> = {
+  data: T | null;
+  errors?: GraphQLError[];
 };

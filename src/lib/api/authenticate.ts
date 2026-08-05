@@ -90,6 +90,32 @@ export type Guarded =
  * existe, cosa que ya exige acertar 12 caracteres hexadecimales.
  */
 export async function guardApiRequest(req: Request, scope: string): Promise<Guarded> {
+  const metered = await authenticateAndMeter(req);
+  if (!metered.ok) return metered;
+
+  if (!requireScope(metered.ctx, scope)) {
+    return { ok: false, response: forbiddenScope(scope) };
+  }
+
+  return metered;
+}
+
+/**
+ * Credenciales y cupo, sin comprobar permisos.
+ *
+ * Está separado de `guardApiRequest` por GraphQL: una sola petición HTTP puede
+ * pedir contenido y medios a la vez, que son permisos distintos. El scope, por
+ * tanto, no se puede decidir en la puerta —hay que hacerlo campo a campo—
+ * mientras que credenciales y cupo sí son de la petición entera.
+ *
+ * Que el cupo se consuma una vez por petición HTTP y no una vez por campo es
+ * deliberado: si cada campo raíz descontase cupo, una consulta GraphQL que
+ * pide tres cosas costaría el triple que las tres llamadas REST equivalentes y
+ * el endpoint saldría más caro justo por hacer lo que se le pide, agrupar.
+ */
+export async function authenticateAndMeter(
+  req: Request,
+): Promise<{ ok: true; ctx: ApiContext; headers: Record<string, string> } | { ok: false; response: Response }> {
   const ctx = await authenticateRequest(req);
 
   if (!ctx) {
@@ -108,12 +134,14 @@ export async function guardApiRequest(req: Request, scope: string): Promise<Guar
     return { ok: false, response: tooManyRequests(verdict) };
   }
 
-  if (!requireScope(ctx, scope)) {
-    return {
-      ok: false,
-      response: apiError("forbidden", `Esta clave no tiene el permiso "${scope}".`),
-    };
-  }
-
   return { ok: true, ctx, headers: rateLimitHeaders(verdict) };
+}
+
+/** Mensaje único de permiso insuficiente, compartido por REST y GraphQL. */
+export function forbiddenScopeMessage(scope: string): string {
+  return `Esta clave no tiene el permiso "${scope}".`;
+}
+
+function forbiddenScope(scope: string) {
+  return apiError("forbidden", forbiddenScopeMessage(scope));
 }

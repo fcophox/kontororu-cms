@@ -43,6 +43,43 @@ for await (const post of cms.iteratePosts()) {
 }
 ```
 
+## GraphQL
+
+Para cuando una página necesita varias cosas a la vez y no quieres encadenar
+peticiones:
+
+```ts
+const { data } = await cms.graphql<{
+  posts: { nodes: PostSummary[] };
+  categories: Category[];
+}>(`
+  query Portada($limit: Int) {
+    posts(limit: $limit) { nodes { slug title cover { url } } }
+    categories { slug name postCount }
+  }
+`, { limit: 10 });
+```
+
+Devuelve `{ data, errors }` en vez de lanzar, y es a propósito: los permisos se
+comprueban campo a campo, así que una consulta puede traerte el contenido y
+denegarte los medios en la misma respuesta. Un método que lanzase tiraría la
+mitad que sí llegó.
+
+```ts
+const { data, errors } = await cms.graphql(`{
+  posts { nodes { slug } }
+  media { nodes { id } }     // si tu clave no tiene media:read...
+}`);
+
+data.posts   // ...esto llega igual
+data.media   // null
+errors[0].extensions.code  // "forbidden"
+```
+
+Los fallos de transporte —clave inválida, cupo agotado, 5xx— sí lanzan
+`KontororuError`, como en el resto del cliente: ahí no hay nada parcial que
+conservar.
+
 ## Idiomas
 
 Sin `locale` recibes el idioma principal del espacio. Cada entrada trae sus
@@ -132,3 +169,7 @@ await cms.listPosts({ limit: 10 }, { tags: ["home"], revalidate: 3600 });
 await cms.listPosts();
 cms.lastRateLimit; // { limit, remaining, resetAt }
 ```
+
+Una consulta GraphQL gasta lo mismo que las llamadas REST equivalentes: una
+unidad por campo raíz, con el tamaño de página fuera del precio. Pedir diez
+entradas o cien cuesta igual.

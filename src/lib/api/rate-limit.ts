@@ -54,13 +54,14 @@ export function clientIp(req: Request): string {
   return req.headers.get("x-real-ip") ?? "desconocida";
 }
 
-async function consume(bucket: string, limit: number): Promise<RateVerdict> {
+async function consume(bucket: string, limit: number, cost = 1): Promise<RateVerdict> {
   const db = createServiceClient();
 
   const { data, error } = await db.rpc("consume_rate_limit", {
     p_bucket: bucket,
     p_limit: limit,
     p_window_seconds: WINDOW_SECONDS,
+    p_cost: cost,
   });
 
   const row = data?.[0];
@@ -89,9 +90,19 @@ async function consume(bucket: string, limit: number): Promise<RateVerdict> {
   };
 }
 
-/** Cupo de una API Key, según el plan de su tenant. */
-export function consumeForKey(apiKeyId: string, plan: TenantPlan): Promise<RateVerdict> {
-  return consume(`key:${apiKeyId}`, PLAN_RATE_LIMITS[plan]);
+/**
+ * Cupo de una API Key, según el plan de su tenant.
+ *
+ * `cost` es 1 para REST, donde cada petición hace una cosa. GraphQL pasa el
+ * coste estimado de su consulta: sin eso, mover el tráfico a `/graphql`
+ * multiplicaría por cien lo que un plan permite.
+ */
+export function consumeForKey(
+  apiKeyId: string,
+  plan: TenantPlan,
+  cost = 1,
+): Promise<RateVerdict> {
+  return consume(`key:${apiKeyId}`, PLAN_RATE_LIMITS[plan], cost);
 }
 
 /** Cupo de intentos sin credenciales válidas, por origen. */

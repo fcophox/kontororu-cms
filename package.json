@@ -39,6 +39,8 @@
     "@tiptap/starter-kit": "^2.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "graphql": "^16.14.2",
+    "graphql-yoga": "^5.21.2",
     "isomorphic-dompurify": "^3.21.0",
     "lowlight": "^3.1.0",
     "lucide-react": "^0.460.0",
