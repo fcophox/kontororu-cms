@@ -11,6 +11,7 @@ import {
 import { typeDefs } from "@/lib/api/graphql/schema";
 import { resolvers, type GraphQLContext } from "@/lib/api/graphql/resolvers";
 import { estimateCost, QueryTooComplexError } from "@/lib/api/graphql/cost";
+import { reportError } from "@/lib/observability/report";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,7 +42,7 @@ const yoga = createYoga<GraphQLContext>({
     maskError: (error) => {
       const known = (error as { extensions?: { code?: string } })?.extensions?.code;
       if (known) return error as Error;
-      console.error("graphql", error);
+      reportError(error, { scope: "api.graphql" });
       return createGraphQLError("Error interno.", {
         extensions: { code: "server_error" },
       });

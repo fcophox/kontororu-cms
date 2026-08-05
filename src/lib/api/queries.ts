@@ -3,6 +3,7 @@ import type { ApiContext } from "./authenticate";
 import { clampLimit, resolveLocale, type ApiErrorCode } from "./response";
 import { attachTranslations, fetchTranslations } from "./translations";
 import { refreshContentMedia } from "./content-media";
+import { reportError } from "@/lib/observability/report";
 import {
   collectMedia,
   serializeCategory,
@@ -115,7 +116,7 @@ export async function listPosts(
 
   const { data, error } = await query;
   if (error) {
-    console.error("listPosts", error);
+    reportError(error, { scope: "api.listPosts" });
     return fail("server_error", "No se pudo recuperar el contenido.");
   }
 
@@ -177,7 +178,7 @@ export async function getPost(
     .maybeSingle();
 
   if (error) {
-    console.error("getPost", error);
+    reportError(error, { scope: "api.getPost" });
     return fail("server_error", "No se pudo recuperar el contenido.");
   }
 
@@ -270,7 +271,7 @@ export async function listCategories(
   ]);
 
   if (error || postsError) {
-    console.error("listCategories", error ?? postsError);
+    reportError(error ?? postsError, { scope: "api.listCategories" });
     return fail("server_error", "No se pudieron recuperar las categorías.");
   }
 
@@ -349,7 +350,7 @@ export async function listMedia(
 
   const { data, error } = await query;
   if (error) {
-    console.error("listMedia", error);
+    reportError(error, { scope: "api.listMedia" });
     return fail("server_error", "No se pudieron recuperar los archivos.");
   }
 
@@ -410,7 +411,7 @@ export async function getMedia(
     .maybeSingle();
 
   if (error) {
-    console.error("getMedia", error);
+    reportError(error, { scope: "api.getMedia" });
     return fail("server_error", "No se pudo recuperar el archivo.");
   }
   if (!data) return fail("not_found", "No existe ese archivo.");

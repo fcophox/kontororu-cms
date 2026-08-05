@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { tagTenant } from "@/lib/observability/report";
 import type { TenantPlan } from "@/lib/auth/plans";
 import { apiError } from "./response";
 import {
@@ -133,6 +134,11 @@ export async function authenticateAndMeter(
   if (!verdict.allowed) {
     return { ok: false, response: tooManyRequests(verdict) };
   }
+
+  // En cuanto se sabe de quién es la petición, se etiqueta: un error posterior
+  // sin esta pista obliga a cruzar timestamps con los logs para averiguar a
+  // qué cliente le está fallando la web.
+  tagTenant({ id: ctx.tenantId, plan: ctx.plan });
 
   return { ok: true, ctx, headers: rateLimitHeaders(verdict) };
 }

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
+import { reportError } from "@/lib/observability/report";
 import type { TenantPlan } from "@/lib/auth/plans";
 
 /**
@@ -73,7 +74,9 @@ async function consume(bucket: string, limit: number, cost = 1): Promise<RateVer
     // tumbar las webs de todos los clientes. El riesgo inverso —un abuso
     // colándose durante la incidencia— es mucho menor que el de una caída
     // total, y queda registrado para poder detectarlo.
-    console.error("rate limit no disponible, se permite la petición", error);
+    // Este merece atención aunque la petición pase: significa que el
+    // limitador está caído y que ahora mismo no hay ningún freno al abuso.
+    reportError(error, { scope: "api.rateLimit.unavailable", extra: { bucket } });
     return {
       allowed: true,
       limit,
