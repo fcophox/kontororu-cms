@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/internal/webhooks/dispatch",
-      "schedule": "*/5 * * * *"
+      "schedule": "* * * * *"
     }
   ],
   "functions": {
