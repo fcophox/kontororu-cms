@@ -6,11 +6,13 @@ Un solo despliegue controlado por Rukma Studio; cada cliente gestiona su conteni
 su marca y sus integraciones. Aislamiento estricto por `tenant_id` con Row Level
 Security de Postgres.
 
+📖 **[Manual de uso →](docs/MANUAL.md)** — roles, alta de clientes y cada pantalla
 📍 **[Estado del proyecto y punto de continuación →](docs/ESTADO.md)**
 📐 **[Arquitectura técnica completa →](docs/ARCHITECTURE.md)**
 🔒 **[Suite de aislamiento multi-tenant →](docs/TESTING-RLS.md)** — bloqueante para desplegar
 ▶️ **[Runbook: levantarlo y verificarlo en local →](docs/RUNBOOK-LOCAL.md)**
 🔌 **[API para los clientes →](docs/API.md)**
+🎨 **[Sistema de diseño y tokens →](DESIGN.md)** — `tokens.yml` es la fuente de verdad
 
 ## Stack
 
@@ -33,7 +35,7 @@ Usuarios del seed (contraseña `password123`):
 |---|---|
 | `alice@rukma.studio` | OWNER de `rukma` |
 | `bob@acme.com` | OWNER de `acme` |
-| `root@rukma.studio` | SuperAdmin |
+| `fcojhormazabalh@gmail.com` | SuperAdmin |
 
 Entra con uno y luego con el otro: los colores de marca cambian por completo
 —es el theming dinámico— y el contenido de cada uno debe ser invisible para

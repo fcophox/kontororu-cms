@@ -3,8 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "NEXT_DIST_DIR=.next-dev next dev --turbopack",
-    "build": "next build",
+    "tokens": "node scripts/generate-tokens.mjs",
+    "tokens:watch": "node scripts/generate-tokens.mjs --watch",
+    "dev": "npm run tokens && NEXT_DIST_DIR=.next-dev next dev --turbopack",
+    "build": "npm run tokens && next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

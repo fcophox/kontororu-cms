@@ -1,3 +1,4 @@
+import { BRAND_TOKENS } from "@/lib/tokens.generated";
 import { isValidHex, shade, accessiblePair } from "./color";
 
 export type TenantBranding = {
@@ -8,12 +9,16 @@ export type TenantBranding = {
   radius: string;
 };
 
+/**
+ * Los valores salen de `tokens.yml` (bloque `brand`): cambiar la identidad
+ * por defecto del CMS es editar el YAML, no tocar este archivo.
+ */
 export const DEFAULT_BRANDING: TenantBranding = {
   logoUrl: null,
   faviconUrl: null,
-  primary: "#111827",
-  secondary: "#6366f1",
-  radius: "0.625rem",
+  primary: BRAND_TOKENS.primary,
+  secondary: BRAND_TOKENS.secondary,
+  radius: BRAND_TOKENS.radius,
 };
 
 const RADIUS_RE = /^\d+(\.\d+)?(rem|px)$/;

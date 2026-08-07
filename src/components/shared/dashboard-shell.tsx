@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import { can, type Permission } from "@/lib/auth/roles";
+import { UserProfileButton } from "@/components/user-profile-button";
 
 type NavItem = {
   href: string;
@@ -49,7 +50,7 @@ export function DashboardShell({
 
   return (
     <div className="flex min-h-svh">
-      <aside className="flex w-64 shrink-0 flex-col border-r bg-sidebar">
+      <aside className="flex w-64 shrink-0 flex-col border-r bg-background">
         <div className="flex h-16 items-center gap-2 border-b px-4">
           {tenant.branding.logoUrl ? (
             <Image
@@ -83,20 +84,18 @@ export function DashboardShell({
           ))}
         </nav>
 
-        <div className="border-t p-3 text-xs text-muted-foreground">
-          <div className="truncate">{user.email}</div>
-          <div className="mt-0.5 flex items-center gap-1.5">
-            <span className="rounded bg-secondary px-1.5 py-0.5 text-secondary-foreground">
-              {role}
-            </span>
-            {user.isSuperadmin && (
-              <span className="rounded bg-primary px-1.5 py-0.5 text-primary-foreground">
-                Rukma
-              </span>
-            )}
-          </div>
+        <div className="border-t p-2">
+          <UserProfileButton
+            email={user.email}
+            role={role}
+            isSuperadmin={user.isSuperadmin}
+            tenantSlug={tenant.slug}
+          />
           {tenants.length > 1 && (
-            <Link href="/switch" className="mt-2 block hover:text-foreground">
+            <Link
+              href="/switch"
+              className="mt-2 block px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground rounded"
+            >
               Cambiar de espacio ({tenants.length})
             </Link>
           )}

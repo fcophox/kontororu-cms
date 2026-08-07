@@ -30,7 +30,7 @@ begin
                           reauthentication_token)
   values
     (v_root,  '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-     'root@rukma.studio', extensions.crypt('password123', extensions.gen_salt('bf')), now(),
+     'fcojhormazabalh@gmail.com', extensions.crypt('password123', extensions.gen_salt('bf')), now(),
      '{"provider":"email","providers":["email"]}', '{"full_name":"Rukma Root"}', now(), now(),
      '', '', '', '', '', '', '', ''),
     (v_alice, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
@@ -101,5 +101,5 @@ begin
   values (v_rukma, 'Revalidar web', 'https://rukma.studio/api/revalidate',
           array['post.published','post.updated','post.unpublished','post.deleted']::webhook_event[]);
 
-  raise notice 'Seed listo — alice@rukma.studio / bob@acme.com / root@rukma.studio (password123)';
+  raise notice 'Seed listo — alice@rukma.studio / bob@acme.com / fcojhormazabalh@gmail.com (password123)';
 end $$;

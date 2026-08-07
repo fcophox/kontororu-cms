@@ -124,7 +124,7 @@ una nueva.
 Al terminar debe aparecer:
 
 ```
-NOTICE: Seed listo — alice@rukma.studio / bob@acme.com / root@rukma.studio (password123)
+NOTICE: Seed listo — alice@rukma.studio / bob@acme.com / fcojhormazabalh@gmail.com (password123)
 ```
 
 Si falla, el mensaje indica el archivo y la línea. Los fallos típicos son de

@@ -140,6 +140,7 @@ falta MinIO ni una cuenta de AWS; las credenciales salen de
 
 | Documento | Para quién |
 |---|---|
+| [MANUAL.md](MANUAL.md) | Quien **usa** el CMS: roles, alta de clientes, pantallas |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Quien mantiene el CMS |
 | [API.md](API.md) | Quien conecta una web al CMS |
 | [TESTING-RLS.md](TESTING-RLS.md) | Antes de tocar RLS o añadir una tabla |

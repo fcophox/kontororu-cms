@@ -1,0 +1,149 @@
+# ─────────────────────────────────────────────────────────
+#  TOKENS — Fuente de verdad del sistema de diseño
+#  Kontorōru CMS · Rukma Studio
+# ─────────────────────────────────────────────────────────
+#
+#  El generador (scripts/generate-tokens.mjs) lee este
+#  archivo y escribe:
+#    src/styles/tokens.generated.css  — Variables CSS
+#    src/lib/tokens.generated.ts      — Valores para TS
+#
+#  Comandos:
+#    npm run tokens         → generar una vez
+#    npm run tokens:watch   → regenerar en cada guardado
+#    npm run dev            → genera antes de arrancar
+#
+#  NO edites los archivos .generated.*: se sobreescriben.
+#  Para entender el uso de cada token ver DESIGN.md.
+# ─────────────────────────────────────────────────────────
+
+# ═══════════════════════════════════════════════════════════
+#  BASE — Chrome del CMS (tema oscuro por defecto / claro)
+# ═══════════════════════════════════════════════════════════
+#  El workspace donde el editor escribe. Sufijo .dark / .light
+#  reparte entre temas; sin sufijo → ambos.
+#
+#  El tema por defecto es OSCURO: los valores .dark viven en
+#  :root y los .light sólo se aplican bajo la clase `.light`.
+
+base:
+  # Superficies
+  colors.background.dark: "#0a0a0a"
+  colors.background.light: "#ffffff"
+  colors.foreground.dark: "#fafafa"
+  colors.foreground.light: "#0a0a0a"
+  colors.card.dark: "#171717"
+  colors.card.light: "#ffffff"
+  colors.card-foreground.dark: "#fafafa"
+  colors.card-foreground.light: "#0a0a0a"
+  colors.popover.dark: "#171717"
+  colors.popover.light: "#ffffff"
+  colors.popover-foreground.dark: "#fafafa"
+  colors.popover-foreground.light: "#0a0a0a"
+
+  # Acentos (los sobreescribe <TenantTheme> por tenant)
+  colors.primary.dark: "#fafafa"
+  colors.primary.light: "#111827"
+  colors.primary-foreground.dark: "#18181b"
+  colors.primary-foreground.light: "#ffffff"
+  colors.secondary.dark: "#27272a"
+  colors.secondary.light: "#f4f4f5"
+  colors.secondary-foreground.dark: "#fafafa"
+  colors.secondary-foreground.light: "#18181b"
+  colors.accent.dark: "#27272a"
+  colors.accent.light: "#f4f4f5"
+  colors.accent-foreground.dark: "#fafafa"
+  colors.accent-foreground.light: "#18181b"
+
+  # Neutrales
+  colors.muted.dark: "#27272a"
+  colors.muted.light: "#f4f4f5"
+  colors.muted-foreground.dark: "#a1a1aa"
+  colors.muted-foreground.light: "#71717a"
+  colors.border.dark: "#27272a"
+  colors.border.light: "#e4e4e7"
+  colors.input.dark: "#27272a"
+  colors.input.light: "#e4e4e7"
+  colors.ring.dark: "#d4d4d8"
+  colors.ring.light: "#111827"
+
+  # Sidebar
+  colors.sidebar.dark: "#171717"
+  colors.sidebar.light: "#fafafa"
+  colors.sidebar-foreground.dark: "#fafafa"
+  colors.sidebar-foreground.light: "#0a0a0a"
+  colors.sidebar-primary.dark: "#fafafa"
+  colors.sidebar-primary.light: "#111827"
+  colors.sidebar-primary-foreground.dark: "#18181b"
+  colors.sidebar-primary-foreground.light: "#ffffff"
+  colors.sidebar-border.dark: "#27272a"
+  colors.sidebar-border.light: "#e4e4e7"
+
+  # Estados semánticos — badges, callouts del editor, toasts
+  colors.destructive.dark: "#7f1d1d"
+  colors.destructive.light: "#ef4444"
+  colors.destructive-foreground.dark: "#fafafa"
+  colors.destructive-foreground.light: "#ffffff"
+  colors.warn.dark: "#f59e0b"
+  colors.warn.light: "#f59e0b"
+  colors.warn-surface.dark: "#451a0333"
+  colors.warn-surface.light: "#fffbeb"
+  colors.success.dark: "#10b981"
+  colors.success.light: "#10b981"
+  colors.success-surface.dark: "#02251933"
+  colors.success-surface.light: "#ecfdf5"
+  colors.danger.dark: "#ef4444"
+  colors.danger.light: "#ef4444"
+  colors.danger-surface.dark: "#45050533"
+  colors.danger-surface.light: "#fef2f2"
+
+  # Tipografía — `--font-sansation` lo inyecta next/font en el layout raíz
+  fonts.sans: "var(--font-sansation), system-ui, sans-serif"
+  fonts.mono: "ui-monospace, SFMono-Regular, Menlo, monospace"
+
+  # Radio base — los derivados (sm/md/lg/xl) se calculan en globals.css
+  radii.base: "0.625rem"
+
+  # Espaciado
+  spacing.xs: "0.25rem"
+  spacing.sm: "0.5rem"
+  spacing.md: "1rem"
+  spacing.lg: "1.5rem"
+  spacing.xl: "2rem"
+  spacing.2xl: "4rem"
+
+  # Breakpoints — alimentan las variantes sm:/md:/lg: de Tailwind
+  breakpoints.sm: "40rem"
+  breakpoints.md: "48rem"
+  breakpoints.lg: "64rem"
+  breakpoints.xl: "80rem"
+  breakpoints.2xl: "96rem"
+
+  # Sombras
+  shadows.sm.light: "0 1px 2px 0 rgb(0 0 0 / 0.05)"
+  shadows.md.light: "0 4px 6px -1px rgb(0 0 0 / 0.1)"
+  shadows.lg.light: "0 10px 15px -3px rgb(0 0 0 / 0.1)"
+  shadows.sm.dark: "0 1px 2px 0 rgb(0 0 0 / 0.4)"
+  shadows.md.dark: "0 4px 6px -1px rgb(0 0 0 / 0.5)"
+  shadows.lg.dark: "0 10px 15px -3px rgb(0 0 0 / 0.55)"
+
+  # Animaciones
+  animations.fast: "150ms"
+  animations.normal: "300ms"
+  animations.slow: "500ms"
+
+
+# ═══════════════════════════════════════════════════════════
+#  BRAND — Identidad por defecto del tenant
+# ═══════════════════════════════════════════════════════════
+#  Lo que ve un tenant que todavía no ha personalizado nada.
+#  Se consume desde TypeScript como DEFAULT_BRANDING
+#  (src/lib/theme/branding.ts) y como fallback --brand-* en CSS.
+#
+#  Un tenant SÓLO puede sobreescribir estos tres valores; el
+#  resto del sistema es territorio de Rukma Studio.
+
+brand:
+  primary: "#111827"
+  secondary: "#6366f1"
+  radius: "0.625rem"

@@ -21,7 +21,7 @@ grant select on fx to public;
 
 insert into fx (k, v) values
   ('admin',  tests.create_user('admin@acme.com')),
-  ('root',   tests.create_user('root@rukma.studio', true)),
+  ('root',   tests.create_user('fcojhormazabalh@gmail.com', true)),
   ('tenant', tests.create_tenant('acme')),
   ('ajeno',  tests.create_tenant('otro-cliente'));
 

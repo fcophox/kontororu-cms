@@ -87,7 +87,7 @@ insert into fx (k, v) values
   ('alice',   tests.create_user('alice@rukma.studio')),
   ('bob',     tests.create_user('bob@acme.com')),
   ('mallory', tests.create_user('mallory@evil.com')),
-  ('root',    tests.create_user('root@rukma.studio', true)),
+  ('root',    tests.create_user('fcojhormazabalh@gmail.com', true)),
   ('tenantA', tests.create_tenant('rukma')),
   ('tenantB', tests.create_tenant('acme'));
 
