@@ -87,6 +87,7 @@ export function DashboardShell({
         <div className="border-t p-2">
           <UserProfileButton
             email={user.email}
+            fullName={user.fullName}
             role={role}
             isSuperadmin={user.isSuperadmin}
             tenantSlug={tenant.slug}

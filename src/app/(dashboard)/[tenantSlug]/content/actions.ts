@@ -25,6 +25,7 @@ const ContentInput = z.object({
   slug: z.string().trim().max(80).optional(),
   excerpt: z.string().trim().max(400).optional(),
   categoryId: z.string().uuid().nullable().optional(),
+  coverMediaId: z.string().uuid().nullable().optional(),
   contentJson: z.unknown(),
   customFields: z.record(z.string(), z.unknown()).default({}),
   seo: z
@@ -45,6 +46,7 @@ function parse(formData: FormData) {
     slug: formData.get("slug") || undefined,
     excerpt: formData.get("excerpt") || undefined,
     categoryId: formData.get("categoryId") || null,
+    coverMediaId: formData.get("coverMediaId") || null,
     contentJson: JSON.parse(String(formData.get("contentJson") ?? "{}")),
     customFields: JSON.parse(String(formData.get("customFields") ?? "{}")),
     seo: JSON.parse(String(formData.get("seo") ?? "{}")),
@@ -85,6 +87,7 @@ export async function saveContent(
     title: input.title,
     excerpt: input.excerpt ?? null,
     category_id: input.categoryId ?? null,
+    cover_media_id: input.coverMediaId ?? null,
     content_json: input.contentJson as Json,
     content_html: html,
     custom_fields: input.customFields as Json,

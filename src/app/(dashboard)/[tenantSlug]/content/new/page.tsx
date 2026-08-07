@@ -41,6 +41,8 @@ export default async function NewContentPage({
         title: "",
         excerpt: "",
         categoryId: null,
+        coverMediaId: null,
+        coverUrl: null,
         contentJson: { type: "doc", content: [] },
         customFields: {},
         seo: {},

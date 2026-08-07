@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import type { JSONContent } from "@tiptap/react";
-import { Loader2, Check, AlertCircle } from "lucide-react";
+import { Loader2, Check, AlertCircle, UploadCloud, Trash } from "lucide-react";
 import { TiptapEditor, type EditorPayload } from "./tiptap-editor";
 import { CustomFieldsEditor } from "./custom-fields-editor";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ export type PostDraft = {
   customFields: Record<string, unknown>;
   seo: { title?: string; description?: string };
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  coverMediaId?: string | null;
+  coverUrl?: string | null;
 };
 
 type Props = {
@@ -67,6 +69,46 @@ export function PostEditor({
   const [customFields, setCustomFields] = useState(draft.customFields);
   const [dirty, setDirty] = useState(false);
 
+  const [coverMediaId, setCoverMediaId] = useState<string | null>(draft.coverMediaId ?? null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(draft.coverUrl ?? null);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [coverError, setCoverError] = useState<string | null>(null);
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingCover(true);
+    setCoverError(null);
+
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      body.append("tenantId", tenantId);
+
+      const res = await fetch("/api/media/upload", { method: "POST", body });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: "Error al subir la imagen" }));
+        throw new Error(error ?? "Error al subir la imagen");
+      }
+
+      const media = await res.json();
+      setCoverMediaId(media.id);
+      setCoverUrl(media.url);
+      setDirty(true);
+    } catch (err) {
+      setCoverError(err instanceof Error ? err.message : "Error al subir la imagen");
+    } finally {
+      setIsUploadingCover(false);
+    }
+  };
+
+  const handleRemoveCover = () => {
+    setCoverMediaId(null);
+    setCoverUrl(null);
+    setDirty(true);
+  };
+
   const handleChange = (payload: EditorPayload) => {
     setContent(payload);
     setDirty(true);
@@ -79,12 +121,13 @@ export function PostEditor({
   const formId = "post-editor-form";
 
   return (
-    <div className="flex min-h-svh flex-col">
+    <div className="flex h-svh flex-col overflow-hidden">
       <form id={formId} action={formAction}>
         <input type="hidden" name="postId" value={draft.id ?? ""} />
         <input type="hidden" name="contentJson" value={JSON.stringify(content.json)} />
         <input type="hidden" name="customFields" value={JSON.stringify(customFields)} />
         <input type="hidden" name="seo" value={JSON.stringify(draft.seo)} />
+        <input type="hidden" name="coverMediaId" value={coverMediaId ?? ""} />
 
         <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/95 px-8 py-3 backdrop-blur">
           <div className="min-w-0 flex-1">
@@ -135,8 +178,8 @@ export function PostEditor({
         </div>
       )}
 
-      <div className="flex flex-1 gap-8 p-8">
-        <div className="min-w-0 flex-1">
+      <div className="flex flex-1 gap-8 px-8 pb-8 pt-4 overflow-hidden">
+        <div className="min-w-0 flex-1 h-full overflow-y-auto pr-4">
           <TiptapEditor
             tenantId={tenantId}
             initialContent={draft.contentJson}
@@ -144,7 +187,7 @@ export function PostEditor({
           />
         </div>
 
-        <aside className="w-72 shrink-0 space-y-6">
+        <aside className="w-72 shrink-0 space-y-6 h-full overflow-y-auto pr-2">
           <section className="space-y-2">
             <Label htmlFor="categoryId">Categoría</Label>
             <select
@@ -179,6 +222,61 @@ export function PostEditor({
           </section>
 
           {translations}
+
+          <section className="space-y-2">
+            <Label>Imagen de portada</Label>
+            {coverUrl ? (
+              <div className="relative group overflow-hidden rounded-[var(--radius)] border bg-muted aspect-video">
+                <img
+                  src={coverUrl}
+                  alt="Vista previa de portada"
+                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleRemoveCover}
+                    className="gap-1.5"
+                  >
+                    <Trash className="size-3.5" />
+                    Eliminar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-[var(--radius)] p-4 hover:bg-muted/50 cursor-pointer relative group transition-colors duration-200 min-h-24">
+                {isUploadingCover ? (
+                  <div className="flex flex-col items-center gap-1.5">
+                    <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Subiendo...</span>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleCoverUpload}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <div className="flex flex-col items-center gap-1">
+                      <UploadCloud className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                      <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
+                        Subir portada
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        PNG, JPG, WebP hasta 5MB
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            {coverError && (
+              <p className="text-[11px] text-destructive mt-1">{coverError}</p>
+            )}
+          </section>
 
           {lifecycle}
 

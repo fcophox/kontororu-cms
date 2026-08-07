@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { History, RotateCcw, Loader2 } from "lucide-react";
+import { History, RotateCcw, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
@@ -15,14 +15,11 @@ export type Revision = {
   size: number;
 };
 
-const VISIBLE = 5;
-
 /**
  * Historial de versiones.
  *
- * Muestra las últimas y despliega el resto bajo demanda: el caso normal es
- * "he roto algo hace un rato", no arqueología. Restaurar no destruye nada —
- * el guardado genera una versión nueva, así que lo que había antes sigue ahí.
+ * Muestra la versión actual y permite desplegar el resto bajo demanda
+ * mediante un acordeón para no saturar la barra lateral.
  */
 export function PostHistory({
   revisions,
@@ -40,7 +37,7 @@ export function PostHistory({
 
   if (revisions.length === 0) return null;
 
-  const shown = expanded ? revisions : revisions.slice(0, VISIBLE);
+  const shown = expanded ? revisions : revisions.slice(0, 1);
 
   return (
     <section className="space-y-2 border-t pt-4">
@@ -111,13 +108,23 @@ export function PostHistory({
         })}
       </ol>
 
-      {revisions.length > VISIBLE && (
+      {revisions.length > 1 && (
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
-          className="text-xs text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium pt-1"
         >
-          {expanded ? "Ver menos" : `Ver las ${revisions.length} versiones`}
+          {expanded ? (
+            <>
+              <ChevronUp className="size-3" />
+              Ocultar versiones anteriores
+            </>
+          ) : (
+            <>
+              <ChevronDown className="size-3" />
+              Ver versiones anteriores ({revisions.length - 1})
+            </>
+          )}
         </button>
       )}
 

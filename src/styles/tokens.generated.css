@@ -26,7 +26,7 @@
   --brand-primary: #111827;
   --brand-secondary: #6366f1;
   --brand-radius: 0.625rem;
-  --background: #0a0a0a;
+  --background: ##191919;
   --foreground: #fafafa;
   --card: #171717;
   --card-foreground: #fafafa;
@@ -99,7 +99,7 @@
 
 /* Permite anidar un bloque oscuro dentro de una página clara. */
 .dark {
-  --background: #0a0a0a;
+  --background: ##191919;
   --foreground: #fafafa;
   --card: #171717;
   --card-foreground: #fafafa;

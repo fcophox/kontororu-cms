@@ -60,7 +60,7 @@ export const LIGHT_TOKENS = {
 
 /** Tokens del tema oscuro — el tema por defecto del CMS. */
 export const DARK_TOKENS = {
-  "--background": "#0a0a0a",
+  "--background": "##191919",
   "--foreground": "#fafafa",
   "--card": "#171717",
   "--card-foreground": "#fafafa",

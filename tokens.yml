@@ -28,7 +28,7 @@
 
 base:
   # Superficies
-  colors.background.dark: "#0a0a0a"
+  colors.background.dark: "##191919"
   colors.background.light: "#ffffff"
   colors.foreground.dark: "#fafafa"
   colors.foreground.light: "#0a0a0a"

@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/guards";
 import { asJsonContent, asRecord, asSeo } from "@/lib/content/json";
 import { refreshContentMedia } from "@/lib/api/content-media";
+import { signMediaBatch } from "@/lib/api/serializers";
 import { createServiceClient } from "@/lib/supabase/server";
 import { PostEditor } from "@/components/editor/post-editor";
 import { PostSidebarActions } from "@/components/editor/post-sidebar-actions";
@@ -45,7 +46,7 @@ export default async function EditContentPage({ params }: Props) {
     supabase
       .from("posts")
       .select(
-        "id, slug, title, excerpt, category_id, content_json, content_html, custom_fields, seo, status, author_id, deleted_at, locale, translation_group_id",
+        "id, slug, title, excerpt, category_id, content_json, content_html, custom_fields, seo, status, author_id, deleted_at, locale, translation_group_id, cover_media_id, cover:media(id, bucket, path, provider, alt_text, width, height)",
       )
       .eq("id", postId)
       .maybeSingle(),
@@ -88,6 +89,13 @@ export default async function EditContentPage({ params }: Props) {
     html: "",
     json: asJsonContent(post.content_json),
   });
+
+  let coverUrl: string | null = null;
+  const coverMedia = post.cover as any;
+  if (coverMedia) {
+    const signed = await signMediaBatch(createServiceClient(), [coverMedia]);
+    coverUrl = signed.get(coverMedia.path) ?? null;
+  }
 
   const save = async (prev: ActionState, formData: FormData) => {
     "use server";
@@ -190,6 +198,8 @@ export default async function EditContentPage({ params }: Props) {
         slug: post.slug,
         excerpt: post.excerpt ?? "",
         categoryId: post.category_id,
+        coverMediaId: post.cover_media_id,
+        coverUrl,
         contentJson: asJsonContent(content.json),
         customFields: asRecord(post.custom_fields),
         seo: asSeo(post.seo),
