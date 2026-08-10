@@ -131,7 +131,7 @@ export function PostEditor({
         <input type="hidden" name="seo" value={JSON.stringify(draft.seo)} />
         <input type="hidden" name="coverMediaId" value={coverMediaId ?? ""} />
 
-        <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/95 px-8 py-3 backdrop-blur">
+        <header className="sticky top-0 z-10 flex items-center gap-3 bg-background/95 px-8 py-3 backdrop-blur">
           <Button variant="outline" size="icon" asChild className="size-8">
             <Link href={`/${tenantSlug}/content`} title="Volver a Contenido">
               <ArrowLeft className="size-4" />
