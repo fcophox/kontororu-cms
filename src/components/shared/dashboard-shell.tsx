@@ -32,6 +32,9 @@ const GROUP_ADMIN: NavItem[] = [
   { href: "/settings/branding", label: "Marca", icon: Palette, permission: "branding.manage" },
   { href: "/team", label: "Equipo", icon: Users, permission: "team.manage" },
   { href: "/settings/locales", label: "Idiomas", icon: Globe, permission: "branding.manage" },
+];
+
+const GROUP_CONFIG: NavItem[] = [
   { href: "/settings/api-keys", label: "API Keys", icon: KeyRound, permission: "apiKeys.manage" },
   { href: "/settings/webhooks", label: "Webhooks", icon: Webhook, permission: "webhooks.manage" },
 ];
@@ -56,6 +59,7 @@ export function DashboardShell({
   const generalItems = filterItems(GROUP_GENERAL);
   const gestionItems = filterItems(GROUP_GESTION);
   const adminItems = filterItems(GROUP_ADMIN);
+  const configItems = filterItems(GROUP_CONFIG);
 
   return (
     <div className="flex min-h-svh">
@@ -120,6 +124,24 @@ export function DashboardShell({
                 Administración
               </div>
               {adminItems.map(({ href, label, icon: Icon }) => (
+                <Link
+                  key={href}
+                  href={`${base}${href}`}
+                  className="flex items-center gap-2.5 rounded-[var(--radius)] px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Icon className="size-4" />
+                  {label}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {configItems.length > 0 && (
+            <div className="space-y-0.5">
+              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
+                Configuración
+              </div>
+              {configItems.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={`${base}${href}`}
