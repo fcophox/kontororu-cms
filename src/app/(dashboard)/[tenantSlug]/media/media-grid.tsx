@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Upload, Trash2, Loader2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export type MediaItem = {
   id: string;
@@ -144,6 +145,7 @@ function MediaCard({
 }) {
   const [alt, setAlt] = useState(item.altText);
   const [pending, startTransition] = useTransition();
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const isImage = item.mimeType.startsWith("image/");
 
   return (
@@ -187,20 +189,31 @@ function MediaCard({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-6"
+            className="size-6 cursor-pointer"
             aria-label="Eliminar archivo"
             disabled={pending}
             onClick={() => {
-              if (!window.confirm("¿Eliminar este archivo? El contenido que lo use quedará con la imagen rota.")) return;
-              startTransition(async () => {
-                await deleteAction(item.id);
-              });
+              setIsDeleteConfirmOpen(true);
             }}
           >
             <Trash2 className="size-3" />
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={isDeleteConfirmOpen}
+        title="¿Eliminar este archivo?"
+        description="El contenido que lo use quedará con la imagen rota."
+        confirmText="Eliminar"
+        onConfirm={async () => {
+          setIsDeleteConfirmOpen(false);
+          await deleteAction(item.id);
+        }}
+        onCancel={() => setIsDeleteConfirmOpen(false)}
+        variant="destructive"
+        icon={Trash2}
+      />
     </li>
   );
 }
