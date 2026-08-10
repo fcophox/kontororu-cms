@@ -10,7 +10,6 @@ type Props = {
   email: string;
   fullName: string | null;
   role: string;
-  isSuperadmin: boolean;
   tenantSlug: string;
 };
 
@@ -28,7 +27,7 @@ function getInitials(name: string, email: string): string {
   return email.substring(0, 2).toUpperCase();
 }
 
-export function UserProfileButton({ email, fullName, role, isSuperadmin, tenantSlug }: Props) {
+export function UserProfileButton({ email, fullName, role, tenantSlug }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 

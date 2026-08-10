@@ -95,7 +95,7 @@ export default async function UpdatePasswordPage({
           <Quote className="size-10 text-zinc-700 mb-6 rotate-180" />
           <blockquote className="space-y-6">
             <p className="text-3xl font-medium leading-snug">
-              "Bienvenido de nuevo. Tu seguridad es nuestra prioridad para mantener tu control absoluto."
+              &quot;Bienvenido de nuevo. Tu seguridad es nuestra prioridad para mantener tu control absoluto.&quot;
             </p>
             <footer className="flex items-center gap-4">
               <div className="flex flex-col">

@@ -109,7 +109,7 @@ export default async function LoginPage({
           <Quote className="size-10 text-zinc-700 mb-6 rotate-180" />
           <blockquote className="space-y-6">
             <p className="text-3xl font-medium leading-snug">
-              "Kontorōru nace de nuestra visión por devolverte el control absoluto de tus contenidos. Una experiencia sin ataduras, diseñada a medida."
+              &quot;Kontorōru nace de nuestra visión por devolverte el control absoluto de tus contenidos. Una experiencia sin ataduras, diseñada a medida.&quot;
             </p>
             <footer className="flex items-center gap-4">
               <div className="flex flex-col">

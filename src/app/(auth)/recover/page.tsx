@@ -93,7 +93,7 @@ export default async function RecoverPage({
           <Quote className="size-10 text-zinc-700 mb-6 rotate-180" />
           <blockquote className="space-y-6">
             <p className="text-3xl font-medium leading-snug">
-              "Recuperar el control nunca fue tan sencillo. Estás a un paso de volver a la experiencia sin ataduras."
+              &quot;Recuperar el control nunca fue tan sencillo. Estás a un paso de volver a la experiencia sin ataduras.&quot;
             </p>
             <footer className="flex items-center gap-4">
               <div className="flex flex-col">

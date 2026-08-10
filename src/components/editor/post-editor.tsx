@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import type { JSONContent } from "@tiptap/react";
 import { Loader2, Check, AlertCircle, UploadCloud, Trash, ArrowLeft } from "lucide-react";
@@ -273,10 +274,11 @@ export function PostEditor({
                   <Label>Imagen de portada</Label>
                   {coverUrl ? (
                     <div className="relative group overflow-hidden rounded-[var(--radius)] border bg-muted aspect-video">
-                      <img
+                      <Image
                         src={coverUrl}
                         alt="Vista previa de portada"
-                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                        fill
+                        className="object-cover transition duration-300 group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200">
                         <Button
