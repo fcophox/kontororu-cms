@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { slugify } from "@/lib/content/slug";
 import type { SlugState } from "@/app/(dashboard)/[tenantSlug]/content/actions";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /**
  * URL y ciclo de vida del contenido.
@@ -46,6 +47,8 @@ export function PostSidebarActions({
   );
   const [draft, setDraft] = useState(slug);
   const [pending, startTransition] = useTransition();
+  const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
+  const [isTrashConfirmOpen, setIsTrashConfirmOpen] = useState(false);
 
   const current = slugState.slug ?? slug;
   const changed = slugify(draft) !== current;
@@ -129,14 +132,11 @@ export function PostSidebarActions({
                 variant="outline"
                 disabled={Boolean(pending)}
                 onClick={() => {
-                  if (
-                    isPublished &&
-                    !window.confirm(
-                      "Archivar retira el contenido de tu web. Podrás volver a publicarlo cuando quieras.",
-                    )
-                  )
-                    return;
-                  startTransition(async () => archiveAction());
+                  if (isPublished) {
+                    setIsArchiveConfirmOpen(true);
+                  } else {
+                    startTransition(async () => archiveAction());
+                  }
                 }}
               >
                 <Archive className="size-3.5" />
@@ -151,13 +151,7 @@ export function PostSidebarActions({
               className="text-destructive hover:text-destructive"
               disabled={Boolean(pending)}
               onClick={() => {
-                if (
-                  !window.confirm(
-                    "Se mueve a la papelera y desaparece de tu web. Podrás recuperarlo desde el listado.",
-                  )
-                )
-                  return;
-                startTransition(async () => trashAction());
+                setIsTrashConfirmOpen(true);
               }}
             >
               <Trash2 className="size-3.5" />
@@ -171,6 +165,34 @@ export function PostSidebarActions({
           </p>
         </section>
       )}
+
+      <ConfirmDialog
+        isOpen={isArchiveConfirmOpen}
+        title="¿Archivar contenido?"
+        description="Archivar retira el contenido de tu web. Podrás volver a publicarlo cuando quieras."
+        confirmText="Archivar"
+        onConfirm={async () => {
+          setIsArchiveConfirmOpen(false);
+          await archiveAction();
+        }}
+        onCancel={() => setIsArchiveConfirmOpen(false)}
+        variant="warning"
+        icon={Archive}
+      />
+
+      <ConfirmDialog
+        isOpen={isTrashConfirmOpen}
+        title="¿Mover a la papelera?"
+        description="Se mueve a la papelera y desaparece de tu web. Podrás recuperarlo desde el listado."
+        confirmText="Mover a la papelera"
+        onConfirm={async () => {
+          setIsTrashConfirmOpen(false);
+          await trashAction();
+        }}
+        onCancel={() => setIsTrashConfirmOpen(false)}
+        variant="destructive"
+        icon={Trash2}
+      />
     </>
   );
 }

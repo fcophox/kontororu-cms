@@ -103,3 +103,22 @@
     @apply my-4 h-auto max-w-full rounded-[var(--radius)];
   }
 }
+
+@keyframes backdrop-fade-in {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to { opacity: 1; backdrop-filter: blur(4px); }
+}
+
+@keyframes modal-scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@utility animate-backdrop-in {
+  animation: backdrop-fade-in 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@utility animate-modal-in {
+  animation: modal-scale-in 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+

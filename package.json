@@ -2,6 +2,9 @@
   "name": "kontororu-cms",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "tokens": "node scripts/generate-tokens.mjs",
     "tokens:watch": "node scripts/generate-tokens.mjs --watch",
