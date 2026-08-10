@@ -204,7 +204,7 @@ export function PostEditor({
           />
         </div>
 
-        <aside className="w-72 shrink-0 space-y-6 h-full overflow-y-auto pr-2">
+        <aside className="w-80 shrink-0 space-y-6 h-full overflow-y-auto pr-2">
           <section className="space-y-2">
             <Label htmlFor="categoryId">Categoría</Label>
             <select
