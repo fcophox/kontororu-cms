@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  FileText, FolderTree, ImageIcon, Users, LayoutDashboard, Palette, KeyRound, Webhook, Globe,
+  FileText, FolderTree, ImageIcon, Users, LayoutDashboard, Palette, KeyRound, Webhook, Globe, ChevronDown,
 } from "lucide-react";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import { can, type Permission } from "@/lib/auth/roles";
@@ -55,6 +55,7 @@ export function DashboardShell({
   children: React.ReactNode;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isTenantMenuOpen, setIsTenantMenuOpen] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -117,6 +118,42 @@ export function DashboardShell({
             </span>
           )}
           <span className="truncate font-medium">{tenant.name}</span>
+          
+          {user.isSuperadmin && tenants.length > 1 && (
+            <div className="relative ml-auto">
+              <button
+                onClick={() => setIsTenantMenuOpen(!isTenantMenuOpen)}
+                onBlur={() => setTimeout(() => setIsTenantMenuOpen(false), 200)}
+                className="flex items-center rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                aria-label="Cambiar de cliente"
+              >
+                <ChevronDown className="size-4" />
+              </button>
+              
+              {isTenantMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-52 rounded-[var(--radius)] border bg-popover p-1 shadow-md z-50">
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Clientes ({tenants.length})
+                  </div>
+                  <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden">
+                    {tenants.map((t) => (
+                      <Link
+                        key={t.id}
+                        href={`/${t.slug}`}
+                        className={`block rounded-sm px-2 py-1.5 text-sm truncate ${
+                          t.id === tenant.id
+                            ? "bg-accent text-accent-foreground font-medium"
+                            : "text-popover-foreground hover:bg-accent hover:text-accent-foreground"
+                        }`}
+                      >
+                        {t.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <nav className="flex-1 space-y-4 overflow-y-auto p-2">
