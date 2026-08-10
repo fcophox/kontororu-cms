@@ -64,7 +64,7 @@ export function DashboardShell({
   return (
     <div className="flex min-h-svh">
       <aside className="flex w-64 shrink-0 flex-col border-r bg-background">
-        <div className="flex h-16 items-center gap-2 border-b px-4">
+        <div className="flex h-16 items-center gap-2 px-4">
           {tenant.branding.logoUrl ? (
             <Image
               src={tenant.branding.logoUrl}
@@ -155,7 +155,7 @@ export function DashboardShell({
           )}
         </nav>
 
-        <div className="border-t p-2">
+        <div className="p-2">
           <UserProfileButton
             email={user.email}
             fullName={user.fullName}

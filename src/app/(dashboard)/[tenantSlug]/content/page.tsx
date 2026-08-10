@@ -104,7 +104,7 @@ export default async function ContentListPage({
   };
 
   return (
-    <div className="p-8">
+    <div className="mx-auto max-w-6xl p-8">
       <header className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Contenido</h1>
