@@ -18,13 +18,19 @@ type NavItem = {
  * Sólo se listan secciones que EXISTEN: un menú es una promesa, y un enlace
  * a una ruta sin página es un 404 con el nombre puesto.
  */
-const NAV: NavItem[] = [
+const GROUP_GENERAL: NavItem[] = [
   { href: "", label: "Resumen", icon: LayoutDashboard },
-  { href: "/content", label: "Contenido", icon: FileText },
+];
+
+const GROUP_GESTION: NavItem[] = [
   { href: "/categories", label: "Categorías", icon: FolderTree, permission: "taxonomy.manage" },
+  { href: "/content", label: "Contenido", icon: FileText },
   { href: "/media", label: "Medios", icon: ImageIcon },
-  { href: "/team", label: "Equipo", icon: Users, permission: "team.manage" },
+];
+
+const GROUP_ADMIN: NavItem[] = [
   { href: "/settings/branding", label: "Marca", icon: Palette, permission: "branding.manage" },
+  { href: "/team", label: "Equipo", icon: Users, permission: "team.manage" },
   { href: "/settings/locales", label: "Idiomas", icon: Globe, permission: "branding.manage" },
   { href: "/settings/api-keys", label: "API Keys", icon: KeyRound, permission: "apiKeys.manage" },
   { href: "/settings/webhooks", label: "Webhooks", icon: Webhook, permission: "webhooks.manage" },
@@ -42,11 +48,14 @@ export function DashboardShell({
   const { tenant, role, user } = context;
   const base = `/${tenant.slug}`;
 
-  // Se filtra en servidor: un enlace oculto no es seguridad, pero mostrar
-  // opciones que siempre devuelven 403 es una mala experiencia.
-  const items = NAV.filter(
-    (item) => !item.permission || user.isSuperadmin || can(role, item.permission),
-  );
+  const filterItems = (items: NavItem[]) =>
+    items.filter(
+      (item) => !item.permission || user.isSuperadmin || can(role, item.permission),
+    );
+
+  const generalItems = filterItems(GROUP_GENERAL);
+  const gestionItems = filterItems(GROUP_GESTION);
+  const adminItems = filterItems(GROUP_ADMIN);
 
   return (
     <div className="flex min-h-svh">
@@ -71,17 +80,57 @@ export function DashboardShell({
           <span className="truncate font-medium">{tenant.name}</span>
         </div>
 
-        <nav className="flex-1 space-y-0.5 p-2">
-          {items.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={`${base}${href}`}
-              className="flex items-center gap-2.5 rounded-[var(--radius)] px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              <Icon className="size-4" />
-              {label}
-            </Link>
-          ))}
+        <nav className="flex-1 space-y-4 p-2">
+          {generalItems.length > 0 && (
+            <div className="space-y-0.5">
+              {generalItems.map(({ href, label, icon: Icon }) => (
+                <Link
+                  key={href}
+                  href={`${base}${href}`}
+                  className="flex items-center gap-2.5 rounded-[var(--radius)] px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Icon className="size-4" />
+                  {label}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {gestionItems.length > 0 && (
+            <div className="space-y-0.5">
+              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
+                Gestión
+              </div>
+              {gestionItems.map(({ href, label, icon: Icon }) => (
+                <Link
+                  key={href}
+                  href={`${base}${href}`}
+                  className="flex items-center gap-2.5 rounded-[var(--radius)] px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Icon className="size-4" />
+                  {label}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {adminItems.length > 0 && (
+            <div className="space-y-0.5">
+              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
+                Administración
+              </div>
+              {adminItems.map(({ href, label, icon: Icon }) => (
+                <Link
+                  key={href}
+                  href={`${base}${href}`}
+                  className="flex items-center gap-2.5 rounded-[var(--radius)] px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Icon className="size-4" />
+                  {label}
+                </Link>
+              ))}
+            </div>
+          )}
         </nav>
 
         <div className="border-t p-2">
