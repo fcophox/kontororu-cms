@@ -205,16 +205,16 @@ export function PostEditor({
           />
         </div>
 
-        <aside className="w-80 shrink-0 flex flex-col h-full border-l bg-card overflow-hidden">
+        <aside className="w-80 shrink-0 flex flex-col h-full border-l overflow-hidden bg-transparent">
           {/* Cabecera de Tabs */}
-          <div className="flex border-b p-1 gap-1 shrink-0 bg-muted/30">
+          <div className="flex border-b border-border/80 px-2 shrink-0 bg-transparent gap-2">
             <button
               type="button"
               onClick={() => setActiveTab("general")}
-              className={`flex-1 rounded-[var(--radius)] py-1.5 text-xs font-medium transition-all cursor-pointer ${
+              className={`flex-1 pb-2 pt-2.5 text-center text-xs font-medium transition-all cursor-pointer border-b-2 -mb-[1px] ${
                 activeTab === "general"
-                  ? "bg-background shadow-xs text-foreground font-semibold"
-                  : "text-muted-foreground hover:bg-background/40 hover:text-foreground"
+                  ? "border-primary text-foreground font-semibold"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
               }`}
             >
               General
@@ -222,10 +222,10 @@ export function PostEditor({
             <button
               type="button"
               onClick={() => setActiveTab("history")}
-              className={`flex-1 rounded-[var(--radius)] py-1.5 text-xs font-medium transition-all cursor-pointer ${
+              className={`flex-1 pb-2 pt-2.5 text-center text-xs font-medium transition-all cursor-pointer border-b-2 -mb-[1px] ${
                 activeTab === "history"
-                  ? "bg-background shadow-xs text-foreground font-semibold"
-                  : "text-muted-foreground hover:bg-background/40 hover:text-foreground"
+                  ? "border-primary text-foreground font-semibold"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
               }`}
             >
               Historial
@@ -233,10 +233,10 @@ export function PostEditor({
             <button
               type="button"
               onClick={() => setActiveTab("metadata")}
-              className={`flex-1 rounded-[var(--radius)] py-1.5 text-xs font-medium transition-all cursor-pointer ${
+              className={`flex-1 pb-2 pt-2.5 text-center text-xs font-medium transition-all cursor-pointer border-b-2 -mb-[1px] ${
                 activeTab === "metadata"
-                  ? "bg-background shadow-xs text-foreground font-semibold"
-                  : "text-muted-foreground hover:bg-background/40 hover:text-foreground"
+                  ? "border-primary text-foreground font-semibold"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
               }`}
             >
               Metadatos
