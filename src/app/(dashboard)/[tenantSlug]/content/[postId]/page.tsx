@@ -91,7 +91,7 @@ export default async function EditContentPage({ params }: Props) {
   });
 
   let coverUrl: string | null = null;
-  const coverMedia = post.cover as any;
+  const coverMedia = post.cover as Parameters<typeof signMediaBatch>[1][number];
   if (coverMedia) {
     const signed = await signMediaBatch(createServiceClient(), [coverMedia]);
     coverUrl = signed.get(coverMedia.path) ?? null;
