@@ -74,6 +74,7 @@ export function PostEditor({
   const [publishedAt, setPublishedAt] = useState<string>(
     draft.publishedAt ? formatDatetimeLocal(draft.publishedAt) : ""
   );
+  const [activeTab, setActiveTab] = useState<"general" | "history" | "metadata">("general");
 
   const [coverMediaId, setCoverMediaId] = useState<string | null>(draft.coverMediaId ?? null);
   const [coverUrl, setCoverUrl] = useState<string | null>(draft.coverUrl ?? null);
@@ -204,148 +205,210 @@ export function PostEditor({
           />
         </div>
 
-        <aside className="w-80 shrink-0 space-y-6 h-full overflow-y-auto pr-2">
-          <section className="space-y-2">
-            <Label htmlFor="categoryId">Categoría</Label>
-            <select
-              id="categoryId"
-              name="categoryId"
-              form={formId}
-              defaultValue={draft.categoryId ?? ""}
-              onChange={() => setDirty(true)}
-              className="h-9 w-full rounded-[var(--radius)] border border-input bg-background px-3 text-xs font-medium outline-hidden hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-all cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%20stroke%3D%22%23a1a1aa%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_10px_center] bg-[size:16px_auto] bg-no-repeat pr-8"
+        <aside className="w-80 shrink-0 flex flex-col h-full border-l bg-card overflow-hidden">
+          {/* Cabecera de Tabs */}
+          <div className="flex border-b p-1 gap-1 shrink-0 bg-muted/30">
+            <button
+              type="button"
+              onClick={() => setActiveTab("general")}
+              className={`flex-1 rounded-[var(--radius)] py-1.5 text-xs font-medium transition-all cursor-pointer ${
+                activeTab === "general"
+                  ? "bg-background shadow-xs text-foreground font-semibold"
+                  : "text-muted-foreground hover:bg-background/40 hover:text-foreground"
+              }`}
             >
-              <option value="">Sin categoría</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </section>
+              General
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("history")}
+              className={`flex-1 rounded-[var(--radius)] py-1.5 text-xs font-medium transition-all cursor-pointer ${
+                activeTab === "history"
+                  ? "bg-background shadow-xs text-foreground font-semibold"
+                  : "text-muted-foreground hover:bg-background/40 hover:text-foreground"
+              }`}
+            >
+              Historial
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("metadata")}
+              className={`flex-1 rounded-[var(--radius)] py-1.5 text-xs font-medium transition-all cursor-pointer ${
+                activeTab === "metadata"
+                  ? "bg-background shadow-xs text-foreground font-semibold"
+                  : "text-muted-foreground hover:bg-background/40 hover:text-foreground"
+              }`}
+            >
+              Metadatos
+            </button>
+          </div>
 
-          <section className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="publishedAtInput">Fecha de publicación</Label>
-              {publishedAt && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPublishedAt("");
-                    setDirty(true);
-                  }}
-                  className="text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
-                >
-                  Restablecer
-                </button>
-              )}
-            </div>
-            <Input
-              id="publishedAtInput"
-              type="datetime-local"
-              value={publishedAt}
-              onChange={(e) => {
-                setPublishedAt(e.target.value);
-                setDirty(true);
-              }}
-              className="w-full text-xs font-medium cursor-pointer"
-            />
-            {!publishedAt && (
-              <p className="text-[10px] text-muted-foreground">
-                Por defecto se fijará al momento de presionar &quot;Publicar&quot;.
-              </p>
-            )}
-          </section>
-
-          <section className="space-y-2">
-            <Label htmlFor="excerpt">Extracto</Label>
-            <Textarea
-              id="excerpt"
-              name="excerpt"
-              form={formId}
-              defaultValue={draft.excerpt}
-              onChange={() => setDirty(true)}
-              maxLength={400}
-              rows={3}
-              placeholder="Resumen breve para listados y redes sociales."
-            />
-          </section>
-
-          {translations}
-
-          <section className="space-y-2">
-            <Label>Imagen de portada</Label>
-            {coverUrl ? (
-              <div className="relative group overflow-hidden rounded-[var(--radius)] border bg-muted aspect-video">
-                <img
-                  src={coverUrl}
-                  alt="Vista previa de portada"
-                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200">
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleRemoveCover}
-                    className="gap-1.5"
+          {/* Contenido de la pestaña activa */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-6 pr-2 scrollbar-thin">
+            {activeTab === "general" && (
+              <div className="space-y-6">
+                <section className="space-y-2">
+                  <Label htmlFor="categoryId">Categoría</Label>
+                  <select
+                    id="categoryId"
+                    name="categoryId"
+                    form={formId}
+                    defaultValue={draft.categoryId ?? ""}
+                    onChange={() => setDirty(true)}
+                    className="h-9 w-full rounded-[var(--radius)] border border-input bg-background px-3 text-xs font-medium outline-hidden hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-all cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%20stroke%3D%22%23a1a1aa%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_10px_center] bg-[size:16px_auto] bg-no-repeat pr-8"
                   >
-                    <Trash className="size-3.5" />
-                    Eliminar
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-[var(--radius)] p-4 hover:bg-muted/50 cursor-pointer relative group transition-colors duration-200 min-h-24">
-                {isUploadingCover ? (
-                  <div className="flex flex-col items-center gap-1.5">
-                    <Loader2 className="size-5 animate-spin text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Subiendo...</span>
+                    <option value="">Sin categoría</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </section>
+
+                <section className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="publishedAtInput">Fecha de publicación</Label>
+                    {publishedAt && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPublishedAt("");
+                          setDirty(true);
+                        }}
+                        className="text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
+                      >
+                        Restablecer
+                      </button>
+                    )}
                   </div>
-                ) : (
-                  <>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleCoverUpload}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
-                    <div className="flex flex-col items-center gap-1">
-                      <UploadCloud className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                      <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
-                        Subir portada
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        PNG, JPG, WebP hasta 5MB
-                      </span>
+                  <Input
+                    id="publishedAtInput"
+                    type="datetime-local"
+                    value={publishedAt}
+                    onChange={(e) => {
+                      setPublishedAt(e.target.value);
+                      setDirty(true);
+                    }}
+                    className="w-full text-xs font-medium cursor-pointer"
+                  />
+                  {!publishedAt && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Por defecto se fijará al momento de presionar &quot;Publicar&quot;.
+                    </p>
+                  )}
+                </section>
+
+                <section className="space-y-2">
+                  <Label htmlFor="excerpt">Extracto</Label>
+                  <Textarea
+                    id="excerpt"
+                    name="excerpt"
+                    form={formId}
+                    defaultValue={draft.excerpt}
+                    onChange={() => setDirty(true)}
+                    maxLength={400}
+                    rows={3}
+                    placeholder="Resumen breve para listados y redes sociales."
+                  />
+                </section>
+
+                {translations}
+
+                <section className="space-y-2">
+                  <Label>Imagen de portada</Label>
+                  {coverUrl ? (
+                    <div className="relative group overflow-hidden rounded-[var(--radius)] border bg-muted aspect-video">
+                      <img
+                        src={coverUrl}
+                        alt="Vista previa de portada"
+                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200">
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleRemoveCover}
+                          className="gap-1.5"
+                        >
+                          <Trash className="size-3.5" />
+                          Eliminar
+                        </Button>
+                      </div>
                     </div>
-                  </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-[var(--radius)] p-4 hover:bg-muted/50 cursor-pointer relative group transition-colors duration-200 min-h-24">
+                      {isUploadingCover ? (
+                        <div className="flex flex-col items-center gap-1.5">
+                          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">Subiendo...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleCoverUpload}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                          <div className="flex flex-col items-center gap-1">
+                            <UploadCloud className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                            <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
+                              Subir portada
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              PNG, JPG, WebP hasta 5MB
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {coverError && (
+                    <p className="text-[11px] text-destructive mt-1">{coverError}</p>
+                  )}
+                </section>
+              </div>
+            )}
+
+            {activeTab === "history" && (
+              <div className="space-y-6">
+                {lifecycle && (
+                  <section className="space-y-2">
+                    <Label>Ciclo de vida</Label>
+                    {lifecycle}
+                  </section>
+                )}
+
+                {history && (
+                  <section className="space-y-2">
+                    <Label>Historial de versiones</Label>
+                    {history}
+                  </section>
                 )}
               </div>
             )}
-            {coverError && (
-              <p className="text-[11px] text-destructive mt-1">{coverError}</p>
+
+            {activeTab === "metadata" && (
+              <div className="space-y-6">
+                <section className="space-y-2">
+                  <Label>Campos personalizados</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Metadatos libres que viajan en la API dentro de{" "}
+                    <code className="rounded bg-muted px-1">custom_fields</code>.
+                  </p>
+                  <CustomFieldsEditor
+                    value={customFields}
+                    onChange={(next) => {
+                      setCustomFields(next);
+                      setDirty(true);
+                    }}
+                  />
+                </section>
+              </div>
             )}
-          </section>
-
-          {lifecycle}
-
-          {history}
-
-          <section className="space-y-2">
-            <Label>Campos personalizados</Label>
-            <p className="text-xs text-muted-foreground">
-              Metadatos libres que viajan en la API dentro de{" "}
-              <code className="rounded bg-muted px-1">custom_fields</code>.
-            </p>
-            <CustomFieldsEditor
-              value={customFields}
-              onChange={(next) => {
-                setCustomFields(next);
-                setDirty(true);
-              }}
-            />
-          </section>
+          </div>
         </aside>
       </div>
     </div>
