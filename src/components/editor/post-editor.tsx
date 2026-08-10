@@ -205,7 +205,7 @@ export function PostEditor({
           />
         </div>
 
-        <aside className="w-80 shrink-0 flex flex-col h-full border-l overflow-hidden bg-transparent">
+        <aside className="w-80 shrink-0 flex flex-col h-full overflow-hidden bg-transparent">
           {/* Cabecera de Tabs */}
           <div className="flex border-b border-border/80 px-2 shrink-0 bg-transparent gap-2">
             <button
