@@ -46,7 +46,7 @@ export default async function EditContentPage({ params }: Props) {
     supabase
       .from("posts")
       .select(
-        "id, slug, title, excerpt, category_id, content_json, content_html, custom_fields, seo, status, author_id, deleted_at, locale, translation_group_id, cover_media_id, cover:media(id, bucket, path, provider, alt_text, width, height)",
+        "id, slug, title, excerpt, category_id, content_json, content_html, custom_fields, seo, status, author_id, deleted_at, locale, translation_group_id, cover_media_id, published_at, cover:media(id, bucket, path, provider, alt_text, width, height)",
       )
       .eq("id", postId)
       .maybeSingle(),
@@ -204,6 +204,7 @@ export default async function EditContentPage({ params }: Props) {
         customFields: asRecord(post.custom_fields),
         seo: asSeo(post.seo),
         status: post.status,
+        publishedAt: post.published_at,
       }}
     />
   );

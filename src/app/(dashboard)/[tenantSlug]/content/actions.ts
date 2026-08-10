@@ -35,6 +35,7 @@ const ContentInput = z.object({
       ogImage: z.string().url().optional(),
     })
     .default({}),
+  publishedAt: z.string().trim().nullable().optional(),
 });
 
 export type ActionState = { error?: string; fieldErrors?: Record<string, string[]> };
@@ -50,6 +51,7 @@ function parse(formData: FormData) {
     contentJson: JSON.parse(String(formData.get("contentJson") ?? "{}")),
     customFields: JSON.parse(String(formData.get("customFields") ?? "{}")),
     seo: JSON.parse(String(formData.get("seo") ?? "{}")),
+    publishedAt: formData.get("publishedAt") || null,
   });
 }
 
@@ -93,6 +95,7 @@ export async function saveContent(
     custom_fields: input.customFields as Json,
     seo: input.seo as Json,
     reading_time: readingTime(text),
+    published_at: input.publishedAt ? new Date(input.publishedAt).toISOString() : null,
   };
 
   if (input.postId) {

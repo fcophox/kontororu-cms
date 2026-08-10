@@ -24,6 +24,7 @@ export type PostDraft = {
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   coverMediaId?: string | null;
   coverUrl?: string | null;
+  publishedAt?: string | null;
 };
 
 type Props = {
@@ -70,6 +71,9 @@ export function PostEditor({
   });
   const [customFields, setCustomFields] = useState(draft.customFields);
   const [dirty, setDirty] = useState(false);
+  const [publishedAt, setPublishedAt] = useState<string>(
+    draft.publishedAt ? formatDatetimeLocal(draft.publishedAt) : ""
+  );
 
   const [coverMediaId, setCoverMediaId] = useState<string | null>(draft.coverMediaId ?? null);
   const [coverUrl, setCoverUrl] = useState<string | null>(draft.coverUrl ?? null);
@@ -130,6 +134,11 @@ export function PostEditor({
         <input type="hidden" name="customFields" value={JSON.stringify(customFields)} />
         <input type="hidden" name="seo" value={JSON.stringify(draft.seo)} />
         <input type="hidden" name="coverMediaId" value={coverMediaId ?? ""} />
+        <input
+          type="hidden"
+          name="publishedAt"
+          value={publishedAt && !isNaN(new Date(publishedAt).getTime()) ? new Date(publishedAt).toISOString() : ""}
+        />
 
         <header className="sticky top-0 z-10 flex items-center gap-3 bg-background/95 px-8 py-3 backdrop-blur">
           <Button variant="outline" size="icon" asChild className="size-8">
@@ -213,6 +222,39 @@ export function PostEditor({
                 </option>
               ))}
             </select>
+          </section>
+
+          <section className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="publishedAtInput">Fecha de publicación</Label>
+              {publishedAt && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPublishedAt("");
+                    setDirty(true);
+                  }}
+                  className="text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  Restablecer
+                </button>
+              )}
+            </div>
+            <Input
+              id="publishedAtInput"
+              type="datetime-local"
+              value={publishedAt}
+              onChange={(e) => {
+                setPublishedAt(e.target.value);
+                setDirty(true);
+              }}
+              className="w-full text-xs font-medium cursor-pointer"
+            />
+            {!publishedAt && (
+              <p className="text-[10px] text-muted-foreground">
+                Por defecto se fijará al momento de presionar &quot;Publicar&quot;.
+              </p>
+            )}
           </section>
 
           <section className="space-y-2">
@@ -337,4 +379,12 @@ function SaveIndicator({
       Guardado
     </span>
   );
+}
+
+function formatDatetimeLocal(isoString?: string | null): string {
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return "";
+  const pad = (num: number) => String(num).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

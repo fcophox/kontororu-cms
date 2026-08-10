@@ -47,6 +47,7 @@ export default async function NewContentPage({
         customFields: {},
         seo: {},
         status: "DRAFT",
+        publishedAt: null,
       }}
     />
   );
