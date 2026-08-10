@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { History, RotateCcw, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export type Revision = {
   id: string;
@@ -33,11 +34,13 @@ export function PostHistory({
   restoreAction: (revisionId: string) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [pending] = useTransition();
+  const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
+  const [selectedRevision, setSelectedRevision] = useState<Revision | null>(null);
 
   if (revisions.length === 0) return null;
 
-  const shown = expanded ? revisions : revisions.slice(0, 1);
+  const currentRevision = revisions[0];
 
   return (
     <section className="space-y-2 border-t pt-4">
@@ -46,91 +49,109 @@ export function PostHistory({
         Historial
       </Label>
 
-      <ol className="space-y-1">
-        {shown.map((rev, index) => {
-          // La primera de la lista es el estado actual: restaurarla no haría nada.
-          const isCurrent = index === 0;
-          const delta = rev.size - (index === 0 ? currentSize : revisions[index - 1]!.size);
+      {/* Select-like input trigger */}
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        className="flex h-9 w-full items-center justify-between rounded-[var(--radius)] border border-input bg-background px-3 text-xs font-medium outline-hidden hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-all text-left cursor-pointer"
+      >
+        <div className="flex items-center gap-2 truncate">
+          <span className="font-semibold text-foreground">v{currentRevision.version}</span>
+          <span className="text-muted-foreground truncate">
+            (Actual · {formatWhen(currentRevision.createdAt)})
+          </span>
+        </div>
+        {expanded ? (
+          <ChevronUp className="size-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+        )}
+      </button>
 
-          return (
-            <li
-              key={rev.id}
-              className="flex items-start gap-2 rounded-[var(--radius)] px-2 py-1.5 text-xs hover:bg-accent"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-medium">v{rev.version}</span>
-                  {isCurrent && (
-                    <span className="rounded bg-secondary px-1 text-[10px] text-secondary-foreground">
-                      actual
-                    </span>
+      {/* Revisions list shown when expanded */}
+      {expanded && (
+        <div className="rounded-[var(--radius)] border border-border bg-card p-1 shadow-sm space-y-0.5 max-h-48 overflow-y-auto animate-in fade-in duration-200">
+          {revisions.map((rev, index) => {
+            const isCurrent = index === 0;
+            const delta = rev.size - (index === 0 ? currentSize : revisions[index - 1]!.size);
+
+            return (
+              <div
+                key={rev.id}
+                className={`flex items-start gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors ${
+                  isCurrent ? "bg-accent/40 text-foreground" : "hover:bg-accent"
+                }`}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium">v{rev.version}</span>
+                    {isCurrent && (
+                      <span className="rounded bg-secondary px-1 text-[9px] font-semibold text-secondary-foreground">
+                        actual
+                      </span>
+                    )}
+                  </div>
+                  <p className="truncate text-muted-foreground">
+                    {formatWhen(rev.createdAt)}
+                    {rev.author ? ` · ${rev.author}` : ""}
+                  </p>
+                  {!isCurrent && delta !== 0 && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {delta > 0 ? "+" : ""}
+                      {delta} caracteres
+                    </p>
                   )}
                 </div>
-                <p className="truncate text-muted-foreground">
-                  {formatWhen(rev.createdAt)}
-                  {rev.author ? ` · ${rev.author}` : ""}
-                </p>
-                {!isCurrent && delta !== 0 && (
-                  <p className="text-muted-foreground">
-                    {delta > 0 ? "+" : ""}
-                    {delta} caracteres
-                  </p>
+
+                {canRestore && !isCurrent && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 shrink-0 px-1.5 cursor-pointer hover:bg-background/80"
+                    disabled={Boolean(pending)}
+                    aria-label={`Restaurar versión ${rev.version}`}
+                    onClick={() => {
+                      setSelectedRevision(rev);
+                      setIsRestoreConfirmOpen(true);
+                    }}
+                  >
+                    {pending && selectedRevision?.id === rev.id ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <RotateCcw className="size-3" />
+                    )}
+                  </Button>
                 )}
               </div>
-
-              {canRestore && !isCurrent && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 shrink-0 px-1.5"
-                  disabled={Boolean(pending)}
-                  aria-label={`Restaurar versión ${rev.version}`}
-                  onClick={() => {
-                    if (
-                      !window.confirm(
-                        `Restaurar la versión ${rev.version}. El contenido actual se guarda como una versión más, así que podrás volver.`,
-                      )
-                    )
-                      return;
-                    startTransition(async () => restoreAction(rev.id));
-                  }}
-                >
-                  {pending ? (
-                    <Loader2 className="size-3 animate-spin" />
-                  ) : (
-                    <RotateCcw className="size-3" />
-                  )}
-                </Button>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-
-      {revisions.length > 1 && (
-        <button
-          type="button"
-          onClick={() => setExpanded((e) => !e)}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium pt-1"
-        >
-          {expanded ? (
-            <>
-              <ChevronUp className="size-3" />
-              Ocultar versiones anteriores
-            </>
-          ) : (
-            <>
-              <ChevronDown className="size-3" />
-              Ver versiones anteriores ({revisions.length - 1})
-            </>
-          )}
-        </button>
+            );
+          })}
+        </div>
       )}
 
       <p className="text-xs text-muted-foreground">
         Restaurar recupera el texto, no la URL ni el estado de publicación.
       </p>
+
+      <ConfirmDialog
+        isOpen={isRestoreConfirmOpen}
+        title={`¿Restaurar versión v${selectedRevision?.version}?`}
+        description="El contenido actual se guardará como una versión más en el historial, por lo que podrás volver a él en cualquier momento."
+        confirmText="Restaurar"
+        onConfirm={async () => {
+          if (selectedRevision) {
+            setIsRestoreConfirmOpen(false);
+            await restoreAction(selectedRevision.id);
+            setSelectedRevision(null);
+          }
+        }}
+        onCancel={() => {
+          setIsRestoreConfirmOpen(false);
+          setSelectedRevision(null);
+        }}
+        variant="warning"
+        icon={RotateCcw}
+      />
     </section>
   );
 }
