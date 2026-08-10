@@ -232,7 +232,6 @@ export function DashboardShell({
             email={user.email}
             fullName={user.fullName}
             role={role}
-            isSuperadmin={user.isSuperadmin}
             tenantSlug={tenant.slug}
           />
           {tenants.length > 1 && (
