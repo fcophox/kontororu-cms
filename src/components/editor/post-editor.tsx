@@ -36,6 +36,8 @@ type Props = {
   saveAction: (prev: ActionState, formData: FormData) => Promise<ActionState>;
   onPublish?: () => Promise<void>;
   onUnpublish?: () => Promise<void>;
+  /** El editor de la URL/slug del post. */
+  slugEditor?: React.ReactNode;
   /** Sólo en edición: un contenido sin guardar aún no tiene URL ni papelera. */
   lifecycle?: React.ReactNode;
   /** Sólo en edición: un contenido nuevo no tiene versiones anteriores. */
@@ -53,6 +55,7 @@ export function PostEditor({
   saveAction,
   onPublish,
   onUnpublish,
+  slugEditor,
   lifecycle,
   history,
   translations,
@@ -298,6 +301,8 @@ export function PostEditor({
                     </p>
                   )}
                 </section>
+
+                {slugEditor}
 
                 <section className="space-y-2">
                   <Label htmlFor="excerpt">Extracto</Label>

@@ -29,6 +29,7 @@ export function PostSidebarActions({
   trashAction,
   restoreAction,
   isTrashed,
+  mode = "all",
 }: {
   slug: string;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
@@ -40,6 +41,7 @@ export function PostSidebarActions({
   trashAction: () => Promise<void>;
   restoreAction: () => Promise<void>;
   isTrashed: boolean;
+  mode?: "all" | "slug" | "lifecycle";
 }) {
   const [slugState, slugFormAction, isSavingSlug] = useActionState<SlugState, FormData>(
     updateSlugAction,
@@ -54,6 +56,7 @@ export function PostSidebarActions({
   const changed = slugify(draft) !== current;
 
   if (isTrashed) {
+    if (mode === "slug") return null;
     return (
       <section className="space-y-2 rounded-[var(--radius)] border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/40">
         <div className="flex items-center gap-1.5 text-sm font-medium">
@@ -78,49 +81,54 @@ export function PostSidebarActions({
     );
   }
 
+  const showSlug = mode === "all" || mode === "slug";
+  const showLifecycle = mode === "all" || mode === "lifecycle";
+
   return (
     <>
-      <section className="space-y-2">
-        <Label htmlFor="post-slug" className="flex items-center gap-1.5">
-          <Link2 className="size-3.5" />
-          URL pública
-        </Label>
+      {showSlug && (
+        <section className="space-y-2">
+          <Label htmlFor="post-slug" className="flex items-center gap-1.5">
+            <Link2 className="size-3.5" />
+            URL pública
+          </Label>
 
-        {/* Formulario propio: anidarlo dentro del form del editor no es válido
-            en HTML y haría que Guardar disparase también este cambio. */}
-        <form action={slugFormAction} className="space-y-1.5">
-          <Input
-            id="post-slug"
-            name="slug"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={() => setDraft(slugify(draft) || current)}
-            disabled={!canEditSlug}
-            spellCheck={false}
-            className="font-mono text-xs"
-          />
+          {/* Formulario propio: anidarlo dentro del form del editor no es válido
+              en HTML y haría que Guardar disparase también este cambio. */}
+          <form action={slugFormAction} className="space-y-1.5">
+            <Input
+              id="post-slug"
+              name="slug"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={() => setDraft(slugify(draft) || current)}
+              disabled={!canEditSlug}
+              spellCheck={false}
+              className="font-mono text-xs"
+            />
 
-          {changed && canEditSlug && (
-            <>
-              {isPublished && (
-                <p className="text-xs text-amber-700 dark:text-amber-400 leading-normal">
-                  <AlertTriangle className="mr-1.5 inline-block size-3.5 align-text-bottom shrink-0 text-amber-600 dark:text-amber-500" />
-                  Los enlaces a <code className="font-mono break-all bg-amber-500/10 rounded px-1 text-[11px] font-semibold">/{current}</code> dejarán de funcionar. Avisamos a tu web para que retire la dirección antigua.
-                </p>
-              )}
-              <Button type="submit" size="sm" variant="outline" disabled={isSavingSlug}>
-                {isSavingSlug && <Loader2 className="size-3.5 animate-spin" />}
-                Cambiar URL
-              </Button>
-            </>
-          )}
+            {changed && canEditSlug && (
+              <>
+                {isPublished && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400 leading-normal">
+                    <AlertTriangle className="mr-1.5 inline-block size-3.5 align-text-bottom shrink-0 text-amber-600 dark:text-amber-500" />
+                    Los enlaces a <code className="font-mono break-all bg-amber-500/10 rounded px-1 text-[11px] font-semibold">/{current}</code> dejarán de funcionar. Avisamos a tu web para que retire la dirección antigua.
+                  </p>
+                )}
+                <Button type="submit" size="sm" variant="outline" disabled={isSavingSlug}>
+                  {isSavingSlug && <Loader2 className="size-3.5 animate-spin" />}
+                  Cambiar URL
+                </Button>
+              </>
+            )}
 
-          {slugState.error && <p className="text-xs text-destructive">{slugState.error}</p>}
-        </form>
-      </section>
+            {slugState.error && <p className="text-xs text-destructive">{slugState.error}</p>}
+          </form>
+        </section>
+      )}
 
-      {canDelete && (
-        <section className="space-y-2 border-t pt-4">
+      {showLifecycle && canDelete && (
+        <section className={`space-y-2 ${showSlug ? "border-t pt-4" : ""}`}>
           <Label>Ciclo de vida</Label>
 
           <div className="flex flex-col gap-1.5">

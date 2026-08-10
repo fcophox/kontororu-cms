@@ -143,8 +143,24 @@ export default async function EditContentPage({ params }: Props) {
       saveAction={save}
       onPublish={publish}
       onUnpublish={unpublish}
+      slugEditor={
+        <PostSidebarActions
+          mode="slug"
+          slug={post.slug}
+          status={post.status}
+          isPublished={post.status === "PUBLISHED"}
+          canEditSlug={user.isSuperadmin || can(role, "content.editAny")}
+          canDelete={user.isSuperadmin || can(role, "content.delete")}
+          isTrashed={post.deleted_at !== null}
+          updateSlugAction={changeSlug}
+          archiveAction={archive}
+          trashAction={trash}
+          restoreAction={restore}
+        />
+      }
       lifecycle={
         <PostSidebarActions
+          mode="lifecycle"
           slug={post.slug}
           status={post.status}
           isPublished={post.status === "PUBLISHED"}
