@@ -14,7 +14,7 @@ export default async function OverviewPage({
 }) {
   const { tenantSlug } = await params;
   // Memoizado con cache(): esta llamada no repite la consulta del layout.
-  const { tenant, role } = await getTenantContext(tenantSlug);
+  const { tenant, role, user } = await getTenantContext(tenantSlug);
 
   const supabase = await createServerClient();
 
@@ -28,6 +28,9 @@ export default async function OverviewPage({
   ]);
 
   const usage = asUsage(usageRaw);
+
+  const firstName =
+    user.fullName?.split(" ")[0] ?? user.email.split("@")[0];
 
   const stats = [
     { label: "Contenidos", value: usage.posts, max: tenant.limits.maxPosts, icon: FileText },
@@ -44,7 +47,10 @@ export default async function OverviewPage({
   return (
     <div className="mx-auto max-w-6xl p-8">
       <header className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">{tenant.name}</h1>
+        <p className="text-sm text-muted-foreground">
+          Hola, <span className="font-medium text-foreground">{firstName}</span>, te damos la bienvenida
+        </p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">{tenant.name}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Plan {tenant.plan.toLowerCase()} · tu rol: {role.toLowerCase()}
         </p>

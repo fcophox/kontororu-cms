@@ -6,6 +6,7 @@ import {
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import { can, type Permission } from "@/lib/auth/roles";
 import { UserProfileButton } from "@/components/user-profile-button";
+import { BreadcrumbBar } from "@/components/shared/breadcrumb-bar";
 
 type NavItem = {
   href: string;
@@ -62,7 +63,7 @@ export function DashboardShell({
   const configItems = filterItems(GROUP_CONFIG);
 
   return (
-    <div className="flex min-h-svh">
+    <div className="flex h-svh">
       <aside className="flex w-64 shrink-0 flex-col border-r bg-background">
         <div className="flex h-16 items-center gap-2 px-4">
           {tenant.branding.logoUrl ? (
@@ -84,7 +85,7 @@ export function DashboardShell({
           <span className="truncate font-medium">{tenant.name}</span>
         </div>
 
-        <nav className="flex-1 space-y-4 p-2">
+        <nav className="flex-1 space-y-4 overflow-y-auto p-2">
           {generalItems.length > 0 && (
             <div className="space-y-0.5">
               {generalItems.map(({ href, label, icon: Icon }) => (
@@ -174,7 +175,10 @@ export function DashboardShell({
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1">{children}</main>
+      <main className="flex min-w-0 flex-1 flex-col">
+        <BreadcrumbBar tenantSlug={tenant.slug} />
+        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      </main>
     </div>
   );
 }

@@ -7,7 +7,7 @@
  */
 export default function Loading() {
   return (
-    <div className="animate-pulse p-8" aria-busy="true" aria-label="Cargando">
+    <div className="mx-auto max-w-6xl animate-pulse p-8" aria-busy="true" aria-label="Cargando">
       <div className="mb-6">
         <div className="h-7 w-56 rounded bg-muted" />
         <div className="mt-2 h-4 w-32 rounded bg-muted" />

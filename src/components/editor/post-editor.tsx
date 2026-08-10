@@ -131,7 +131,7 @@ export function PostEditor({
   const formId = "post-editor-form";
 
   return (
-    <div className="flex h-svh flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       <form id={formId} action={formAction}>
         <input type="hidden" name="postId" value={draft.id ?? ""} />
         <input type="hidden" name="contentJson" value={JSON.stringify(content.json)} />
