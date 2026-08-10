@@ -39,7 +39,9 @@ export function BrandingForm({
 
   const [draft, setDraft] = useState<TenantBranding>(initial);
   const [logoError, setLogoError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [faviconError, setFaviconError] = useState<string | null>(null);
+  const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
 
   const set = <K extends keyof TenantBranding>(key: K, value: TenantBranding[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
@@ -69,7 +71,7 @@ export function BrandingForm({
 
   const uploadLogo = async (file: File) => {
     setLogoError(null);
-    setUploading(true);
+    setIsUploadingLogo(true);
     try {
       const body = new FormData();
       body.append("file", file);
@@ -81,7 +83,25 @@ export function BrandingForm({
     } catch (err) {
       setLogoError(err instanceof Error ? err.message : "Error al subir");
     } finally {
-      setUploading(false);
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const uploadFavicon = async (file: File) => {
+    setFaviconError(null);
+    setIsUploadingFavicon(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      body.append("tenantId", tenantId);
+      const res = await fetch("/api/media/upload", { method: "POST", body });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Error al subir");
+      set("faviconUrl", json.url);
+    } catch (err) {
+      setFaviconError(err instanceof Error ? err.message : "Error al subir");
+    } finally {
+      setIsUploadingFavicon(false);
     }
   };
 
@@ -118,7 +138,7 @@ export function BrandingForm({
                   }}
                 />
                 <span className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[var(--radius)] border px-3 text-sm hover:bg-accent">
-                  {uploading ? (
+                  {isUploadingLogo ? (
                     <Loader2 className="size-3.5 animate-spin" />
                   ) : (
                     <Upload className="size-3.5" />
@@ -141,6 +161,55 @@ export function BrandingForm({
           </div>
           {logoError && <p className="text-sm text-destructive">{logoError}</p>}
           <p className="text-xs text-muted-foreground">PNG, SVG o WebP. Se muestra a 28 px.</p>
+        </section>
+
+        <section className="space-y-2">
+          <Label>Favicon</Label>
+          <div className="flex items-center gap-3">
+            <div className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-[var(--radius)] border bg-muted">
+              {draft.faviconUrl ? (
+                <Image src={draft.faviconUrl} alt="" fill unoptimized className="object-contain p-2" />
+              ) : (
+                <span className="text-xs text-muted-foreground">Sin favicon</span>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="inline-flex">
+                <input
+                  type="file"
+                  accept="image/png,image/x-icon,image/svg+xml,image/webp"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void uploadFavicon(file);
+                    e.target.value = "";
+                  }}
+                />
+                <span className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[var(--radius)] border px-3 text-sm hover:bg-accent">
+                  {isUploadingFavicon ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="size-3.5" />
+                  )}
+                  Subir
+                </span>
+              </label>
+
+              {draft.faviconUrl && (
+                <button
+                  type="button"
+                  onClick={() => set("faviconUrl", null)}
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <X className="size-3" />
+                  Quitar
+                </button>
+              )}
+            </div>
+          </div>
+          {faviconError && <p className="text-sm text-destructive">{faviconError}</p>}
+          <p className="text-xs text-muted-foreground">PNG, ICO, SVG o WebP. Se muestra en la pestaña del navegador.</p>
         </section>
 
         <ColorField
