@@ -200,7 +200,7 @@ export function PostEditor({
       )}
 
       <div className="flex flex-1 gap-8 px-8 pb-8 pt-4 overflow-hidden">
-        <div className="min-w-0 flex-1 h-full overflow-y-auto pr-4">
+        <div className="min-w-0 flex-1 h-full overflow-y-auto pr-4 max-w-3xl mx-auto">
           <TiptapEditor
             tenantId={tenantId}
             initialContent={draft.contentJson}
