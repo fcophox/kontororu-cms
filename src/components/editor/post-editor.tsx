@@ -374,19 +374,8 @@ export function PostEditor({
 
             {activeTab === "history" && (
               <div className="space-y-6">
-                {lifecycle && (
-                  <section className="space-y-2">
-                    <Label>Ciclo de vida</Label>
-                    {lifecycle}
-                  </section>
-                )}
-
-                {history && (
-                  <section className="space-y-2">
-                    <Label>Historial de versiones</Label>
-                    {history}
-                  </section>
-                )}
+                {lifecycle}
+                {history}
               </div>
             )}
 
