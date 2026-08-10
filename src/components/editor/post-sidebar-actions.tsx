@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { Loader2, Link2, Archive, Trash2, RotateCcw, AlertTriangle } from "lucide-react";
+import { Loader2, Link2, Archive, Trash2, RotateCcw, AlertTriangle, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -128,8 +128,11 @@ export function PostSidebarActions({
       )}
 
       {showLifecycle && canDelete && (
-        <section className={`space-y-2 ${showSlug ? "border-t pt-4" : ""}`}>
-          <Label>Ciclo de vida</Label>
+        <section className="space-y-2 border-t pt-4">
+          <Label className="flex items-center gap-1.5 text-destructive dark:text-red-400">
+            <Lock className="size-3.5" />
+            Danger Zone
+          </Label>
 
           <div className="flex flex-col gap-1.5">
             {status !== "ARCHIVED" && (

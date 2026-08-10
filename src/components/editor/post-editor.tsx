@@ -379,8 +379,8 @@ export function PostEditor({
 
             {activeTab === "history" && (
               <div className="space-y-6">
-                {lifecycle}
                 {history}
+                {lifecycle}
               </div>
             )}
 
