@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -40,6 +43,8 @@ const GROUP_CONFIG: NavItem[] = [
   { href: "/settings/webhooks", label: "Webhooks", icon: Webhook, permission: "webhooks.manage" },
 ];
 
+import { usePathname } from "next/navigation";
+
 export function DashboardShell({
   context,
   tenants,
@@ -49,6 +54,22 @@ export function DashboardShell({
   tenants: { id: string; slug: string; name: string }[];
   children: React.ReactNode;
 }) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (window.innerWidth >= 768) {
+      setIsSidebarOpen(true);
+    }
+  }, []);
+
+  // Cerrar el menú en móvil al navegar
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+  }, [pathname]);
+
   const { tenant, role, user } = context;
   const base = `/${tenant.slug}`;
 
@@ -64,8 +85,21 @@ export function DashboardShell({
 
   return (
     <div className="flex h-svh">
-      <aside className="flex w-64 shrink-0 flex-col border-r bg-background">
-        <div className="flex h-16 items-center gap-2 px-4">
+      {/* Mobile Backdrop */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      <div
+        className={`fixed inset-y-0 left-0 z-50 shrink-0 overflow-hidden bg-background transition-transform duration-300 md:static md:translate-x-0 md:transition-[width] ${
+          isSidebarOpen ? "translate-x-0 md:w-64 border-r" : "-translate-x-full md:w-0 border-r-0"
+        }`}
+      >
+        <aside className="flex h-full w-64 flex-col bg-background">
+          <div className="flex h-16 items-center gap-2 px-4">
           {tenant.branding.logoUrl ? (
             <Image
               src={tenant.branding.logoUrl}
@@ -173,10 +207,14 @@ export function DashboardShell({
             </Link>
           )}
         </div>
-      </aside>
+        </aside>
+      </div>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <BreadcrumbBar tenantSlug={tenant.slug} />
+        <BreadcrumbBar
+          tenantSlug={tenant.slug}
+          onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+        />
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
       </main>
     </div>

@@ -104,8 +104,8 @@ export default async function ContentListPage({
   };
 
   return (
-    <div className="mx-auto max-w-6xl p-8">
-      <header className="mb-6 flex items-center justify-between gap-4">
+    <div className="mx-auto max-w-6xl p-4 md:p-8">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Contenido</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -122,8 +122,8 @@ export default async function ContentListPage({
         )}
       </header>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <nav className="flex gap-1">
+      <div className="mb-4 flex flex-col md:flex-row md:items-center gap-3">
+        <nav className="flex flex-wrap gap-1">
           {STATUS_TABS.map((tab) => (
             <Link
               key={tab.value}
@@ -149,14 +149,14 @@ export default async function ContentListPage({
           </Link>
         </nav>
 
-        <form action={`/${tenantSlug}/content`} className="relative ml-auto">
+        <form action={`/${tenantSlug}/content`} className="relative w-full md:w-auto md:ml-auto">
           {status && <input type="hidden" name="status" value={status} />}
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             name="q"
             defaultValue={q}
             placeholder="Buscar por título…"
-            className="w-56 pl-8"
+            className="w-full md:w-56 pl-8"
           />
         </form>
 

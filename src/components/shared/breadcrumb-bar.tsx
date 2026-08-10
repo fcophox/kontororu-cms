@@ -45,7 +45,13 @@ type Crumb = {
   href: string;
 };
 
-export function BreadcrumbBar({ tenantSlug }: { tenantSlug: string }) {
+export function BreadcrumbBar({
+  tenantSlug,
+  onToggleSidebar,
+}: {
+  tenantSlug: string;
+  onToggleSidebar?: () => void;
+}) {
   const pathname = usePathname();
   const base = `/${tenantSlug}`;
   const rest = pathname.slice(base.length).replace(/^\//, "");
@@ -72,7 +78,13 @@ export function BreadcrumbBar({ tenantSlug }: { tenantSlug: string }) {
 
   return (
     <div className="flex h-12 shrink-0 items-center gap-3 border-b px-4">
-      <PanelLeft className="size-4 text-muted-foreground" />
+      <button
+        onClick={onToggleSidebar}
+        className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+        aria-label="Alternar barra lateral"
+      >
+        <PanelLeft className="size-4" />
+      </button>
       <div className="h-4 w-px bg-border" />
       <nav
         className="flex items-center gap-1.5 text-sm"

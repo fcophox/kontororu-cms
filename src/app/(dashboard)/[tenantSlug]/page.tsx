@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Send, HardDrive, Users } from "lucide-react";
+import { FileText, Send, HardDrive, Users, Package, Shield } from "lucide-react";
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { createServerClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -45,15 +45,23 @@ export default async function OverviewPage({
   ];
 
   return (
-    <div className="mx-auto max-w-6xl p-8">
+    <div className="mx-auto max-w-6xl p-4 md:p-8">
       <header className="mb-8">
         <p className="text-sm text-muted-foreground">
           Hola, <span className="font-medium text-foreground">{firstName}</span>, te damos la bienvenida
         </p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">{tenant.name}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Plan {tenant.plan.toLowerCase()} · tu rol: {role.toLowerCase()}
-        </p>
+        <div className="mt-1.5 flex items-center gap-3 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <Package className="size-3.5" />
+            Plan {tenant.plan.toLowerCase()}
+          </span>
+          <span className="opacity-50">·</span>
+          <span className="flex items-center gap-1.5">
+            <Shield className="size-3.5" />
+            Rol: {role.toLowerCase()}
+          </span>
+        </div>
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

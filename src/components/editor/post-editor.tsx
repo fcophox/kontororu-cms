@@ -348,7 +348,7 @@ export function PostEditor({
                       setPublishedAt(e.target.value);
                       setDirty(true);
                     }}
-                    className="w-full text-xs font-medium cursor-pointer"
+                    className="relative w-full cursor-pointer text-xs font-medium pl-8 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:left-2.5 [&::-webkit-calendar-picker-indicator]:opacity-50"
                   />
                   {!publishedAt && (
                     <p className="text-[10px] text-muted-foreground">

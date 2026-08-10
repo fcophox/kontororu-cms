@@ -21,7 +21,7 @@ export function EditorToolbar({
   if (!editor) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-1 border-b p-1.5">
+    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b bg-card p-1.5 rounded-t-[calc(var(--radius)-1px)]">
       <Toggle size="sm" pressed={editor.isActive("bold")} aria-label="Negrita"
         onPressedChange={() => editor.chain().focus().toggleBold().run()}>
         <Bold className="size-4" />

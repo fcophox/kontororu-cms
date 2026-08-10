@@ -64,7 +64,7 @@ export default async function TeamPage({
   };
 
   return (
-    <div className="mx-auto max-w-6xl p-8">
+    <div className="mx-auto max-w-6xl p-4 md:p-8">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Equipo</h1>
         <p className="mt-1 text-sm text-muted-foreground">
