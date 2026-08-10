@@ -270,57 +270,6 @@ export function PostEditor({
                 </section>
 
                 <section className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="publishedAtInput">Fecha de publicación</Label>
-                    {publishedAt && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPublishedAt("");
-                          setDirty(true);
-                        }}
-                        className="text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
-                      >
-                        Restablecer
-                      </button>
-                    )}
-                  </div>
-                  <Input
-                    id="publishedAtInput"
-                    type="datetime-local"
-                    value={publishedAt}
-                    onChange={(e) => {
-                      setPublishedAt(e.target.value);
-                      setDirty(true);
-                    }}
-                    className="w-full text-xs font-medium cursor-pointer"
-                  />
-                  {!publishedAt && (
-                    <p className="text-[10px] text-muted-foreground">
-                      Por defecto se fijará al momento de presionar &quot;Publicar&quot;.
-                    </p>
-                  )}
-                </section>
-
-                {slugEditor}
-
-                <section className="space-y-2">
-                  <Label htmlFor="excerpt">Extracto</Label>
-                  <Textarea
-                    id="excerpt"
-                    name="excerpt"
-                    form={formId}
-                    defaultValue={draft.excerpt}
-                    onChange={() => setDirty(true)}
-                    maxLength={400}
-                    rows={3}
-                    placeholder="Resumen breve para listados y redes sociales."
-                  />
-                </section>
-
-                {translations}
-
-                <section className="space-y-2">
                   <Label>Imagen de portada</Label>
                   {coverUrl ? (
                     <div className="relative group overflow-hidden rounded-[var(--radius)] border bg-muted aspect-video">
@@ -374,6 +323,57 @@ export function PostEditor({
                     <p className="text-[11px] text-destructive mt-1">{coverError}</p>
                   )}
                 </section>
+
+                <section className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="publishedAtInput">Fecha de publicación</Label>
+                    {publishedAt && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPublishedAt("");
+                          setDirty(true);
+                        }}
+                        className="text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
+                      >
+                        Restablecer
+                      </button>
+                    )}
+                  </div>
+                  <Input
+                    id="publishedAtInput"
+                    type="datetime-local"
+                    value={publishedAt}
+                    onChange={(e) => {
+                      setPublishedAt(e.target.value);
+                      setDirty(true);
+                    }}
+                    className="w-full text-xs font-medium cursor-pointer"
+                  />
+                  {!publishedAt && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Por defecto se fijará al momento de presionar &quot;Publicar&quot;.
+                    </p>
+                  )}
+                </section>
+
+                <section className="space-y-2">
+                  <Label htmlFor="excerpt">Extracto</Label>
+                  <Textarea
+                    id="excerpt"
+                    name="excerpt"
+                    form={formId}
+                    defaultValue={draft.excerpt}
+                    onChange={() => setDirty(true)}
+                    maxLength={400}
+                    rows={3}
+                    placeholder="Resumen breve para listados y redes sociales."
+                  />
+                </section>
+
+                {translations}
+
+                {slugEditor}
               </div>
             )}
 
