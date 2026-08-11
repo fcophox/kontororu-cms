@@ -10,6 +10,7 @@ import { PostEditor } from "@/components/editor/post-editor";
 import { PostSidebarActions } from "@/components/editor/post-sidebar-actions";
 import { PostHistory } from "@/components/editor/post-history";
 import { PostTranslations } from "@/components/editor/post-translations";
+import { ContentLocaleTabs } from "@/components/editor/content-locale-tabs";
 import {
   saveContent,
   publishContent,
@@ -20,6 +21,7 @@ import {
   updateSlug,
   restoreRevision,
   createTranslation,
+  retranslateContent,
   type ActionState,
   type SlugState,
 } from "../actions";
@@ -129,10 +131,29 @@ export default async function EditContentPage({ params }: Props) {
     "use server";
     await restoreRevision(tenantSlug, postId, revisionId);
   };
-  const translate = async (locale: string) => {
+  // Crear un idioma nuevo traduce el original: copiarlo tal cual dejaba una
+  // entrada "en inglés" con el texto en español, y alguien tenía que traducirla
+  // fuera del CMS y pegarla de vuelta.
+  const translateInto = async (locale: string) => {
     "use server";
     await createTranslation(tenantSlug, postId, locale);
   };
+  const retranslate = async () => {
+    "use server";
+    await retranslateContent(tenantSlug, postId);
+  };
+
+  // Pestañas de idioma del cuerpo: el idioma actual primero, y detrás el resto
+  // de los que el espacio tiene activados. Un espacio monolingüe no las ve.
+  const localeTabs = [
+    { locale: post.locale, postId: post.id },
+    ...tenant.locales
+      .filter((l) => l !== post.locale)
+      .map((locale) => ({
+        locale,
+        postId: (siblings ?? []).find((s) => s.locale === locale)?.id ?? null,
+      })),
+  ];
 
   return (
     <PostEditor
@@ -173,6 +194,26 @@ export default async function EditContentPage({ params }: Props) {
           restoreAction={restore}
         />
       }
+      // Publicar alcanza al grupo entero menos lo archivado.
+      publishLocales={[
+        post.locale,
+        ...(siblings ?? []).filter((s) => s.status !== "ARCHIVED").map((s) => s.locale),
+      ]}
+      localeTabs={
+        <ContentLocaleTabs
+          currentLocale={post.locale}
+          tabs={localeTabs}
+          tenantSlug={tenantSlug}
+          canTranslate={user.isSuperadmin || can(role, "content.create")}
+          createTranslatedAction={translateInto}
+          // Sólo tiene sentido retraducir si hay un original del que partir.
+          retranslateAction={
+            post.locale !== tenant.defaultLocale && (siblings ?? []).length > 0
+              ? retranslate
+              : undefined
+          }
+        />
+      }
       translations={
         <PostTranslations
           currentLocale={post.locale}
@@ -184,7 +225,7 @@ export default async function EditContentPage({ params }: Props) {
           availableLocales={tenant.locales}
           tenantSlug={tenantSlug}
           canCreate={user.isSuperadmin || can(role, "content.create")}
-          createAction={translate}
+          createAction={translateInto}
         />
       }
       history={

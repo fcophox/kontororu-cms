@@ -5,7 +5,7 @@ import { Loader2, Link2, Archive, Trash2, RotateCcw, AlertTriangle, Lock } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { slugify } from "@/lib/content/slug";
+import { slugify, slugifyLive } from "@/lib/content/slug";
 import type { SlugState } from "@/app/(dashboard)/[tenantSlug]/content/actions";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -96,14 +96,19 @@ export function PostSidebarActions({
           {/* Formulario propio: anidarlo dentro del form del editor no es válido
               en HTML y haría que Guardar disparase también este cambio. */}
           <form action={slugFormAction} className="space-y-1.5">
+            {/* El formato se aplica al escribir, no al salir del campo: así se
+                puede pegar un titular tal cual —"Los agentes de IA ya no piden
+                permiso"— y queda listo sin repasarlo a mano. */}
             <Input
               id="post-slug"
               name="slug"
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => setDraft(slugifyLive(e.target.value))}
               onBlur={() => setDraft(slugify(draft) || current)}
               disabled={!canEditSlug}
               spellCheck={false}
+              autoCapitalize="off"
+              autoCorrect="off"
               className="font-mono text-xs"
             />
 

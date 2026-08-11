@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { slugify, uniqueSlug, readingTime } from "@/lib/content/slug";
+import { slugify, slugifyLive, uniqueSlug, readingTime } from "@/lib/content/slug";
 import { parseBranding, brandingToCssVars } from "@/lib/theme/branding";
 import { readableForeground, contrastRatio, hexToRgb } from "@/lib/theme/color";
 import { readImageSize } from "@/lib/storage/image-size";
@@ -32,6 +32,42 @@ describe("slugify", () => {
   it("devuelve cadena vacía si no queda nada utilizable", () => {
     expect(slugify("!!!")).toBe("");
     expect(slugify("日本語")).toBe("");
+  });
+});
+
+describe("slugifyLive", () => {
+  it("formatea un titular pegado tal cual", () => {
+    expect(slugifyLive("Los agentes de IA ya no piden permiso")).toBe(
+      "los-agentes-de-ia-ya-no-piden-permiso",
+    );
+    expect(slugifyLive("¿Cómo migrar de WordPress?")).toBe("como-migrar-de-wordpress");
+  });
+
+  it("conserva el guion final para poder seguir escribiendo", () => {
+    // Es la diferencia con slugify: sin esto, al pulsar el espacio se perdería
+    // el separador y la siguiente letra se pegaría — "holamundo".
+    expect(slugifyLive("hola ")).toBe("hola-");
+    expect(slugifyLive("hola-" + "mundo")).toBe("hola-mundo");
+  });
+
+  it("no deja que el slug empiece por guion", () => {
+    expect(slugifyLive("  hola")).toBe("hola");
+    expect(slugifyLive("---hola")).toBe("hola");
+  });
+
+  it("colapsa separadores repetidos mientras se teclea", () => {
+    expect(slugifyLive("hola   mundo")).toBe("hola-mundo");
+    expect(slugifyLive("hola -- mundo")).toBe("hola-mundo");
+  });
+
+  it("coincide con slugify una vez el texto está completo", () => {
+    for (const input of ["Diseño de Interfaces", "Título con puntuación!!!", "a b c"]) {
+      expect(slugifyLive(input)).toBe(slugify(input));
+    }
+  });
+
+  it("respeta el límite de 80 caracteres", () => {
+    expect(slugifyLive("a".repeat(200))).toHaveLength(80);
   });
 });
 

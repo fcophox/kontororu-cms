@@ -9,6 +9,8 @@ import { getTenantContext } from "@/lib/auth/tenant-context";
 import { can } from "@/lib/auth/guards";
 import { renderContent, assertSafeEmbeds } from "@/lib/content/tiptap-to-html";
 import { slugify, uniqueSlug, readingTime } from "@/lib/content/slug";
+import { translateJsonContent, translateText } from "@/lib/content/translate";
+import { asJsonContent, asSeo } from "@/lib/content/json";
 
 /**
  * Server Actions del CRUD de contenido.
@@ -39,6 +41,22 @@ const ContentInput = z.object({
 });
 
 export type ActionState = { error?: string; fieldErrors?: Record<string, string[]> };
+
+/**
+ * Texto del que sale el slug: el título traducido al inglés.
+ *
+ * El fallo del traductor NO puede impedir guardar. Un servicio externo caído
+ * haría imposible crear contenido, y la penalización de tener una URL en
+ * español es que sea menos legible fuera — no que se pierda el trabajo.
+ */
+async function englishSlugSource(title: string): Promise<string> {
+  try {
+    return await translateText(title, "en");
+  } catch (err) {
+    console.error("No se pudo traducir el título para el slug", err);
+    return title;
+  }
+}
 
 function parse(formData: FormData) {
   return ContentInput.safeParse({
@@ -111,11 +129,20 @@ export async function saveContent(
     return {};
   }
 
-  // Slug único dentro del tenant. La unicidad la garantiza el índice
-  // UNIQUE(tenant_id, slug); esto sólo evita el error en el caso común.
+  /*
+   * El slug se genera SIEMPRE en inglés, aunque el contenido esté en español.
+   *
+   * Es la misma URL para todos los idiomas del contenido: la traducción la
+   * hereda en lugar de inventarse la suya. Antes cada idioma tenía su slug y
+   * la dirección cambiaba al cambiar de idioma, lo que obliga a la web a saber
+   * el slug de cada lengua para poder enlazarlas.
+   *
+   * Si el editor escribe el slug a mano, manda el suyo: la traducción
+   * automática es una comodidad, no una imposición.
+   */
   const { data: existing } = await supabase.from("posts").select("slug");
   const slug = uniqueSlug(
-    input.slug || input.title,
+    input.slug || (await englishSlugSource(input.title)),
     (existing ?? []).map((p) => p.slug as string),
   );
 
@@ -126,6 +153,10 @@ export async function saveContent(
       tenant_id: tenant.id,
       author_id: user.id,
       slug,
+      // Sin esto cae el `default 'es'` de la columna, y en un espacio cuyo
+      // idioma principal no sea el español el trigger `posts_assert_locale`
+      // rechaza el guardado sin explicar por qué.
+      locale: tenant.defaultLocale,
       status: "DRAFT",
     })
     .select("id")
@@ -140,6 +171,22 @@ export async function saveContent(
 // ---------------------------------------------------------------------
 // Transiciones de estado
 // ---------------------------------------------------------------------
+/**
+ * Publica el contenido Y sus traducciones.
+ *
+ * Publicar un solo idioma dejaba la web a medias: el conmutador de idioma
+ * apuntaba a una versión en borrador y el visitante recibía un 404. Como cada
+ * idioma es una fila, "publicar este contenido" tiene que alcanzar al grupo
+ * entero.
+ *
+ * Las ARCHIVED se quedan fuera: archivar una versión es una decisión explícita
+ * sobre ella, y republicar el original no debería deshacerla.
+ *
+ * `published_at` se fija sólo la primera vez —republicar no debe reordenar el
+ * feed ni cambiar la fecha que ya indexó Google— y una traducción sin fecha
+ * hereda la del original, para que las dos ocupen el mismo sitio en el listado
+ * público.
+ */
 export async function publishContent(tenantSlug: string, postId: string) {
   const { role, user } = await getTenantContext(tenantSlug);
   if (!user.isSuperadmin && !can(role, "content.publish")) {
@@ -148,29 +195,50 @@ export async function publishContent(tenantSlug: string, postId: string) {
 
   const supabase = await createServerClient();
 
-  // published_at se fija sólo la primera vez: republicar no debe reordenar
-  // el feed del cliente ni cambiar la fecha que ya indexó Google.
   const { data: current } = await supabase
     .from("posts")
-    .select("published_at")
+    .select("published_at, translation_group_id")
     .eq("id", postId)
     .single();
 
-  const { error } = await supabase
+  if (!current) throw new Error("Ese contenido ya no existe.");
+
+  const publishedAt = current.published_at ?? new Date().toISOString();
+
+  const { data: group } = await supabase
     .from("posts")
-    .update({
-      status: "PUBLISHED",
-      published_at: current?.published_at ?? new Date().toISOString(),
-    })
-    .eq("id", postId);
+    .select("id, published_at")
+    .eq("translation_group_id", current.translation_group_id)
+    .neq("status", "ARCHIVED")
+    .is("deleted_at", null);
 
-  if (error) throw new Error(mapDbError(error.message));
+  // Una fila por idioma en vez de un update en bloque: cada una conserva su
+  // propia `published_at` si ya la tenía. El trigger de Postgres encola un
+  // webhook `post.published` por fila, que es justo lo que la web del cliente
+  // necesita para invalidar cada URL.
+  for (const sibling of group ?? []) {
+    const { error } = await supabase
+      .from("posts")
+      .update({
+        status: "PUBLISHED",
+        published_at: sibling.published_at ?? publishedAt,
+      })
+      .eq("id", sibling.id);
 
-  // El trigger de Postgres ya encoló el webhook `post.published`.
+    if (error) throw new Error(mapDbError(error.message));
+    revalidatePath(`/${tenantSlug}/content/${sibling.id}`);
+  }
+
   revalidatePath(`/${tenantSlug}/content`);
-  revalidatePath(`/${tenantSlug}/content/${postId}`);
 }
 
+/**
+ * Retira el contenido y sus traducciones.
+ *
+ * Simétrico a `publishContent` por la misma razón: dejar el inglés publicado
+ * tras retirar el español deja en la web una página a la que ya no lleva
+ * ningún enlace y de la que no se puede volver.
+ */
 export async function unpublishContent(tenantSlug: string, postId: string) {
   const { role, user } = await getTenantContext(tenantSlug);
   if (!user.isSuperadmin && !can(role, "content.publish")) {
@@ -178,10 +246,21 @@ export async function unpublishContent(tenantSlug: string, postId: string) {
   }
 
   const supabase = await createServerClient();
+
+  const { data: current } = await supabase
+    .from("posts")
+    .select("translation_group_id")
+    .eq("id", postId)
+    .single();
+
+  if (!current) throw new Error("Ese contenido ya no existe.");
+
   const { error } = await supabase
     .from("posts")
     .update({ status: "DRAFT" })
-    .eq("id", postId);
+    .eq("translation_group_id", current.translation_group_id)
+    .eq("status", "PUBLISHED")
+    .is("deleted_at", null);
 
   if (error) throw new Error(mapDbError(error.message));
   revalidatePath(`/${tenantSlug}/content`);
@@ -336,7 +415,11 @@ export async function restoreRevision(
 export type SlugState = { error?: string; slug?: string };
 
 /**
- * Cambia la URL pública del contenido.
+ * Cambia la URL pública del contenido, en todos sus idiomas.
+ *
+ * El slug es del CONTENIDO, no de cada traducción: una misma noticia tiene la
+ * misma dirección en español y en inglés. Cambiarlo sólo en la fila abierta
+ * las haría divergir de nuevo, que es justo lo que se quería evitar.
  *
  * Devuelve el error en vez de lanzarlo: "esa URL ya está en uso" es una
  * corrección normal del usuario, y romper con un error boundary por eso sería
@@ -361,11 +444,27 @@ export async function updateSlug(
   if (!slug) return { error: "La URL no puede quedar vacía." };
 
   const supabase = await createServerClient();
-  const { error } = await supabase.from("posts").update({ slug }).eq("id", postId);
+
+  const { data: current } = await supabase
+    .from("posts")
+    .select("translation_group_id")
+    .eq("id", postId)
+    .maybeSingle();
+
+  if (!current) return { error: "Ese contenido ya no existe." };
+
+  const { data: updated, error } = await supabase
+    .from("posts")
+    .update({ slug })
+    .eq("translation_group_id", current.translation_group_id)
+    .is("deleted_at", null)
+    .select("id");
 
   if (error) return { error: mapDbError(error.message) };
 
-  revalidatePath(`/${tenantSlug}/content/${postId}`);
+  for (const row of updated ?? []) {
+    revalidatePath(`/${tenantSlug}/content/${row.id}`);
+  }
   revalidatePath(`/${tenantSlug}/content`);
   return { slug };
 }
@@ -395,12 +494,19 @@ function mapDbError(message: string): string {
 // Traducciones
 // ---------------------------------------------------------------------
 /**
- * Crea la versión de un contenido en otro idioma.
+ * Crea la versión de un contenido en otro idioma, ya traducida.
  *
- * Copia el cuerpo original como punto de partida y lo deja en BORRADOR: nadie
- * quiere publicar sin querer un artículo en inglés que todavía está en
- * español. La categoría no se arrastra porque pertenece a otro idioma — el
- * trigger lo rechazaría — y el slug lleva sufijo si ya está ocupado.
+ * Antes copiaba el cuerpo tal cual, y la "versión en inglés" nacía con el
+ * texto en español: había que traducirla fuera del CMS y pegarla de vuelta.
+ * Ahora se traduce el título, el extracto, el SEO y el cuerpo.
+ *
+ * Arrastra además portada, fechas y categoría. Sin ellas la traducción salía
+ * a la web sin imagen, sin fecha y fuera de todo listado: técnicamente
+ * publicada, invisible en la práctica.
+ *
+ * Queda en BORRADOR — una traducción automática es un punto de partida para
+ * revisar, no algo que deba salir publicado solo. El slug lleva sufijo si ya
+ * está ocupado.
  */
 export async function createTranslation(
   tenantSlug: string,
@@ -419,7 +525,9 @@ export async function createTranslation(
 
   const { data: source } = await supabase
     .from("posts")
-    .select("title, excerpt, content_json, content_html, custom_fields, seo, translation_group_id, slug")
+    .select(
+      "title, excerpt, content_json, content_html, custom_fields, seo, translation_group_id, slug, category_id, cover_media_id, published_at, scheduled_for",
+    )
     .eq("id", postId)
     .maybeSingle();
 
@@ -431,6 +539,16 @@ export async function createTranslation(
     .eq("tenant_id", tenant.id)
     .eq("locale", locale);
 
+  const [translated, categoryId] = await Promise.all([
+    translateSource(source, locale),
+    resolveCategoryForLocale(supabase, {
+      tenantId: tenant.id,
+      categoryId: source.category_id,
+      locale,
+      canManageTaxonomy: user.isSuperadmin || can(role, "taxonomy.manage"),
+    }),
+  ]);
+
   const { data: created, error } = await supabase
     .from("posts")
     .insert({
@@ -439,13 +557,37 @@ export async function createTranslation(
       locale,
       // Lo que une las traducciones: mismo grupo, distinto idioma.
       translation_group_id: source.translation_group_id,
-      slug: uniqueSlug(source.slug, (existing ?? []).map((p) => p.slug as string)),
-      title: source.title,
-      excerpt: source.excerpt,
-      content_json: source.content_json,
-      content_html: source.content_html,
+      /*
+       * La traducción HEREDA el slug del original.
+       *
+       * Es la misma noticia, así que es la misma URL en todos los idiomas.
+       * Generar aquí un slug propio hacía que la dirección cambiara al
+       * cambiar de idioma, y obligaba a la web a conocer el slug de cada
+       * lengua para poder enlazarlas.
+       *
+       * El índice de unicidad es (tenant, idioma, slug), así que repetirlo en
+       * otro idioma es legítimo. El sufijo sólo entra si ESE idioma ya tenía
+       * ocupada la dirección por otro contenido.
+       */
+      slug: uniqueSlug(
+        source.slug,
+        (existing ?? []).map((p) => p.slug as string),
+      ),
+      title: translated.title,
+      excerpt: translated.excerpt,
+      content_json: translated.content_json,
+      content_html: translated.content_html,
       custom_fields: source.custom_fields,
-      seo: source.seo,
+      seo: translated.seo,
+      // La portada es la misma imagen: los medios no tienen idioma.
+      cover_media_id: source.cover_media_id,
+      // Las fechas se heredan para que la traducción ocupe en el feed el mismo
+      // sitio que el original. `published_at` en un BORRADOR no publica nada:
+      // sólo evita que al publicarla se le ponga la fecha de hoy y aparezca
+      // como si fuera un artículo nuevo.
+      published_at: source.published_at,
+      scheduled_for: source.scheduled_for,
+      category_id: categoryId,
       status: "DRAFT",
     })
     .select("id")
@@ -460,4 +602,229 @@ export async function createTranslation(
 
   revalidatePath(`/${tenantSlug}/content`);
   redirect(`/${tenantSlug}/content/${created.id}`);
+}
+
+/**
+ * Vuelve a traducir sobre una traducción que ya existe.
+ *
+ * El original sigue vivo: se corrigen erratas, se añaden párrafos. Sin esta
+ * acción, la única forma de arrastrar esos cambios al inglés sería borrar la
+ * traducción y crearla de nuevo, perdiendo su URL —ya indexada— y su
+ * historial.
+ *
+ * Sobrescribe el cuerpo, y por eso NO toca el slug ni el estado: la dirección
+ * pública no cambia bajo los pies de nadie. Lo anterior queda en el historial
+ * de versiones, porque el guardado genera revisión.
+ *
+ * Portada, fechas y categoría sólo se rellenan si faltan. Así se reparan las
+ * traducciones creadas antes de que se heredaran, sin pisar una portada o una
+ * categoría que alguien haya elegido a mano para este idioma.
+ */
+export async function retranslateContent(tenantSlug: string, postId: string) {
+  const { tenant, role, user } = await getTenantContext(tenantSlug);
+  if (!user.isSuperadmin && !can(role, "content.editAny")) {
+    throw new Error("No tienes permiso para editar esta traducción.");
+  }
+
+  const supabase = await createServerClient();
+
+  const { data: target } = await supabase
+    .from("posts")
+    .select("locale, translation_group_id, category_id, cover_media_id, published_at, scheduled_for")
+    .eq("id", postId)
+    .maybeSingle();
+
+  if (!target) throw new Error("Ese contenido ya no existe.");
+
+  // El origen es la hermana del idioma por defecto del espacio; si no existe,
+  // cualquier otra del grupo. Traducir desde una traducción degrada el texto,
+  // así que se prefiere siempre el idioma original.
+  const { data: siblings } = await supabase
+    .from("posts")
+    .select("id, locale, title, excerpt, content_json, seo, category_id, cover_media_id, published_at, scheduled_for")
+    .eq("translation_group_id", target.translation_group_id)
+    .neq("id", postId)
+    .is("deleted_at", null);
+
+  const source =
+    (siblings ?? []).find((s) => s.locale === tenant.defaultLocale) ?? (siblings ?? [])[0];
+
+  if (!source) throw new Error("No hay contenido original desde el que traducir.");
+
+  const translated = await translateSource(source, target.locale);
+
+  const categoryId =
+    target.category_id ??
+    (await resolveCategoryForLocale(supabase, {
+      tenantId: tenant.id,
+      categoryId: source.category_id,
+      locale: target.locale,
+      canManageTaxonomy: user.isSuperadmin || can(role, "taxonomy.manage"),
+    }));
+
+  const { error } = await supabase
+    .from("posts")
+    .update({
+      title: translated.title,
+      excerpt: translated.excerpt,
+      content_json: translated.content_json,
+      content_html: translated.content_html,
+      seo: translated.seo,
+      category_id: categoryId,
+      cover_media_id: target.cover_media_id ?? source.cover_media_id,
+      published_at: target.published_at ?? source.published_at,
+      scheduled_for: target.scheduled_for ?? source.scheduled_for,
+    })
+    .eq("id", postId);
+
+  if (error) throw new Error(mapDbError(error.message));
+
+  revalidatePath(`/${tenantSlug}/content/${postId}`);
+  revalidatePath(`/${tenantSlug}/content`);
+}
+
+/**
+ * Encuentra —o crea— la categoría equivalente en el idioma destino.
+ *
+ * Un post sólo puede clasificarse en una categoría de SU idioma: hay un
+ * trigger que lo comprueba. Copiar el `category_id` del original haría fallar
+ * el guardado, y dejarlo vacío deja la traducción fuera de los listados de la
+ * web, que es donde la gente la encontraría.
+ *
+ * Las categorías también se agrupan por `translation_group_id`, así que la
+ * equivalente es la del mismo grupo en el otro idioma. Si no existe se crea
+ * traducida — y si quien traduce no puede gestionar taxonomía, se deja sin
+ * categoría en vez de romper la traducción entera por un permiso.
+ */
+async function resolveCategoryForLocale(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  params: {
+    tenantId: string;
+    categoryId: string | null;
+    locale: string;
+    canManageTaxonomy: boolean;
+  },
+): Promise<string | null> {
+  const { tenantId, categoryId, locale, canManageTaxonomy } = params;
+  if (!categoryId) return null;
+
+  const { data: source } = await supabase
+    .from("categories")
+    .select("translation_group_id, name, slug, description, seo, kind, position, parent_id")
+    .eq("id", categoryId)
+    .maybeSingle();
+
+  if (!source) return null;
+
+  const { data: twin } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("translation_group_id", source.translation_group_id)
+    .eq("locale", locale)
+    .maybeSingle();
+
+  if (twin) return twin.id;
+  if (!canManageTaxonomy) return null;
+
+  const [name, description] = await Promise.all([
+    translateText(source.name, locale),
+    source.description ? translateText(source.description, locale) : Promise.resolve(null),
+  ]);
+
+  const { data: taken } = await supabase
+    .from("categories")
+    .select("slug")
+    .eq("tenant_id", tenantId)
+    .eq("locale", locale);
+
+  // La categoría padre se enlaza sólo si ya está traducida. Crearla en
+  // cascada traduciría un árbol entero por publicar un artículo.
+  let parentId: string | null = null;
+  if (source.parent_id) {
+    const { data: sourceParent } = await supabase
+      .from("categories")
+      .select("translation_group_id")
+      .eq("id", source.parent_id)
+      .maybeSingle();
+
+    if (sourceParent) {
+      const { data: parentTwin } = await supabase
+        .from("categories")
+        .select("id")
+        .eq("translation_group_id", sourceParent.translation_group_id)
+        .eq("locale", locale)
+        .maybeSingle();
+      parentId = parentTwin?.id ?? null;
+    }
+  }
+
+  const { data: created, error } = await supabase
+    .from("categories")
+    .insert({
+      tenant_id: tenantId,
+      locale,
+      translation_group_id: source.translation_group_id,
+      // El slug se hereda del original en vez de traducirse. Los slugs son
+      // únicos POR idioma, así que no chocan, y el front puede pedir
+      // `?category=casos-de-estudio&locale=en` sin conocer el nombre en cada
+      // idioma. El que sí se traduce es el `name`, que es lo que se lee.
+      slug: uniqueSlug(source.slug as string, (taken ?? []).map((c) => c.slug as string)),
+      name,
+      description,
+      seo: source.seo,
+      kind: source.kind,
+      position: source.position,
+      parent_id: parentId,
+    })
+    .select("id")
+    .single();
+
+  // Sin categoría se puede seguir: el contenido traducido importa más que su
+  // clasificación, y el editor puede asignarla a mano.
+  if (error) return null;
+  return created.id;
+}
+
+/**
+ * Traduce los campos redactables de un contenido.
+ *
+ * El HTML se vuelve a renderizar desde el JSON traducido en vez de traducirse
+ * aparte: es la misma función que usa el guardado, así que la traducción pasa
+ * por el mismo sanitizado que cualquier otro contenido.
+ */
+async function translateSource(
+  source: {
+    title: string;
+    excerpt: string | null;
+    content_json: unknown;
+    seo: unknown;
+  },
+  locale: string,
+): Promise<{
+  title: string;
+  excerpt: string | null;
+  content_json: Json;
+  content_html: string;
+  seo: Json;
+}> {
+  const seo = asSeo(source.seo);
+
+  const [title, excerpt, seoTitle, seoDescription, contentJson] = await Promise.all([
+    translateText(source.title, locale),
+    source.excerpt ? translateText(source.excerpt, locale) : Promise.resolve(null),
+    seo.title ? translateText(seo.title, locale) : Promise.resolve(undefined),
+    seo.description ? translateText(seo.description, locale) : Promise.resolve(undefined),
+    translateJsonContent(asJsonContent(source.content_json), locale),
+  ]);
+
+  const { html } = renderContent(contentJson);
+  assertSafeEmbeds(html);
+
+  return {
+    title,
+    excerpt,
+    content_json: contentJson as Json,
+    content_html: html,
+    seo: { ...seo, title: seoTitle, description: seoDescription } as Json,
+  };
 }

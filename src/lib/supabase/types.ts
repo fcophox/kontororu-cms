@@ -904,6 +904,63 @@ export type Database = {
           },
         ]
       }
+      content_index: {
+        Row: {
+          author_id: string | null
+          category_id: string | null
+          created_at: string | null
+          deleted_at: string | null
+          excerpt: string | null
+          id: string | null
+          locale: string | null
+          locales: string[] | null
+          published_at: string | null
+          slug: string | null
+          status: Database["public"]["Enums"]["content_status"] | null
+          tenant_id: string | null
+          title: string | null
+          translation_group_id: string | null
+          updated_at: string | null
+          versions: Json | null
+        }
+        Insert: {
+          author_id?: never
+          category_id?: never
+          created_at?: never
+          deleted_at?: never
+          excerpt?: never
+          id?: never
+          locale?: never
+          locales?: never
+          published_at?: never
+          slug?: never
+          status?: never
+          tenant_id?: never
+          title?: never
+          translation_group_id?: never
+          updated_at?: never
+          versions?: never
+        }
+        Update: {
+          author_id?: never
+          category_id?: never
+          created_at?: never
+          deleted_at?: never
+          excerpt?: never
+          id?: never
+          locale?: never
+          locales?: never
+          published_at?: never
+          slug?: never
+          status?: never
+          tenant_id?: never
+          title?: never
+          translation_group_id?: never
+          updated_at?: never
+          versions?: never
+        }
+        Relationships: []
+      }
       platform_tenant_overview: {
         Row: {
           api_keys_count: number | null

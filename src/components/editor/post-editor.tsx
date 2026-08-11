@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { localeLabel } from "@/lib/content/locales";
 import type { ActionState } from "@/app/(dashboard)/[tenantSlug]/content/actions";
 
 export type PostDraft = {
@@ -45,6 +46,14 @@ type Props = {
   history?: React.ReactNode;
   /** Sólo si el espacio tiene más de un idioma. */
   translations?: React.ReactNode;
+  /** Pestañas de idioma sobre el cuerpo del editor. */
+  localeTabs?: React.ReactNode;
+  /**
+   * Idiomas a los que alcanza Publicar. Publicar arrastra al grupo entero, y
+   * eso tiene que verse ANTES de pulsar: de lo contrario se publica una
+   * traducción automática sin querer.
+   */
+  publishLocales?: string[];
 };
 
 export function PostEditor({
@@ -60,6 +69,8 @@ export function PostEditor({
   lifecycle,
   history,
   translations,
+  localeTabs,
+  publishLocales = [],
 }: Props) {
   const [state, formAction, isSaving] = useActionState<ActionState, FormData>(
     saveAction,
@@ -79,6 +90,20 @@ export function PostEditor({
     draft.publishedAt ? formatDatetimeLocal(draft.publishedAt) : ""
   );
   const [activeTab, setActiveTab] = useState<"general" | "history" | "metadata">("general");
+
+  // Una traducción automática reescribe el cuerpo en servidor. Tiptap sólo lee
+  // `content` al crearse, y este componente guarda el suyo en estado: sin
+  // resincronizar, el editor seguiría mostrando —y Guardar seguiría enviando—
+  // el texto anterior a traducir. Comparar la identidad del prop basta: sólo
+  // cambia cuando el servidor devuelve contenido nuevo, no al teclear.
+  const [syncedContent, setSyncedContent] = useState(draft.contentJson);
+  const [syncedContentKey, setSyncedContentKey] = useState(0);
+  if (syncedContent !== draft.contentJson) {
+    setSyncedContent(draft.contentJson);
+    setSyncedContentKey((n) => n + 1);
+    setContent({ json: draft.contentJson, html: "" });
+    setDirty(false);
+  }
 
   const [coverMediaId, setCoverMediaId] = useState<string | null>(draft.coverMediaId ?? null);
   const [coverUrl, setCoverUrl] = useState<string | null>(draft.coverUrl ?? null);
@@ -154,6 +179,9 @@ export function PostEditor({
 
           <div className="min-w-0 flex-1">
             <Input
+              // Sin `key`, el input no descartaría su valor anterior cuando el
+              // servidor devuelve un título traducido.
+              key={draft.title}
               name="title"
               defaultValue={draft.title}
               onChange={() => setDirty(true)}
@@ -175,20 +203,31 @@ export function PostEditor({
           </Button>
 
           {canPublish && draft.id && (
-            <Button
-              type="button"
-              size="sm"
-              disabled={isTransitioning}
-              onClick={() =>
-                startTransition(async () => {
-                  if (draft.status === "PUBLISHED") await onUnpublish?.();
-                  else await onPublish?.();
-                })
-              }
-            >
-              {isTransitioning && <Loader2 className="size-4 animate-spin" />}
-              {draft.status === "PUBLISHED" ? "Despublicar" : "Publicar"}
-            </Button>
+            <div className="flex items-center gap-2">
+              {publishLocales.length > 1 && (
+                <span
+                  className="hidden text-xs text-muted-foreground sm:inline"
+                  title={publishLocales.map(localeLabel).join(", ")}
+                >
+                  {draft.status === "PUBLISHED" ? "Retira" : "Publica"}{" "}
+                  {publishLocales.length} idiomas
+                </span>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                disabled={isTransitioning}
+                onClick={() =>
+                  startTransition(async () => {
+                    if (draft.status === "PUBLISHED") await onUnpublish?.();
+                    else await onPublish?.();
+                  })
+                }
+              >
+                {isTransitioning && <Loader2 className="size-4 animate-spin" />}
+                {draft.status === "PUBLISHED" ? "Despublicar" : "Publicar"}
+              </Button>
+            </div>
           )}
         </header>
       </form>
@@ -202,7 +241,10 @@ export function PostEditor({
 
       <div className="flex flex-1 gap-8 px-8 pb-8 pt-4 overflow-hidden">
         <div className="min-w-0 flex-1 h-full overflow-y-auto pr-4 max-w-3xl mx-auto">
+          {localeTabs}
           <TiptapEditor
+            // Remonta el editor cuando el contenido llega traducido de servidor.
+            key={syncedContentKey}
             tenantId={tenantId}
             initialContent={draft.contentJson}
             onChange={handleChange}

@@ -4,10 +4,11 @@ import { getTenantContext } from "@/lib/auth/tenant-context";
 import { createServerClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/guards";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { LocaleBadges } from "@/components/shared/locale-badges";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { asContentStatus } from "@/lib/content/json";
-import { localeLabel } from "@/lib/content/locales";
+import { localeLabel, asLocaleVersions } from "@/lib/content/locales";
 import { TrashActions } from "./trash-actions";
 import { restoreContent, purgeContent } from "./actions";
 
@@ -45,26 +46,43 @@ export default async function ContentListPage({
 
   const { tenant, role, user } = await getTenantContext(tenantSlug);
 
-  // Sin filtro se ven TODOS los idiomas: dentro del CMS interesa el inventario
-  // completo, al contrario que en la API, donde mezclarlos duplicaría listados.
+  // El filtro de idioma dice "que TENGA esta versión", no "que esté escrito en
+  // este idioma": el listado ya no enseña una fila por idioma.
   const localeFilter = locale && tenant.locales.includes(locale) ? locale : null;
   const supabase = await createServerClient();
 
   const current = Math.max(1, Number(page) || 1);
   const from = (current - 1) * PAGE_SIZE;
 
-  let query = supabase
-    .from("posts")
-    .select(
-      "id, slug, title, excerpt, status, published_at, updated_at, locale, category:categories(id, name)",
-      { count: "exact" },
-    )
+  /*
+   * Dos fuentes distintas a propósito.
+   *
+   * El inventario sale de `content_index`, que colapsa cada grupo de
+   * traducción a su original: sin eso, traducir un artículo lo duplicaría en
+   * pantalla y con cuatro idiomas el listado sería ilegible.
+   *
+   * La papelera sigue sobre `posts`, fila a fila. Ahí lo que se decide es qué
+   * restaurar y qué destruir, y esconder una traducción dentro de su original
+   * escondería justo lo que hay que revisar.
+   */
+  let query = isTrash
+    ? supabase
+        .from("posts")
+        .select(
+          "id, slug, title, excerpt, status, published_at, updated_at, locale, category_id",
+          { count: "exact" },
+        )
+        .not("deleted_at", "is", null)
+    : supabase
+        .from("content_index")
+        .select(
+          "id, slug, title, excerpt, status, published_at, updated_at, locale, category_id, versions",
+          { count: "exact" },
+        );
+
+  query = query
     .order("updated_at", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
-
-  // La papelera es `deleted_at`, no un `status`: son ejes distintos y un
-  // contenido archivado puede estar además en la papelera.
-  query = isTrash ? query.not("deleted_at", "is", null) : query.is("deleted_at", null);
 
   // No hace falta filtrar por tenant_id: RLS ya lo hace. Añadirlo aquí daría
   // una falsa sensación de que es este filtro el que aísla los datos.
@@ -72,14 +90,60 @@ export default async function ContentListPage({
   // usarlo como filtro, en vez de confiar en que sea un valor legítimo.
   const statusFilter = status ? asContentStatus(status) : null;
   if (statusFilter) query = query.eq("status", statusFilter);
-  if (localeFilter) query = query.eq("locale", localeFilter);
   if (category) query = query.eq("category_id", category);
   if (q) query = query.ilike("title", `%${q}%`);
 
-  const [{ data: posts, count }, { data: categories }] = await Promise.all([
+  if (localeFilter) {
+    // En la papelera se filtra por el idioma de la fila, que es lo que se ve
+    // ahí. En el inventario, por los idiomas del grupo: pedir "Inglés" es
+    // pedir los contenidos que tienen versión inglesa, no los escritos en
+    // inglés — el original seguiría estando en español.
+    query = isTrash
+      ? query.eq("locale", localeFilter)
+      : query.contains("locales", [localeFilter]);
+  }
+
+  const [{ data: posts, count, error: postsError }, { data: categories }] = await Promise.all([
     query,
     supabase.from("categories").select("id, name").order("position"),
   ]);
+
+  // Una consulta fallida no puede parecerse a un espacio vacío. Antes se
+  // ignoraba el error y la pantalla decía "Todavía no hay contenido": con
+  // decenas de entradas detrás, es el peor mensaje posible.
+  if (postsError) console.error("GET /[tenantSlug]/content", postsError);
+
+  // La categoría se resuelve contra la lista que ya se pide para el filtro, en
+  // vez de con un embed: PostgREST no infiere relaciones a través de la vista.
+  const categoryNames = new Map((categories ?? []).map((c) => [c.id, c.name]));
+
+  /*
+   * Las dos fuentes se normalizan a una sola forma antes de pintar.
+   *
+   * Postgres declara nullable toda columna de una vista, y la papelera no trae
+   * `versions`. Resolverlo aquí evita que cada línea del JSX arrastre su
+   * propio `?? ""`.
+   */
+  const rows = (posts ?? []).flatMap((post) => {
+    const row = post as Record<string, unknown>;
+    if (typeof row.id !== "string") return [];
+    return [
+      {
+        id: row.id,
+        slug: String(row.slug ?? ""),
+        title: String(row.title ?? ""),
+        excerpt: typeof row.excerpt === "string" ? row.excerpt : null,
+        status: String(row.status ?? "DRAFT"),
+        locale: String(row.locale ?? ""),
+        updatedAt: String(row.updated_at ?? ""),
+        categoryName:
+          typeof row.category_id === "string"
+            ? (categoryNames.get(row.category_id) ?? null)
+            : null,
+        versions: asLocaleVersions(row.versions),
+      },
+    ];
+  });
 
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
   const canCreate = user.isSuperadmin || can(role, "content.create");
@@ -198,7 +262,13 @@ export default async function ContentListPage({
       </div>
 
       <div className="divide-y rounded-[var(--radius)] border bg-card">
-        {(posts ?? []).length === 0 && (
+        {postsError && (
+          <p className="p-8 text-center text-sm text-destructive">
+            No se pudo cargar el contenido. Vuelve a intentarlo en un momento.
+          </p>
+        )}
+
+        {!postsError && rows.length === 0 && (
           <p className="p-8 text-center text-sm text-muted-foreground">
             {isTrash
               ? "La papelera está vacía."
@@ -208,8 +278,8 @@ export default async function ContentListPage({
           </p>
         )}
 
-        {(posts ?? []).map((post) => {
-          const cat = post.category as unknown as { name: string } | null;
+        {rows.map((post) => {
+          const { categoryName } = post;
 
           if (isTrash) {
             return (
@@ -222,7 +292,8 @@ export default async function ContentListPage({
                     {post.title}
                   </Link>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {cat?.name ? `${cat.name} · ` : ""}/{post.slug}
+                    {categoryName ? `${categoryName} · ` : ""}
+                    {localeLabel(post.locale)} · /{post.slug}
                   </p>
                 </div>
                 <TrashActions
@@ -245,11 +316,7 @@ export default async function ContentListPage({
                 <div className="flex items-center gap-2">
                   <span className="truncate font-medium">{post.title}</span>
                   <StatusBadge status={post.status} />
-                  {tenant.locales.length > 1 && (
-                    <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                      {post.locale}
-                    </span>
-                  )}
+                  <LocaleBadges versions={post.versions} originalLocale={post.locale} />
                 </div>
                 {post.excerpt && (
                   <p className="mt-0.5 truncate text-sm text-muted-foreground">
@@ -257,12 +324,12 @@ export default async function ContentListPage({
                   </p>
                 )}
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {cat?.name ? `${cat.name} · ` : ""}
+                  {categoryName ? `${categoryName} · ` : ""}
                   /{post.slug}
                 </p>
               </div>
               <time className="shrink-0 text-xs text-muted-foreground">
-                {new Date(post.updated_at).toLocaleDateString("es-ES", {
+                {new Date(post.updatedAt).toLocaleDateString("es-ES", {
                   day: "numeric",
                   month: "short",
                 })}
