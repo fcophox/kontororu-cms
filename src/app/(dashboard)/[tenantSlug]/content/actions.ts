@@ -117,12 +117,39 @@ export async function saveContent(
   };
 
   if (input.postId) {
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("posts")
       .update(payload)
-      .eq("id", input.postId);
+      .eq("id", input.postId)
+      .select("translation_group_id")
+      .maybeSingle();
 
     if (error) return { error: mapDbError(error.message) };
+
+    /*
+     * La portada es UNA para todas las traducciones.
+     *
+     * Es la misma foto del mismo artículo: obligar a subirla en cada idioma
+     * duplica el trabajo y, en cuanto alguien cambia una y olvida la otra, la
+     * web enseña una imagen distinta según el idioma del visitante.
+     *
+     * Se propaga al guardar y no sólo al traducir porque el problema no es
+     * crear la traducción —eso ya copiaba la portada— sino que las dos versiones
+     * se separen después, al editar una de ellas.
+     */
+    if (updated?.translation_group_id) {
+      const { error: coverError } = await supabase
+        .from("posts")
+        .update({ cover_media_id: payload.cover_media_id })
+        .eq("translation_group_id", updated.translation_group_id)
+        .neq("id", input.postId);
+
+      // La portada de las traducciones no puede tumbar el guardado: el
+      // contenido que el editor acaba de escribir ya está a salvo.
+      if (coverError) {
+        console.error("No se pudo propagar la portada a las traducciones", coverError);
+      }
+    }
 
     revalidatePath(`/${tenantSlug}/content/${input.postId}`);
     revalidatePath(`/${tenantSlug}/content`);
@@ -660,7 +687,10 @@ export async function retranslateContent(tenantSlug: string, postId: string) {
       content_html: translated.content_html,
       seo: translated.seo,
       category_id: categoryId,
-      cover_media_id: target.cover_media_id ?? source.cover_media_id,
+      // La portada es una sola para el grupo, así que manda la del original en
+      // vez de conservar la del destino: si alguna vez se separaron, retraducir
+      // las vuelve a juntar.
+      cover_media_id: source.cover_media_id,
       published_at: target.published_at ?? source.published_at,
       scheduled_for: target.scheduled_for ?? source.scheduled_for,
     })

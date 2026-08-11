@@ -366,6 +366,12 @@ export function PostEditor({
                   {coverError && (
                     <p className="text-[11px] text-destructive mt-1">{coverError}</p>
                   )}
+                  {/* Se avisa aquí y no en la ayuda: quien cambia la portada
+                      tiene que saber en ese momento que afecta a los demás
+                      idiomas, no descubrirlo al revisar la web. */}
+                  <p className="text-[10px] text-muted-foreground">
+                    La portada es la misma en todos los idiomas.
+                  </p>
                 </section>
 
                 <section className="space-y-2">
