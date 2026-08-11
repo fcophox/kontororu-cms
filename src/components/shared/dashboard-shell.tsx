@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  FileText, FolderTree, ImageIcon, Users, LayoutDashboard, Palette, KeyRound, Webhook, Globe, ChevronDown,
+  FileText, FolderTree, ImageIcon, Users, LayoutDashboard, Palette, KeyRound, Webhook, Globe, ChevronDown, Puzzle,
 } from "lucide-react";
 import type { TenantContext } from "@/lib/auth/tenant-context";
 import { can, type Permission } from "@/lib/auth/roles";
@@ -36,6 +36,7 @@ const GROUP_ADMIN: NavItem[] = [
   { href: "/settings/branding", label: "Marca", icon: Palette, permission: "branding.manage" },
   { href: "/team", label: "Equipo", icon: Users, permission: "team.manage" },
   { href: "/settings/locales", label: "Idiomas", icon: Globe, permission: "branding.manage" },
+  { href: "/addons", label: "Complementos", icon: Puzzle, permission: "addons.manage" },
 ];
 
 const GROUP_CONFIG: NavItem[] = [

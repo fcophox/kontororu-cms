@@ -20,6 +20,7 @@ export type ApiKeyRow = {
 const SCOPE_LABELS: Record<string, string> = {
   "content:read": "Leer contenido",
   "media:read": "Leer medios",
+  "forms:write": "Recibir envíos de formularios",
 };
 
 export function ApiKeyList({

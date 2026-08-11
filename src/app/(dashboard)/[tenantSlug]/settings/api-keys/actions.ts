@@ -6,7 +6,10 @@ import { createServerClient } from "@/lib/supabase/server";
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { can } from "@/lib/auth/roles";
 
-const SCOPES = ["content:read", "media:read"] as const;
+// `forms:write` es el único permiso de ESCRITURA: lo usa el complemento
+// Contactos para recibir envíos. Va aquí, junto a los de lectura, para que
+// una clave pueda tener sólo lo que necesita.
+const SCOPES = ["content:read", "media:read", "forms:write"] as const;
 
 const CreateInput = z.object({
   name: z.string().trim().min(1, "Ponle un nombre").max(60),

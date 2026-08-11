@@ -241,6 +241,66 @@ export type Database = {
           },
         ]
       }
+      form_submissions: {
+        Row: {
+          created_at: string
+          email: string | null
+          form_key: string
+          id: string
+          is_archived: boolean
+          message: string | null
+          name: string | null
+          payload: Json
+          source_url: string | null
+          status: Database["public"]["Enums"]["form_submission_status"]
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          form_key: string
+          id?: string
+          is_archived?: boolean
+          message?: string | null
+          name?: string | null
+          payload?: Json
+          source_url?: string | null
+          status?: Database["public"]["Enums"]["form_submission_status"]
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          form_key?: string
+          id?: string
+          is_archived?: boolean
+          message?: string | null
+          name?: string | null
+          payload?: Json
+          source_url?: string | null
+          status?: Database["public"]["Enums"]["form_submission_status"]
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_submissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "platform_tenant_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_submissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       media: {
         Row: {
           alt_text: string | null
@@ -570,6 +630,64 @@ export type Database = {
           },
           {
             foreignKeyName: "tags_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_addons: {
+        Row: {
+          addon_key: string
+          created_at: string
+          enabled_at: string | null
+          enabled_by: string | null
+          id: string
+          is_enabled: boolean
+          settings: Json
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          addon_key: string
+          created_at?: string
+          enabled_at?: string | null
+          enabled_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          settings?: Json
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          addon_key?: string
+          created_at?: string
+          enabled_at?: string | null
+          enabled_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          settings?: Json
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_addons_enabled_by_fkey"
+            columns: ["enabled_by"]
+            isOneToOne: false
+            referencedRelation: "users_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_addons_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "platform_tenant_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_addons_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1030,6 +1148,14 @@ export type Database = {
           plain_key: string
         }[]
       }
+      form_submission_types: {
+        Args: { p_archived: boolean; p_tenant: string }
+        Returns: {
+          form_key: string
+          total: number
+          unread: number
+        }[]
+      }
       has_tenant_role: {
         Args: {
           p_roles: Database["public"]["Enums"]["tenant_role"][]
@@ -1062,6 +1188,7 @@ export type Database = {
     Enums: {
       category_kind: "BLOG" | "CASE_STUDY" | "SERVICE" | "CUSTOM"
       content_status: "DRAFT" | "PUBLISHED" | "ARCHIVED"
+      form_submission_status: "NEW" | "READ"
       storage_provider: "SUPABASE" | "S3" | "R2"
       tenant_db_mode: "SHARED" | "DEDICATED"
       tenant_plan: "FREE" | "PRO" | "ENTERPRISE"
@@ -1207,6 +1334,7 @@ export const Constants = {
     Enums: {
       category_kind: ["BLOG", "CASE_STUDY", "SERVICE", "CUSTOM"],
       content_status: ["DRAFT", "PUBLISHED", "ARCHIVED"],
+      form_submission_status: ["NEW", "READ"],
       storage_provider: ["SUPABASE", "S3", "R2"],
       tenant_db_mode: ["SHARED", "DEDICATED"],
       tenant_plan: ["FREE", "PRO", "ENTERPRISE"],
