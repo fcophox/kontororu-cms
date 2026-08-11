@@ -539,15 +539,9 @@ export async function createTranslation(
     .eq("tenant_id", tenant.id)
     .eq("locale", locale);
 
-  const [translated, categoryId] = await Promise.all([
-    translateSource(source, locale),
-    resolveCategoryForLocale(supabase, {
-      tenantId: tenant.id,
-      categoryId: source.category_id,
-      locale,
-      canManageTaxonomy: user.isSuperadmin || can(role, "taxonomy.manage"),
-    }),
-  ]);
+  const translated = await translateSource(source, locale);
+  // Las categorías no tienen idioma: la traducción se queda en la misma.
+  const categoryId = source.category_id;
 
   const { data: created, error } = await supabase
     .from("posts")
@@ -653,14 +647,9 @@ export async function retranslateContent(tenantSlug: string, postId: string) {
 
   const translated = await translateSource(source, target.locale);
 
-  const categoryId =
-    target.category_id ??
-    (await resolveCategoryForLocale(supabase, {
-      tenantId: tenant.id,
-      categoryId: source.category_id,
-      locale: target.locale,
-      canManageTaxonomy: user.isSuperadmin || can(role, "taxonomy.manage"),
-    }));
+  // Las categorías no tienen idioma: si la traducción aún no tiene una, hereda
+  // la del original sin necesidad de buscar ni crear una equivalente.
+  const categoryId = target.category_id ?? source.category_id;
 
   const { error } = await supabase
     .from("posts")
@@ -681,108 +670,6 @@ export async function retranslateContent(tenantSlug: string, postId: string) {
 
   revalidatePath(`/${tenantSlug}/content/${postId}`);
   revalidatePath(`/${tenantSlug}/content`);
-}
-
-/**
- * Encuentra —o crea— la categoría equivalente en el idioma destino.
- *
- * Un post sólo puede clasificarse en una categoría de SU idioma: hay un
- * trigger que lo comprueba. Copiar el `category_id` del original haría fallar
- * el guardado, y dejarlo vacío deja la traducción fuera de los listados de la
- * web, que es donde la gente la encontraría.
- *
- * Las categorías también se agrupan por `translation_group_id`, así que la
- * equivalente es la del mismo grupo en el otro idioma. Si no existe se crea
- * traducida — y si quien traduce no puede gestionar taxonomía, se deja sin
- * categoría en vez de romper la traducción entera por un permiso.
- */
-async function resolveCategoryForLocale(
-  supabase: Awaited<ReturnType<typeof createServerClient>>,
-  params: {
-    tenantId: string;
-    categoryId: string | null;
-    locale: string;
-    canManageTaxonomy: boolean;
-  },
-): Promise<string | null> {
-  const { tenantId, categoryId, locale, canManageTaxonomy } = params;
-  if (!categoryId) return null;
-
-  const { data: source } = await supabase
-    .from("categories")
-    .select("translation_group_id, name, slug, description, seo, kind, position, parent_id")
-    .eq("id", categoryId)
-    .maybeSingle();
-
-  if (!source) return null;
-
-  const { data: twin } = await supabase
-    .from("categories")
-    .select("id")
-    .eq("translation_group_id", source.translation_group_id)
-    .eq("locale", locale)
-    .maybeSingle();
-
-  if (twin) return twin.id;
-  if (!canManageTaxonomy) return null;
-
-  const [name, description] = await Promise.all([
-    translateText(source.name, locale),
-    source.description ? translateText(source.description, locale) : Promise.resolve(null),
-  ]);
-
-  const { data: taken } = await supabase
-    .from("categories")
-    .select("slug")
-    .eq("tenant_id", tenantId)
-    .eq("locale", locale);
-
-  // La categoría padre se enlaza sólo si ya está traducida. Crearla en
-  // cascada traduciría un árbol entero por publicar un artículo.
-  let parentId: string | null = null;
-  if (source.parent_id) {
-    const { data: sourceParent } = await supabase
-      .from("categories")
-      .select("translation_group_id")
-      .eq("id", source.parent_id)
-      .maybeSingle();
-
-    if (sourceParent) {
-      const { data: parentTwin } = await supabase
-        .from("categories")
-        .select("id")
-        .eq("translation_group_id", sourceParent.translation_group_id)
-        .eq("locale", locale)
-        .maybeSingle();
-      parentId = parentTwin?.id ?? null;
-    }
-  }
-
-  const { data: created, error } = await supabase
-    .from("categories")
-    .insert({
-      tenant_id: tenantId,
-      locale,
-      translation_group_id: source.translation_group_id,
-      // El slug se hereda del original en vez de traducirse. Los slugs son
-      // únicos POR idioma, así que no chocan, y el front puede pedir
-      // `?category=casos-de-estudio&locale=en` sin conocer el nombre en cada
-      // idioma. El que sí se traduce es el `name`, que es lo que se lee.
-      slug: uniqueSlug(source.slug as string, (taken ?? []).map((c) => c.slug as string)),
-      name,
-      description,
-      seo: source.seo,
-      kind: source.kind,
-      position: source.position,
-      parent_id: parentId,
-    })
-    .select("id")
-    .single();
-
-  // Sin categoría se puede seguir: el contenido traducido importa más que su
-  // clasificación, y el editor puede asignarla a mano.
-  if (error) return null;
-  return created.id;
 }
 
 /**

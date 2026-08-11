@@ -33,6 +33,12 @@ export async function GET(req: Request) {
   }
   const kind = rawKind as Kind | null;
 
+  /*
+   * Las categorías ya no tienen idioma, pero `?locale=` se sigue admitiendo:
+   * acota el CONTEO de entradas. "Cuántos artículos publicados en inglés hay
+   * en esta categoría" sigue siendo una pregunta con sentido, y devolver el
+   * total mezclando idiomas descuadraría cualquier portada.
+   */
   const locale = readLocale(new URL(req.url), ctx);
   if ("error" in locale) return apiError("bad_request", locale.error);
 
@@ -40,9 +46,8 @@ export async function GET(req: Request) {
 
   let query = db
     .from("categories")
-    .select("id, slug, name, kind, description, position, parent_id, locale")
+    .select("id, slug, name, kind, description, position, parent_id")
     .eq("tenant_id", ctx.tenantId)
-    .eq("locale", locale.locale)
     .order("position");
 
   if (kind) query = query.eq("kind", kind);
@@ -75,7 +80,6 @@ export async function GET(req: Request) {
     {
       data: (categories ?? []).map((c) => ({
         ...serializeCategory(c),
-        locale: c.locale,
         parentId: c.parent_id,
         postCount: counts.get(c.id) ?? 0,
       })),

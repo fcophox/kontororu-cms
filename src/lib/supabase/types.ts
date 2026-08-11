@@ -177,14 +177,12 @@ export type Database = {
           description: string | null
           id: string
           kind: Database["public"]["Enums"]["category_kind"]
-          locale: string
           name: string
           parent_id: string | null
           position: number
           seo: Json
           slug: string
           tenant_id: string
-          translation_group_id: string
           updated_at: string
         }
         Insert: {
@@ -192,14 +190,12 @@ export type Database = {
           description?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["category_kind"]
-          locale?: string
           name: string
           parent_id?: string | null
           position?: number
           seo?: Json
           slug: string
           tenant_id: string
-          translation_group_id?: string
           updated_at?: string
         }
         Update: {
@@ -207,14 +203,12 @@ export type Database = {
           description?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["category_kind"]
-          locale?: string
           name?: string
           parent_id?: string | null
           position?: number
           seo?: Json
           slug?: string
           tenant_id?: string
-          translation_group_id?: string
           updated_at?: string
         }
         Relationships: [
