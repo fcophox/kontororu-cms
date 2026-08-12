@@ -27,6 +27,9 @@ revócala y crea otra.
 La clave es **secreta**: úsala desde el servidor (Server Component, Route
 Handler, `getStaticProps`), nunca desde el navegador.
 
+La única excepción es `/reactions`, que no lleva clave porque lo llama el
+navegador de quien lee. Está explicado en su propia sección.
+
 ---
 
 ## `GET /posts`
@@ -131,6 +134,61 @@ qué poder enumerar todo lo subido, incluido lo que aún no se ha publicado.
 
 Filtra con `?type=image|video|document`. Paginación por cursor, igual que en
 `/posts`.
+
+## `GET /reactions` y `POST /reactions`
+
+> **Este endpoint NO lleva clave**, y es el único. Lo llama el navegador de
+> quien lee el artículo para pulsar el gesto de "me gusta", así que una clave
+> viviría dentro del bundle de la web y la vería cualquiera. Como el espacio no
+> se puede deducir de una clave que no existe, aquí sí viaja en la petición
+> (`tenant`), y es el slug público del espacio, no un secreto.
+>
+> Requiere el complemento **Reacciones** activo en el espacio. Sin él, el
+> `POST` devuelve 404.
+
+Leer los contadores:
+
+```
+GET /api/v1/reactions?tenant=mi-espacio&slug=mi-articulo
+```
+
+```json
+{ "data": { "slug": "mi-articulo", "totals": { "like": 12, "clap": 31 } } }
+```
+
+Sumar una:
+
+```
+POST /api/v1/reactions
+{ "tenant": "mi-espacio", "slug": "mi-articulo", "reaction": "like" }
+```
+
+```json
+{ "data": { "slug": "mi-articulo", "reaction": "like", "total": 13 } }
+```
+
+Devuelve el total ya incrementado: no hace falta un segundo `GET`.
+
+`reaction` es opcional (por defecto `like`) y admite `^[a-z][a-z0-9_-]{1,39}$`.
+El gesto no se declara en ninguna parte — el primer clic lo da de alta, igual
+que los formularios del complemento Contactos.
+
+**El contador es del contenido, no de la traducción.** Todas las versiones de
+idioma de un artículo suman al mismo número: quien pulse en la inglesa y quien
+pulse en la española están aplaudiendo lo mismo.
+
+**Un contenido sin reacciones devuelve `{}` con un 200**, igual que un slug
+inexistente. No uses este endpoint para saber si un artículo existe.
+
+**El cupo aquí es por IP, 60/min**, no por clave — no hay clave. Por eso el
+`POST` debe salir del navegador de cada lector y no de tu servidor: proxiándolo,
+toda tu web comparte una sola IP y agota el cupo entre todos. El `GET` sí puede
+ir por servidor.
+
+No existe forma de retirar una reacción: el contador sólo sube. Ponerlo a cero
+se hace desde el panel, en **Complementos → Reacciones**.
+
+---
 
 ## `GET /media/{id}`
 

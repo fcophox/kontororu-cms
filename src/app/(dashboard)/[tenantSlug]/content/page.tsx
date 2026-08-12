@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Heart, Plus, Search } from "lucide-react";
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { createServerClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/guards";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { asContentStatus } from "@/lib/content/json";
 import { localeLabel, asLocaleVersions } from "@/lib/content/locales";
+import { getTenantAddon } from "@/lib/addons/queries";
 import { TrashActions } from "./trash-actions";
 import { restoreContent, purgeContent } from "./actions";
 
@@ -76,7 +77,7 @@ export default async function ContentListPage({
     : supabase
         .from("content_index")
         .select(
-          "id, slug, title, excerpt, status, published_at, updated_at, locale, category_id, versions",
+          "id, slug, title, excerpt, status, published_at, updated_at, locale, category_id, versions, translation_group_id",
           { count: "exact" },
         );
 
@@ -141,9 +142,45 @@ export default async function ContentListPage({
             ? (categoryNames.get(row.category_id) ?? null)
             : null,
         versions: asLocaleVersions(row.versions),
+        translationGroupId:
+          typeof row.translation_group_id === "string" ? row.translation_group_id : null,
       },
     ];
   });
+
+  /*
+   * Las reacciones de las filas que se van a pintar, y sólo ésas.
+   *
+   * No se usa `content_reaction_summary`, que agrega TODO el espacio: en la
+   * página 1 de un cliente con mil contenidos se traería mil grupos para
+   * enseñar veinte números. Filtrando por los grupos visibles, la consulta
+   * crece con la página, no con el histórico.
+   *
+   * La papelera se queda fuera: ahí lo que se decide es qué restaurar, y un
+   * contador de aplausos no ayuda a decidirlo.
+   */
+  const reactionsAddon = isTrash ? null : await getTenantAddon(tenant.id, "reactions");
+  const reactionTotals = new Map<string, number>();
+
+  if (reactionsAddon?.isEnabled && rows.length > 0) {
+    const { data: reactions } = await supabase
+      .from("content_reactions")
+      .select("translation_group_id, total")
+      .in(
+        "translation_group_id",
+        rows.map((r) => r.translationGroupId).filter((id): id is string => Boolean(id)),
+      );
+
+    // Se suman los gestos: en el listado cabe un número, y "43" dice lo mismo
+    // que "12 me gusta y 31 aplausos" para decidir qué contenido abrir. El
+    // desglose está en la pantalla del complemento.
+    for (const row of reactions ?? []) {
+      reactionTotals.set(
+        row.translation_group_id,
+        (reactionTotals.get(row.translation_group_id) ?? 0) + Number(row.total),
+      );
+    }
+  }
 
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
   const canCreate = user.isSuperadmin || can(role, "content.create");
@@ -280,6 +317,11 @@ export default async function ContentListPage({
 
         {rows.map((post) => {
           const { categoryName } = post;
+          // Cero no se pinta: una columna de ceros ocupa sitio y no dice nada
+          // que la ausencia del icono no diga ya.
+          const reactions = post.translationGroupId
+            ? (reactionTotals.get(post.translationGroupId) ?? 0)
+            : 0;
 
           if (isTrash) {
             return (
@@ -328,6 +370,15 @@ export default async function ContentListPage({
                   /{post.slug}
                 </p>
               </div>
+              {reactions > 0 && (
+                <span
+                  className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
+                  title={`${reactions} ${reactions === 1 ? "reacción" : "reacciones"}`}
+                >
+                  <Heart className="size-3.5" />
+                  <span className="tabular-nums">{reactions}</span>
+                </span>
+              )}
               <time className="shrink-0 text-xs text-muted-foreground">
                 {new Date(post.updatedAt).toLocaleDateString("es-ES", {
                   day: "numeric",

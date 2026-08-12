@@ -11,6 +11,8 @@ import { PostSidebarActions } from "@/components/editor/post-sidebar-actions";
 import { PostHistory } from "@/components/editor/post-history";
 import { PostTranslations } from "@/components/editor/post-translations";
 import { ContentLocaleTabs } from "@/components/editor/content-locale-tabs";
+import { PostReactions } from "@/components/editor/post-reactions";
+import { getTenantAddon } from "@/lib/addons/queries";
 import {
   saveContent,
   publishContent,
@@ -143,6 +145,31 @@ export default async function EditContentPage({ params }: Props) {
     await retranslateContent(tenantSlug, postId);
   };
 
+  /*
+   * Reacciones del contenido, si el complemento está activo.
+   *
+   * Se piden por `translation_group_id` y no por `post.id`: el contador es del
+   * contenido, así que abrir la versión inglesa enseña el mismo número que
+   * abrir la española. Va después del `notFound()` para no consultar los
+   * contadores de algo que no se va a pintar.
+   */
+  const reactionsAddon = await getTenantAddon(tenant.id, "reactions");
+  let reactionTotals: { key: string; total: number }[] = [];
+
+  if (reactionsAddon?.isEnabled) {
+    const { data } = await supabase
+      .from("content_reactions")
+      .select("reaction_key, total")
+      .eq("tenant_id", tenant.id)
+      .eq("translation_group_id", post.translation_group_id)
+      .order("total", { ascending: false });
+
+    reactionTotals = (data ?? []).map((r) => ({
+      key: r.reaction_key,
+      total: Number(r.total),
+    }));
+  }
+
   // Pestañas de idioma del cuerpo: el idioma actual primero, y detrás el resto
   // de los que el espacio tiene activados. Un espacio monolingüe no las ve.
   const localeTabs = [
@@ -227,6 +254,15 @@ export default async function EditContentPage({ params }: Props) {
           canCreate={user.isSuperadmin || can(role, "content.create")}
           createAction={translateInto}
         />
+      }
+      reactions={
+        reactionsAddon?.isEnabled ? (
+          <PostReactions
+            totals={reactionTotals}
+            href={`/${tenantSlug}/addons/reactions`}
+            isTranslated={(siblings ?? []).length > 0}
+          />
+        ) : undefined
       }
       history={
         <PostHistory

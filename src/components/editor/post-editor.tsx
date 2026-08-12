@@ -48,6 +48,8 @@ type Props = {
   translations?: React.ReactNode;
   /** Pestañas de idioma sobre el cuerpo del editor. */
   localeTabs?: React.ReactNode;
+  /** Sólo con el complemento Reacciones activo y el contenido ya guardado. */
+  reactions?: React.ReactNode;
   /**
    * Idiomas a los que alcanza Publicar. Publicar arrastra al grupo entero, y
    * eso tiene que verse ANTES de pulsar: de lo contrario se publica una
@@ -70,6 +72,7 @@ export function PostEditor({
   history,
   translations,
   localeTabs,
+  reactions,
   publishLocales = [],
 }: Props) {
   const [state, formAction, isSaving] = useActionState<ActionState, FormData>(
@@ -422,6 +425,8 @@ export function PostEditor({
                 </section>
 
                 {translations}
+
+                {reactions}
 
                 {slugEditor}
               </div>

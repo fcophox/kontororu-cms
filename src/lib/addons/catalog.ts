@@ -10,9 +10,9 @@
  * servidor. Nada de `next/headers` ni de Supabase aquí.
  */
 
-import { Calendar, Inbox, type LucideIcon } from "lucide-react";
+import { Calendar, Heart, Inbox, type LucideIcon } from "lucide-react";
 
-export type AddonKey = "calendar" | "contacts";
+export type AddonKey = "calendar" | "contacts" | "reactions";
 
 export type Addon = {
   key: AddonKey;
@@ -56,6 +56,18 @@ export const ADDONS: readonly Addon[] = [
     icon: Inbox,
     configPath: "/addons/contacts",
     actionLabel: "Abrir bandeja",
+    billing: "INCLUDED",
+    priceLabel: "Incluido",
+  },
+  {
+    key: "reactions",
+    name: "Reacciones",
+    summary: "Cuenta cuánta gente aprecia cada contenido.",
+    description:
+      "Tu web pone el gesto —un me gusta, un aplauso, una carita— y aquí ves cuántas personas lo han pulsado en cada contenido. El número es del contenido, no de cada traducción.",
+    icon: Heart,
+    configPath: "/addons/reactions",
+    actionLabel: "Ver reacciones",
     billing: "INCLUDED",
     priceLabel: "Incluido",
   },

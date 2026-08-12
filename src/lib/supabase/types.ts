@@ -235,6 +235,51 @@ export type Database = {
           },
         ]
       }
+      content_reactions: {
+        Row: {
+          created_at: string
+          id: string
+          reaction_key: string
+          tenant_id: string
+          total: number
+          translation_group_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reaction_key: string
+          tenant_id: string
+          total?: number
+          translation_group_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reaction_key?: string
+          tenant_id?: string
+          total?: number
+          translation_group_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_reactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "platform_tenant_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_reactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       form_submissions: {
         Row: {
           created_at: string
@@ -1134,6 +1179,21 @@ export type Database = {
           reset_at: string
         }[]
       }
+      content_reaction_summary: {
+        Args: { p_tenant: string }
+        Returns: {
+          gestures: number
+          total: number
+          translation_group_id: string
+        }[]
+      }
+      content_reaction_totals: {
+        Args: { p_locale?: string | null; p_slug: string; p_tenant_slug: string }
+        Returns: {
+          reaction_key: string
+          total: number
+        }[]
+      }
       create_api_key: {
         Args: { p_name: string; p_scopes?: string[]; p_tenant: string }
         Returns: {
@@ -1163,6 +1223,15 @@ export type Database = {
       is_tenant_member: { Args: { p_tenant: string }; Returns: boolean }
       locales_are_valid: { Args: { p_locales: string[] }; Returns: boolean }
       prune_rate_limits: { Args: never; Returns: number }
+      register_reaction: {
+        Args: {
+          p_locale?: string | null
+          p_reaction: string
+          p_slug: string
+          p_tenant_slug: string
+        }
+        Returns: number
+      }
       resolve_api_key: {
         Args: { p_prefix: string; p_secret: string }
         Returns: {
