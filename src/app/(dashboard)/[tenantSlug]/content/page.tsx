@@ -1,7 +1,9 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Heart, Plus, Search } from "lucide-react";
 import { getTenantContext } from "@/lib/auth/tenant-context";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, createServiceClient } from "@/lib/supabase/server";
+import { signMediaBatch } from "@/lib/api/serializers";
 import { can } from "@/lib/auth/guards";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { LocaleBadges } from "@/components/shared/locale-badges";
@@ -147,6 +149,42 @@ export default async function ContentListPage({
       },
     ];
   });
+
+  /*
+   * Las portadas de las filas visibles.
+   *
+   * No salen del `select` principal: `content_index` es una vista y PostgREST
+   * no infiere relaciones a través de ella, así que el embed sólo es posible
+   * sobre `posts`. Se pide por los ids ya paginados —veinte como mucho— y se
+   * firma en un solo lote, no una URL por fila.
+   */
+  const coverUrls = new Map<string, string>();
+
+  if (rows.length > 0) {
+    const { data: covers } = await supabase
+      .from("posts")
+      .select("id, cover:media(id, bucket, path, provider, alt_text, width, height)")
+      .in("id", rows.map((r) => r.id))
+      .not("cover_media_id", "is", null);
+
+    const withCover = (covers ?? []).flatMap((row) => {
+      const cover = row.cover as Parameters<typeof signMediaBatch>[1][number];
+      return cover ? [{ postId: row.id, cover }] : [];
+    });
+
+    if (withCover.length > 0) {
+      const signed = await signMediaBatch(
+        createServiceClient(),
+        withCover.map((item) => item.cover),
+      );
+      for (const { postId, cover } of withCover) {
+        const url = signed.get(cover.path);
+        // Sin URL firmada no se pinta nada: un hueco roto es peor que la
+        // fila sin miniatura, que es como se ven los contenidos sin portada.
+        if (url) coverUrls.set(postId, url);
+      }
+    }
+  }
 
   /*
    * Las reacciones de las filas que se van a pintar, y sólo ésas.
@@ -322,10 +360,23 @@ export default async function ContentListPage({
           const reactions = post.translationGroupId
             ? (reactionTotals.get(post.translationGroupId) ?? 0)
             : 0;
+          const coverUrl = coverUrls.get(post.id) ?? null;
 
           if (isTrash) {
             return (
               <div key={post.id} className="flex items-center gap-4 p-4">
+                {coverUrl && (
+                  <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius)] border bg-muted">
+                    <Image
+                      src={coverUrl}
+                      alt=""
+                      fill
+                      unoptimized /* la URL firmada caduca: optimizarla la cachearía rota */
+                      sizes="48px"
+                      className="object-cover"
+                    />
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
                   <Link
                     href={`/${tenantSlug}/content/${post.id}`}
@@ -354,6 +405,20 @@ export default async function ContentListPage({
               href={`/${tenantSlug}/content/${post.id}`}
               className="flex items-start gap-4 p-4 transition-colors hover:bg-accent"
             >
+              {/* Sin portada no se reserva el hueco: una columna de recuadros
+                  vacíos pesa más en la lectura que la desalineación. */}
+              {coverUrl && (
+                <div className="relative size-14 shrink-0 overflow-hidden rounded-[var(--radius)] border bg-muted">
+                  <Image
+                    src={coverUrl}
+                    alt=""
+                    fill
+                    unoptimized /* la URL firmada caduca: optimizarla la cachearía rota */
+                    sizes="56px"
+                    className="object-cover"
+                  />
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate font-medium">{post.title}</span>
