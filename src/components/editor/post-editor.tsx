@@ -300,6 +300,13 @@ export function PostEditor({
                   <Label htmlFor="categoryId">Categoría</Label>
                   <select
                     id="categoryId"
+                    // Sin `key`, el select no reflejaba la categoría recién
+                    // guardada: es un campo no controlado, y al refrescar el
+                    // servidor con el nuevo `draft.categoryId` React no vuelve
+                    // a aplicar `defaultValue` sobre el mismo nodo. El usuario
+                    // veía "Sin categoría" tras guardar aunque sí se hubiera
+                    // asignado — sólo se corregía al recargar la página.
+                    key={draft.categoryId ?? "none"}
                     name="categoryId"
                     form={formId}
                     defaultValue={draft.categoryId ?? ""}

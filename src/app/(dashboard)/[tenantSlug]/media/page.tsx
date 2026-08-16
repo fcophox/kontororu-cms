@@ -30,6 +30,7 @@ export default async function MediaPage({
     .select("id, bucket, path, provider, mime_type, size_bytes, width, height, alt_text, created_at", {
       count: "exact",
     })
+    .eq("tenant_id", tenant.id)
     .order("created_at", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
 

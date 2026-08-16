@@ -17,26 +17,28 @@ export async function updateAltText(tenantSlug: string, mediaId: string, alt: st
   const parsed = AltInput.safeParse(alt);
   if (!parsed.success) throw new Error("Texto alternativo demasiado largo.");
 
-  await getTenantContext(tenantSlug);
+  const { tenant } = await getTenantContext(tenantSlug);
 
   const supabase = await createServerClient();
   const { error } = await supabase
     .from("media")
     .update({ alt_text: parsed.data || null })
-    .eq("id", mediaId);
+    .eq("id", mediaId)
+    .eq("tenant_id", tenant.id);
 
   if (error) throw new Error("No se pudo guardar el texto alternativo.");
   revalidatePath(`/${tenantSlug}/media`);
 }
 
 export async function deleteMedia(tenantSlug: string, mediaId: string) {
-  const { role, user } = await getTenantContext(tenantSlug);
+  const { tenant, role, user } = await getTenantContext(tenantSlug);
   const supabase = await createServerClient();
 
   const { data: media } = await supabase
     .from("media")
     .select("bucket, path, provider, uploaded_by")
     .eq("id", mediaId)
+    .eq("tenant_id", tenant.id)
     .maybeSingle();
 
   if (!media) throw new Error("El archivo ya no existe.");
@@ -48,7 +50,11 @@ export async function deleteMedia(tenantSlug: string, mediaId: string) {
 
   // Primero la fila, después el objeto. Al revés, un fallo al borrar la fila
   // dejaría referencias en posts apuntando a un archivo inexistente.
-  const { error } = await supabase.from("media").delete().eq("id", mediaId);
+  const { error } = await supabase
+    .from("media")
+    .delete()
+    .eq("id", mediaId)
+    .eq("tenant_id", tenant.id);
   if (error) throw new Error("No se pudo eliminar el archivo.");
 
   const storage = createStorageAdapter(media.provider, media.bucket, supabase);

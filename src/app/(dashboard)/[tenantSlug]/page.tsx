@@ -23,6 +23,7 @@ export default async function OverviewPage({
     supabase
       .from("posts")
       .select("id, slug, title, status, updated_at")
+      .eq("tenant_id", tenant.id)
       .order("updated_at", { ascending: false })
       .limit(5),
   ]);

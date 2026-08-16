@@ -121,6 +121,7 @@ export async function saveContent(
       .from("posts")
       .update(payload)
       .eq("id", input.postId)
+      .eq("tenant_id", tenant.id)
       .select("translation_group_id")
       .maybeSingle();
 
@@ -167,7 +168,10 @@ export async function saveContent(
    * Si el editor escribe el slug a mano, manda el suyo: la traducción
    * automática es una comodidad, no una imposición.
    */
-  const { data: existing } = await supabase.from("posts").select("slug");
+  const { data: existing } = await supabase
+    .from("posts")
+    .select("slug")
+    .eq("tenant_id", tenant.id);
   const slug = uniqueSlug(
     input.slug || (await englishSlugSource(input.title)),
     (existing ?? []).map((p) => p.slug as string),
@@ -215,7 +219,7 @@ export async function saveContent(
  * público.
  */
 export async function publishContent(tenantSlug: string, postId: string) {
-  const { role, user } = await getTenantContext(tenantSlug);
+  const { tenant, role, user } = await getTenantContext(tenantSlug);
   if (!user.isSuperadmin && !can(role, "content.publish")) {
     throw new Error("No tienes permiso para publicar.");
   }
@@ -226,6 +230,7 @@ export async function publishContent(tenantSlug: string, postId: string) {
     .from("posts")
     .select("published_at, translation_group_id")
     .eq("id", postId)
+    .eq("tenant_id", tenant.id)
     .single();
 
   if (!current) throw new Error("Ese contenido ya no existe.");
@@ -267,7 +272,7 @@ export async function publishContent(tenantSlug: string, postId: string) {
  * ningún enlace y de la que no se puede volver.
  */
 export async function unpublishContent(tenantSlug: string, postId: string) {
-  const { role, user } = await getTenantContext(tenantSlug);
+  const { tenant, role, user } = await getTenantContext(tenantSlug);
   if (!user.isSuperadmin && !can(role, "content.publish")) {
     throw new Error("No tienes permiso para despublicar.");
   }
@@ -278,6 +283,7 @@ export async function unpublishContent(tenantSlug: string, postId: string) {
     .from("posts")
     .select("translation_group_id")
     .eq("id", postId)
+    .eq("tenant_id", tenant.id)
     .single();
 
   if (!current) throw new Error("Ese contenido ya no existe.");
@@ -295,7 +301,7 @@ export async function unpublishContent(tenantSlug: string, postId: string) {
 }
 
 export async function archiveContent(tenantSlug: string, postId: string) {
-  const { role, user } = await getTenantContext(tenantSlug);
+  const { tenant, role, user } = await getTenantContext(tenantSlug);
   if (!user.isSuperadmin && !can(role, "content.publish")) {
     throw new Error("No tienes permiso para archivar.");
   }
@@ -304,7 +310,8 @@ export async function archiveContent(tenantSlug: string, postId: string) {
   const { error } = await supabase
     .from("posts")
     .update({ status: "ARCHIVED" })
-    .eq("id", postId);
+    .eq("id", postId)
+    .eq("tenant_id", tenant.id);
 
   if (error) throw new Error(mapDbError(error.message));
   revalidatePath(`/${tenantSlug}/content`);
@@ -322,7 +329,7 @@ export async function archiveContent(tenantSlug: string, postId: string) {
  * del cliente retira la página.
  */
 export async function trashContent(tenantSlug: string, postId: string) {
-  const { role, user } = await getTenantContext(tenantSlug);
+  const { tenant, role, user } = await getTenantContext(tenantSlug);
   if (!user.isSuperadmin && !can(role, "content.delete")) {
     throw new Error("No tienes permiso para borrar contenido.");
   }
@@ -331,7 +338,8 @@ export async function trashContent(tenantSlug: string, postId: string) {
   const { error } = await supabase
     .from("posts")
     .update({ deleted_at: new Date().toISOString() })
-    .eq("id", postId);
+    .eq("id", postId)
+    .eq("tenant_id", tenant.id);
 
   if (error) throw new Error(mapDbError(error.message));
 
@@ -340,7 +348,7 @@ export async function trashContent(tenantSlug: string, postId: string) {
 }
 
 export async function restoreContent(tenantSlug: string, postId: string) {
-  const { role, user } = await getTenantContext(tenantSlug);
+  const { tenant, role, user } = await getTenantContext(tenantSlug);
   if (!user.isSuperadmin && !can(role, "content.delete")) {
     throw new Error("No tienes permiso para restaurar contenido.");
   }
@@ -349,7 +357,8 @@ export async function restoreContent(tenantSlug: string, postId: string) {
   const { error } = await supabase
     .from("posts")
     .update({ deleted_at: null })
-    .eq("id", postId);
+    .eq("id", postId)
+    .eq("tenant_id", tenant.id);
 
   if (error) throw new Error(mapDbError(error.message));
   revalidatePath(`/${tenantSlug}/content`);
@@ -363,7 +372,7 @@ export async function restoreContent(tenantSlug: string, postId: string) {
  * así que aquí no hay evento nuevo que emitir.
  */
 export async function purgeContent(tenantSlug: string, postId: string) {
-  const { role, user } = await getTenantContext(tenantSlug);
+  const { tenant, role, user } = await getTenantContext(tenantSlug);
   if (!user.isSuperadmin && !can(role, "content.delete")) {
     throw new Error("No tienes permiso para borrar contenido.");
   }
@@ -376,6 +385,7 @@ export async function purgeContent(tenantSlug: string, postId: string) {
     .from("posts")
     .delete()
     .eq("id", postId)
+    .eq("tenant_id", tenant.id)
     .not("deleted_at", "is", null);
 
   if (error) throw new Error(mapDbError(error.message));
@@ -401,7 +411,7 @@ export async function restoreRevision(
   postId: string,
   revisionId: string,
 ) {
-  const { role, user } = await getTenantContext(tenantSlug);
+  const { tenant, role, user } = await getTenantContext(tenantSlug);
   if (!user.isSuperadmin && !can(role, "content.editAny")) {
     throw new Error("No tienes permiso para restaurar versiones.");
   }
@@ -413,6 +423,7 @@ export async function restoreRevision(
     .select("title, excerpt, content_json, content_html, custom_fields, seo, category_id")
     .eq("id", revisionId)
     .eq("post_id", postId)
+    .eq("tenant_id", tenant.id)
     .maybeSingle();
 
   if (!revision) throw new Error("Esa versión ya no existe.");
@@ -428,7 +439,8 @@ export async function restoreRevision(
       seo: revision.seo,
       category_id: revision.category_id,
     })
-    .eq("id", postId);
+    .eq("id", postId)
+    .eq("tenant_id", tenant.id);
 
   if (error) throw new Error(mapDbError(error.message));
 
@@ -462,7 +474,7 @@ export async function updateSlug(
   _prev: SlugState,
   formData: FormData,
 ): Promise<SlugState> {
-  const { role, user } = await getTenantContext(tenantSlug);
+  const { tenant, role, user } = await getTenantContext(tenantSlug);
   if (!user.isSuperadmin && !can(role, "content.editAny")) {
     return { error: "No tienes permiso para cambiar la URL." };
   }
@@ -476,6 +488,7 @@ export async function updateSlug(
     .from("posts")
     .select("translation_group_id")
     .eq("id", postId)
+    .eq("tenant_id", tenant.id)
     .maybeSingle();
 
   if (!current) return { error: "Ese contenido ya no existe." };
@@ -556,6 +569,7 @@ export async function createTranslation(
       "title, excerpt, content_json, content_html, custom_fields, seo, translation_group_id, slug, category_id, cover_media_id, published_at, scheduled_for",
     )
     .eq("id", postId)
+    .eq("tenant_id", tenant.id)
     .maybeSingle();
 
   if (!source) throw new Error("Ese contenido ya no existe.");
@@ -653,6 +667,7 @@ export async function retranslateContent(tenantSlug: string, postId: string) {
     .from("posts")
     .select("locale, translation_group_id, category_id, cover_media_id, published_at, scheduled_for")
     .eq("id", postId)
+    .eq("tenant_id", tenant.id)
     .maybeSingle();
 
   if (!target) throw new Error("Ese contenido ya no existe.");

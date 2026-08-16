@@ -83,12 +83,15 @@ export default async function ContentListPage({
           { count: "exact" },
         );
 
+  // RLS deja ver las filas de CUALQUIER tenant al que el usuario tenga acceso
+  // (todos, si es SuperAdmin): no sabe qué `[tenantSlug]` está renderizando
+  // esta página. Sin este filtro, un SuperAdmin o alguien con acceso a varios
+  // espacios ve aquí la unión de todos ellos, no sólo el de la URL.
   query = query
+    .eq("tenant_id", tenant.id)
     .order("updated_at", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
 
-  // No hace falta filtrar por tenant_id: RLS ya lo hace. Añadirlo aquí daría
-  // una falsa sensación de que es este filtro el que aísla los datos.
   // El status viene de la query string: se valida contra el enum antes de
   // usarlo como filtro, en vez de confiar en que sea un valor legítimo.
   const statusFilter = status ? asContentStatus(status) : null;
@@ -108,7 +111,7 @@ export default async function ContentListPage({
 
   const [{ data: posts, count, error: postsError }, { data: categories }] = await Promise.all([
     query,
-    supabase.from("categories").select("id, name").order("position"),
+    supabase.from("categories").select("id, name").eq("tenant_id", tenant.id).order("position"),
   ]);
 
   // Una consulta fallida no puede parecerse a un espacio vacío. Antes se

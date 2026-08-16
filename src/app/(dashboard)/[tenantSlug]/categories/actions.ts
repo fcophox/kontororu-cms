@@ -35,7 +35,10 @@ export async function createCategory(
   }
 
   const supabase = await createServerClient();
-  const { data: existing } = await supabase.from("categories").select("slug");
+  const { data: existing } = await supabase
+    .from("categories")
+    .select("slug")
+    .eq("tenant_id", tenant.id);
 
   const { error } = await supabase.from("categories").insert({
     tenant_id: tenant.id,
@@ -52,7 +55,7 @@ export async function createCategory(
 }
 
 export async function renameCategory(tenantSlug: string, id: string, name: string) {
-  const { role, user } = await getTenantContext(tenantSlug);
+  const { tenant, role, user } = await getTenantContext(tenantSlug);
   if (!user.isSuperadmin && !can(role, "taxonomy.manage")) {
     throw new Error("No tienes permiso para gestionar categorías.");
   }
@@ -61,14 +64,18 @@ export async function renameCategory(tenantSlug: string, id: string, name: strin
   const supabase = await createServerClient();
   // El slug NO se regenera al renombrar: cambiarlo rompería las URLs que el
   // front-end del cliente ya tiene publicadas e indexadas.
-  const { error } = await supabase.from("categories").update({ name }).eq("id", id);
+  const { error } = await supabase
+    .from("categories")
+    .update({ name })
+    .eq("id", id)
+    .eq("tenant_id", tenant.id);
   if (error) throw new Error("No se pudo renombrar la categoría.");
 
   revalidatePath(`/${tenantSlug}/categories`);
 }
 
 export async function deleteCategory(tenantSlug: string, id: string) {
-  const { role, user } = await getTenantContext(tenantSlug);
+  const { tenant, role, user } = await getTenantContext(tenantSlug);
   if (!user.isSuperadmin && !can(role, "taxonomy.manage")) {
     throw new Error("No tienes permiso para gestionar categorías.");
   }
@@ -76,7 +83,11 @@ export async function deleteCategory(tenantSlug: string, id: string) {
   const supabase = await createServerClient();
   // Los posts NO se borran: la FK es ON DELETE SET NULL, así que quedan
   // sin categoría. Borrar una categoría nunca debe destruir contenido.
-  const { error } = await supabase.from("categories").delete().eq("id", id);
+  const { error } = await supabase
+    .from("categories")
+    .delete()
+    .eq("id", id)
+    .eq("tenant_id", tenant.id);
   if (error) throw new Error("No se pudo eliminar la categoría.");
 
   revalidatePath(`/${tenantSlug}/categories`);

@@ -32,10 +32,15 @@ type Props = { params: Promise<{ tenantSlug: string; postId: string }> };
 
 export async function generateMetadata({ params }: Props) {
   const { tenantSlug, postId } = await params;
-  await getTenantContext(tenantSlug);
+  const { tenant } = await getTenantContext(tenantSlug);
 
   const supabase = await createServerClient();
-  const { data } = await supabase.from("posts").select("title").eq("id", postId).maybeSingle();
+  const { data } = await supabase
+    .from("posts")
+    .select("title")
+    .eq("id", postId)
+    .eq("tenant_id", tenant.id)
+    .maybeSingle();
 
   return { title: data?.title ?? "Editar" };
 }
@@ -53,8 +58,9 @@ export default async function EditContentPage({ params }: Props) {
         "id, slug, title, excerpt, category_id, content_json, content_html, custom_fields, seo, status, author_id, deleted_at, locale, translation_group_id, cover_media_id, published_at, cover:media(id, bucket, path, provider, alt_text, width, height)",
       )
       .eq("id", postId)
+      .eq("tenant_id", tenant.id)
       .maybeSingle(),
-    supabase.from("categories").select("id, name").order("position"),
+    supabase.from("categories").select("id, name").eq("tenant_id", tenant.id).order("position"),
   ]);
 
   // El historial se pide aparte porque sólo interesa en edición, y así el
