@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { WebhookList } from "./webhook-list";
 import {
   createWebhook,
+  updateWebhook,
   toggleWebhook,
   deleteWebhook,
   retryDelivery,
@@ -50,6 +51,12 @@ export default async function WebhooksPage({
     "use server";
     return createWebhook(tenantSlug, prev, formData);
   };
+  // El id viaja en el formulario, no en un closure por fila: una Server Action
+  // por webhook multiplicaría los endpoints generados sin ganar nada.
+  const update = async (prev: WebhookState, formData: FormData) => {
+    "use server";
+    return updateWebhook(tenantSlug, String(formData.get("id") ?? ""), prev, formData);
+  };
   const toggle = async (id: string, isActive: boolean) => {
     "use server";
     await toggleWebhook(tenantSlug, id, isActive);
@@ -92,6 +99,7 @@ export default async function WebhooksPage({
           createdAt: d.created_at,
         }))}
         createAction={create}
+        updateAction={update}
         toggleAction={toggle}
         deleteAction={remove}
         retryAction={retry}

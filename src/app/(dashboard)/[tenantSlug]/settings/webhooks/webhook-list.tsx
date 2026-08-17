@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
-import { Plus, Trash2, Loader2, RotateCw, Eye, EyeOff, Copy, Check } from "lucide-react";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { Plus, Pencil, Trash2, Loader2, RotateCw, Eye, EyeOff, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,17 +27,21 @@ export type DeliveryRow = {
   createdAt: string;
 };
 
+type WebhookAction = (prev: WebhookState, formData: FormData) => Promise<WebhookState>;
+
 export function WebhookList({
   webhooks,
   deliveries,
   createAction,
+  updateAction,
   toggleAction,
   deleteAction,
   retryAction,
 }: {
   webhooks: WebhookRow[];
   deliveries: DeliveryRow[];
-  createAction: (prev: WebhookState, formData: FormData) => Promise<WebhookState>;
+  createAction: WebhookAction;
+  updateAction: WebhookAction;
   toggleAction: (id: string, isActive: boolean) => Promise<void>;
   deleteAction: (id: string) => Promise<void>;
   retryAction: (deliveryId: string) => Promise<void>;
@@ -61,57 +65,15 @@ export function WebhookList({
             )}
 
             {webhooks.map((hook) => (
-              <div key={hook.id} className="space-y-2 p-4">
-                <div className="flex items-start gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate font-medium">{hook.name}</span>
-                      {!hook.isActive && (
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                          pausado
-                        </span>
-                      )}
-                    </div>
-                    <p className="truncate font-mono text-xs text-muted-foreground">{hook.url}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {hook.events.map((e) => label(e)).join(" · ")}
-                    </p>
-                  </div>
-
-                  <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      checked={hook.isActive}
-                      disabled={Boolean(pending)}
-                      className="size-4 accent-[var(--primary)]"
-                      onChange={(e) =>
-                        startTransition(async () => {
-                          await toggleAction(hook.id, e.target.checked);
-                        })
-                      }
-                    />
-                    Activo
-                  </label>
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Eliminar ${hook.name}`}
-                    disabled={Boolean(pending)}
-                    onClick={() => {
-                      if (!window.confirm(`¿Eliminar el webhook "${hook.name}"?`)) return;
-                      startTransition(async () => {
-                        await deleteAction(hook.id);
-                      });
-                    }}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-
-                <SecretField secret={hook.secret} />
-              </div>
+              <WebhookRowItem
+                key={hook.id}
+                hook={hook}
+                updateAction={updateAction}
+                toggleAction={toggleAction}
+                deleteAction={deleteAction}
+                pending={Boolean(pending)}
+                startTransition={startTransition}
+              />
             ))}
           </div>
         </section>
@@ -219,6 +181,168 @@ export function WebhookList({
           Crear webhook
         </Button>
       </form>
+    </div>
+  );
+}
+
+/**
+ * Una fila del listado, con su propio modo edición.
+ *
+ * Vive en su propio componente porque cada fila necesita su `useActionState`:
+ * compartir uno solo haría que el error de guardar un webhook apareciera bajo
+ * todos los demás.
+ */
+function WebhookRowItem({
+  hook,
+  updateAction,
+  toggleAction,
+  deleteAction,
+  pending,
+  startTransition,
+}: {
+  hook: WebhookRow;
+  updateAction: WebhookAction;
+  toggleAction: (id: string, isActive: boolean) => Promise<void>;
+  deleteAction: (id: string) => Promise<void>;
+  pending: boolean;
+  startTransition: (fn: () => void) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [state, formAction, isSaving] = useActionState<WebhookState, FormData>(updateAction, {});
+
+  // Al guardar con éxito se cierra el formulario. El `ok` sólo llega cuando el
+  // servidor ya revalidó, así que la fila de debajo muestra el valor nuevo.
+  useEffect(() => {
+    if (state.ok) setEditing(false);
+  }, [state.ok]);
+
+  if (editing) {
+    return (
+      <form action={formAction} className="space-y-3 bg-muted/30 p-4">
+        <input type="hidden" name="id" value={hook.id} />
+
+        <div className="space-y-1.5">
+          <Label htmlFor={`name-${hook.id}`}>Nombre</Label>
+          <Input
+            id={`name-${hook.id}`}
+            name="name"
+            required
+            maxLength={60}
+            defaultValue={hook.name}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor={`url-${hook.id}`}>Endpoint</Label>
+          <Input
+            id={`url-${hook.id}`}
+            name="url"
+            type="url"
+            required
+            defaultValue={hook.url}
+          />
+          <p className="text-xs text-muted-foreground">Sólo HTTPS y dominios públicos.</p>
+        </div>
+
+        <fieldset className="space-y-1.5">
+          <legend className="text-sm leading-none font-medium">Eventos</legend>
+          {WEBHOOK_EVENTS.map((event) => (
+            <label key={event} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="events"
+                value={event}
+                defaultChecked={hook.events.includes(event)}
+                className="size-4 rounded border-input accent-[var(--primary)]"
+              />
+              {label(event)}
+            </label>
+          ))}
+        </fieldset>
+
+        {state.error && <p className="text-sm text-destructive">{state.error}</p>}
+
+        <div className="flex gap-2">
+          <Button type="submit" size="sm" disabled={isSaving}>
+            {isSaving && <Loader2 className="size-3.5 animate-spin" />}
+            Guardar
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={isSaving}
+            onClick={() => setEditing(false)}
+          >
+            Cancelar
+          </Button>
+        </div>
+      </form>
+    );
+  }
+
+  return (
+    <div className="space-y-2 p-4">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="truncate font-medium">{hook.name}</span>
+            {!hook.isActive && (
+              <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                pausado
+              </span>
+            )}
+          </div>
+          <p className="truncate font-mono text-xs text-muted-foreground">{hook.url}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {hook.events.map((e) => label(e)).join(" · ")}
+          </p>
+        </div>
+
+        <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={hook.isActive}
+            disabled={pending}
+            className="size-4 accent-[var(--primary)]"
+            onChange={(e) =>
+              startTransition(async () => {
+                await toggleAction(hook.id, e.target.checked);
+              })
+            }
+          />
+          Activo
+        </label>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Editar ${hook.name}`}
+          disabled={pending}
+          onClick={() => setEditing(true)}
+        >
+          <Pencil className="size-4" />
+        </Button>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Eliminar ${hook.name}`}
+          disabled={pending}
+          onClick={() => {
+            if (!window.confirm(`¿Eliminar el webhook "${hook.name}"?`)) return;
+            startTransition(async () => {
+              await deleteAction(hook.id);
+            });
+          }}
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      </div>
+
+      <SecretField secret={hook.secret} />
     </div>
   );
 }
