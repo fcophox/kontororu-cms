@@ -55,9 +55,23 @@ async function drain(req: Request) {
   // un cron dedicado para borrar filas de una tabla efímera no compensa.
   const { data: pruned } = await db.rpc("prune_rate_limits");
 
+  /*
+   * `failed` cuenta lo que NO llegó, no sólo lo que reventó.
+   *
+   * Antes se calculaba con las promesas rechazadas, y `deliver()` sólo
+   * rechaza ante un fallo de red: un destino devolviendo 404 en cada intento
+   * se registraba en la fila y el worker respondía `failed: 0`. Con la web
+   * de un cliente caída, la única señal era un contador diciendo que todo
+   * iba bien — que es como estos webhooks pasaron diez días sin salir.
+   */
+  const outcomes = results.map((r) => (r.status === "fulfilled" ? r.value : "failed"));
+
   return NextResponse.json({
     processed: results.length,
-    failed: results.filter((r) => r.status === "rejected").length,
+    delivered: outcomes.filter((o) => o === "delivered").length,
+    failed: outcomes.filter((o) => o === "failed").length,
+    // Webhooks desactivados entre encolar y entregar: ni error ni entrega.
+    skipped: outcomes.filter((o) => o === "skipped").length,
     rateLimitsPruned: pruned ?? 0,
   });
 }
@@ -71,12 +85,14 @@ function isAuthorized(req: Request): boolean {
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
+type Outcome = "delivered" | "failed" | "skipped";
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deliver(db: any, row: any) {
+async function deliver(db: any, row: any): Promise<Outcome> {
   const hook = row.webhook;
   if (!hook?.is_active) {
     await db.from("webhook_deliveries").update({ delivered_at: new Date().toISOString(), error: "webhook inactivo" }).eq("id", row.id);
-    return;
+    return "skipped";
   }
 
   const body = JSON.stringify(row.payload);
@@ -113,6 +129,8 @@ async function deliver(db: any, row: any) {
         next_attempt_at: res.ok ? undefined : backoffFrom(row.attempt),
       })
       .eq("id", row.id);
+
+    return res.ok ? "delivered" : "failed";
   } catch (err) {
     await db
       .from("webhook_deliveries")

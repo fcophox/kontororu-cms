@@ -63,3 +63,21 @@ jobs:
             echo "::error::El worker respondió $code."
             exit 1
           fi
+
+          # Un 200 no significa que las entregas hayan llegado: el worker
+          # responde bien aunque la web del cliente devuelva 404 en todas.
+          # Sin mirar el cuerpo, este job saldría verde con la cola intacta.
+          procesadas=$(jq -r '.processed // 0' /tmp/salida.json)
+          entregadas=$(jq -r '.delivered // 0' /tmp/salida.json)
+          fallidas=$(jq -r '.failed // 0' /tmp/salida.json)
+
+          resumen="procesadas=$procesadas entregadas=$entregadas fallidas=$fallidas"
+          echo "$resumen"
+          echo "$resumen" >> "$GITHUB_STEP_SUMMARY"
+
+          # Aviso, no error: que la web de un cliente falle un rato es normal
+          # y el backoff ya lo cubre. Ponerse rojo por eso convertiría este
+          # cron en ruido diario, y entonces nadie miraría el día que importe.
+          if [ "$fallidas" -gt 0 ]; then
+            echo "::warning::$fallidas entregas no llegaron a su destino. Si se repite en cada turno, el destino está roto, no saturado."
+          fi
