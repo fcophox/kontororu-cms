@@ -1,0 +1,65 @@
+name: Worker de webhooks
+
+# =====================================================================
+# El cron que Railway no tiene.
+#
+# `vercel.json` programa /api/internal/webhooks/dispatch cada minuto, pero
+# ese fichero sólo lo lee Vercel: en Railway nadie invocaba el worker y la
+# cola llevaba desde el 7 de agosto sin drenarse — 315 entregas encoladas y
+# ninguna enviada. El endpoint también purga `api_rate_limits`, así que esa
+# tabla tampoco se limpiaba.
+#
+# Cinco minutos, no uno: es el intervalo mínimo de los cron de GitHub
+# Actions, y además se ejecutan cuando hay hueco, no puntuales. Para un
+# webhook que revalida una web es holgado; si algún día hace falta cadencia
+# real de un minuto, esto se sustituye por un servicio cron en Railway.
+# =====================================================================
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  # Para drenar a mano sin esperar al turno.
+  workflow_dispatch:
+
+# Si un drenado se alarga, el siguiente no se solapa: el worker coge lotes
+# de 50 y dos a la vez se pisarían intentando entregar las mismas filas.
+concurrency:
+  group: webhooks-drain
+  cancel-in-progress: false
+
+jobs:
+  drain:
+    name: Drenar la cola de entregas
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invocar el worker
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.APP_URL || 'https://kontororu-cms-production.up.railway.app' }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Falta el secreto CRON_SECRET del repositorio."
+            echo "Debe valer lo mismo que la variable CRON_SECRET del servicio en Railway."
+            exit 1
+          fi
+
+          code=$(curl -sS --max-time 120 \
+                   -o /tmp/salida.json -w '%{http_code}' \
+                   -H "Authorization: Bearer $CRON_SECRET" \
+                   "$APP_URL/api/internal/webhooks/dispatch")
+
+          echo "HTTP $code"
+          cat /tmp/salida.json || true
+          echo
+
+          # Un 401 aquí significa secreto desalineado, no una entrega fallida:
+          # se distingue porque si no, el worker parece "funcionando" mientras
+          # la cola sigue creciendo — que es justo el fallo que esto arregla.
+          if [ "$code" = "401" ]; then
+            echo "::error::CRON_SECRET no coincide con el del servicio en Railway."
+            exit 1
+          fi
+          if [ "$code" != "200" ]; then
+            echo "::error::El worker respondió $code."
+            exit 1
+          fi
