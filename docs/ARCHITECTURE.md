@@ -270,7 +270,7 @@ kontororu-cms/
 │   │       │   └── graphql/route.ts     # Fase 3
 │   │       ├── media/upload/route.ts
 │   │       └── internal/
-│   │           └── webhooks/dispatch/route.ts   # Vercel Cron
+│   │           └── webhooks/dispatch/route.ts   # worker, lo invoca el cron de Actions
 │   │
 │   ├── components/
 │   │   ├── ui/                          # Shadcn — NO editar a mano
@@ -472,11 +472,19 @@ GraphQL (Fase 3) se expone en `/api/v1/graphql` sobre el mismo `authenticate.ts`
 ```
 UPDATE posts SET status='PUBLISHED'
    → trigger posts_enqueue_events        INSERT en webhook_deliveries  (no hace HTTP)
-   → Vercel Cron (1 min, **GET**) → /api/internal/webhooks/dispatch
+   → GitHub Actions · webhooks-cron.yml (cada 5 min, **GET**) → /api/internal/webhooks/dispatch
    → POST firmado al endpoint del cliente
    → backoff exponencial: 1m 2m 4m 8m 16m 32m, 6 intentos
      (`webhook_deliveries.next_attempt_at`; el worker sólo pide lo vencido)
 ```
+
+El disparador es un workflow de GitHub Actions, no la plataforma de despliegue:
+el servicio corre en **Railway**, que no trae cron. El `vercel.json` del repo
+programa este mismo endpoint cada minuto, pero ese fichero sólo lo lee Vercel —
+confiar en él dejó la cola sin drenar durante diez días. Cinco minutos es el
+intervalo mínimo de los cron de Actions, y además se ejecutan cuando hay hueco:
+si algún día hace falta cadencia real de un minuto, el sustituto es un servicio
+cron en Railway, no volver a `vercel.json`.
 
 El trigger **no** hace la llamada HTTP. Si lo hiciera (`pg_net`, `http`), la web caída de
 un cliente convertiría cada publicación en un timeout de 30 segundos dentro de una
@@ -553,7 +561,7 @@ export async function POST(req: Request) {
 - [x] Tests unitarios de las funciones puras (22 aserciones)
 - [x] Pantalla de tenant suspendido (sin redirect, sin bucle)
 - [x] Boundaries de UI: error, 404, 403, loading, global-error
-- [x] Cron de Vercel para el worker de webhooks + backoff real
+- [x] Cron del worker de webhooks (GitHub Actions) + backoff real
 - [x] Papelera reversible, archivado y cambio de URL desde el editor
 - [ ] Autoguardado con `useOptimistic` en lugar de botón manual
 - [x] Pantallas de settings: marca (con preview en vivo), API keys, webhooks
