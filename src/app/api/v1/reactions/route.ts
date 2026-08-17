@@ -95,7 +95,9 @@ export async function POST(req: Request) {
     p_tenant_slug: tenant,
     p_slug: slug,
     p_reaction: reaction,
-    p_locale: locale ?? null,
+    // Se omite, no se manda null: el argumento tiene DEFAULT null en la
+    // función, y omitirlo es lo que activa ese default.
+    p_locale: locale ?? undefined,
   });
 
   if (error) {
@@ -156,7 +158,7 @@ export async function GET(req: Request) {
   const { data, error } = await db.rpc("content_reaction_totals", {
     p_tenant_slug: tenant,
     p_slug: slug,
-    p_locale: locale,
+    p_locale: locale ?? undefined,
   });
 
   if (error) {

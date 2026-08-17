@@ -477,6 +477,13 @@ export type Database = {
             foreignKeyName: "post_revisions_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
+            referencedRelation: "content_index"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_revisions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
             referencedRelation: "posts"
             referencedColumns: ["id"]
           },
@@ -510,6 +517,13 @@ export type Database = {
           tag_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "post_tags_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "content_index"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "post_tags_post_id_fkey"
             columns: ["post_id"]
@@ -1080,43 +1094,36 @@ export type Database = {
           updated_at: string | null
           versions: Json | null
         }
-        Insert: {
-          author_id?: never
-          category_id?: never
-          created_at?: never
-          deleted_at?: never
-          excerpt?: never
-          id?: never
-          locale?: never
-          locales?: never
-          published_at?: never
-          slug?: never
-          status?: never
-          tenant_id?: never
-          title?: never
-          translation_group_id?: never
-          updated_at?: never
-          versions?: never
-        }
-        Update: {
-          author_id?: never
-          category_id?: never
-          created_at?: never
-          deleted_at?: never
-          excerpt?: never
-          id?: never
-          locale?: never
-          locales?: never
-          published_at?: never
-          slug?: never
-          status?: never
-          tenant_id?: never
-          title?: never
-          translation_group_id?: never
-          updated_at?: never
-          versions?: never
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "platform_tenant_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_tenant_overview: {
         Row: {
@@ -1188,7 +1195,7 @@ export type Database = {
         }[]
       }
       content_reaction_totals: {
-        Args: { p_locale?: string | null; p_slug: string; p_tenant_slug: string }
+        Args: { p_locale?: string; p_slug: string; p_tenant_slug: string }
         Returns: {
           reaction_key: string
           total: number
@@ -1225,7 +1232,7 @@ export type Database = {
       prune_rate_limits: { Args: never; Returns: number }
       register_reaction: {
         Args: {
-          p_locale?: string | null
+          p_locale?: string
           p_reaction: string
           p_slug: string
           p_tenant_slug: string
