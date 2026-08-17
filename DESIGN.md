@@ -23,7 +23,7 @@ npm run tokens:watch
 
 `npm run dev` y `npm run build` ejecutan el generador antes de arrancar, así
 que un `tokens.yml` recién editado nunca queda desincronizado. Los archivos
-generados **se commitean**: un `vercel build` no necesita nada extra.
+generados **se commitean**: el build de Railway no necesita nada extra.
 
 ### La cadena completa
 

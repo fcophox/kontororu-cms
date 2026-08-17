@@ -14,7 +14,7 @@ const MAX_ATTEMPTS = 6;
  * El trigger de Postgres encola; este handler entrega. Así una web caída del
  * cliente nunca bloquea un `UPDATE posts`.
  *
- * Vercel Cron lo invoca cada minuto con **GET** (no POST) y
+ * El cron de GitHub Actions (webhooks-cron.yml) lo invoca con **GET** (no POST) y
  * `Authorization: Bearer $CRON_SECRET`. Se exportan los dos verbos: GET para
  * el cron, POST para dispararlo a mano durante el desarrollo.
  *

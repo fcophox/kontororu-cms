@@ -3,11 +3,12 @@ name: Worker de webhooks
 # =====================================================================
 # El cron que Railway no tiene.
 #
-# `vercel.json` programa /api/internal/webhooks/dispatch cada minuto, pero
-# ese fichero sólo lo lee Vercel: en Railway nadie invocaba el worker y la
-# cola llevaba desde el 7 de agosto sin drenarse — 315 entregas encoladas y
-# ninguna enviada. El endpoint también purga `api_rate_limits`, así que esa
-# tabla tampoco se limpiaba.
+# El repo traía un `vercel.json` que programaba
+# /api/internal/webhooks/dispatch cada minuto, pero ese fichero sólo lo lee
+# Vercel: en Railway nadie invocaba el worker y la cola llevaba desde el 7 de
+# agosto sin drenarse — 315 entregas encoladas y ninguna enviada. El endpoint
+# también purga `api_rate_limits`, así que esa tabla tampoco se limpiaba.
+# El `vercel.json` ya no está en el repo; este workflow es el único disparador.
 #
 # Cinco minutos, no uno: es el intervalo mínimo de los cron de GitHub
 # Actions, y además se ejecutan cuando hay hueco, no puntuales. Para un

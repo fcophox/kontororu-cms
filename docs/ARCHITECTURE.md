@@ -479,12 +479,14 @@ UPDATE posts SET status='PUBLISHED'
 ```
 
 El disparador es un workflow de GitHub Actions, no la plataforma de despliegue:
-el servicio corre en **Railway**, que no trae cron. El `vercel.json` del repo
-programa este mismo endpoint cada minuto, pero ese fichero sólo lo lee Vercel —
-confiar en él dejó la cola sin drenar durante diez días. Cinco minutos es el
-intervalo mínimo de los cron de Actions, y además se ejecutan cuando hay hueco:
-si algún día hace falta cadencia real de un minuto, el sustituto es un servicio
-cron en Railway, no volver a `vercel.json`.
+el servicio corre en **Railway**, que no trae cron. Hubo un `vercel.json` que
+programaba este mismo endpoint cada minuto, pero ese fichero sólo lo lee Vercel:
+confiar en él dejó la cola sin drenar diez días, y por eso se borró del repo —
+una configuración que nadie ejecuta sólo sirve para que alguien la dé por buena.
+
+Cinco minutos es el intervalo mínimo de los cron de Actions, y además se
+ejecutan cuando hay hueco, no puntuales. Si algún día hace falta cadencia real
+de un minuto, el sustituto es un servicio cron en Railway.
 
 El trigger **no** hace la llamada HTTP. Si lo hiciera (`pg_net`, `http`), la web caída de
 un cliente convertiría cada publicación en un timeout de 30 segundos dentro de una
