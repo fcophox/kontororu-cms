@@ -330,6 +330,7 @@ export function PostEditor({
                         src={coverUrl}
                         alt="Vista previa de portada"
                         fill
+                        unoptimized /* la URL firmada caduca: optimizarla la cachearía rota */
                         className="object-cover transition duration-300 group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200">

@@ -2,6 +2,7 @@ import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { parseBranding, type TenantBranding } from "@/lib/theme/branding";
+import { resolveBrandingMedia } from "@/lib/theme/branding-media";
 import { asLimits, type TenantLimits } from "@/lib/content/json";
 
 import type { TenantRole } from "./roles";
@@ -94,7 +95,7 @@ export const getTenantContext = cache(
       return {
         tenant: {
           ...tenant,
-          branding: parseBranding(tenant.branding),
+          branding: await resolveBrandingMedia(parseBranding(tenant.branding), tenant.id),
           limits: asLimits(tenant.limits),
           storageBucket: tenant.storage_bucket,
           locales: tenant.locales,
@@ -122,7 +123,7 @@ export const getTenantContext = cache(
     return {
       tenant: {
         ...tenant,
-        branding: parseBranding(tenant.branding),
+        branding: await resolveBrandingMedia(parseBranding(tenant.branding), tenant.id),
         limits: asLimits(tenant.limits),
         storageBucket: tenant.storage_bucket,
         locales: tenant.locales,

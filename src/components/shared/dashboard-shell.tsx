@@ -108,6 +108,7 @@ export function DashboardShell({
               alt={tenant.name}
               width={28}
               height={28}
+              unoptimized /* la URL firmada caduca: optimizarla la cachearía rota */
               className="rounded"
             />
           ) : (

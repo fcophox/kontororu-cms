@@ -79,7 +79,8 @@ export function BrandingForm({
       const res = await fetch("/api/media/upload", { method: "POST", body });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Error al subir");
-      set("logoUrl", json.url);
+      // Se guarda el id; la URL es sólo para la vista previa de esta pantalla.
+      setDraft((d) => ({ ...d, logoMediaId: json.id, logoUrl: json.url }));
     } catch (err) {
       setLogoError(err instanceof Error ? err.message : "Error al subir");
     } finally {
@@ -97,7 +98,7 @@ export function BrandingForm({
       const res = await fetch("/api/media/upload", { method: "POST", body });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Error al subir");
-      set("faviconUrl", json.url);
+      setDraft((d) => ({ ...d, faviconMediaId: json.id, faviconUrl: json.url }));
     } catch (err) {
       setFaviconError(err instanceof Error ? err.message : "Error al subir");
     } finally {
@@ -110,8 +111,8 @@ export function BrandingForm({
       <input type="hidden" name="primary" value={draft.primary} />
       <input type="hidden" name="secondary" value={draft.secondary} />
       <input type="hidden" name="radius" value={draft.radius} />
-      <input type="hidden" name="logoUrl" value={draft.logoUrl ?? ""} />
-      <input type="hidden" name="faviconUrl" value={draft.faviconUrl ?? ""} />
+      <input type="hidden" name="logoMediaId" value={draft.logoMediaId ?? ""} />
+      <input type="hidden" name="faviconMediaId" value={draft.faviconMediaId ?? ""} />
 
       <div className="space-y-6">
         <section className="space-y-2">
@@ -150,7 +151,7 @@ export function BrandingForm({
               {draft.logoUrl && (
                 <button
                   type="button"
-                  onClick={() => set("logoUrl", null)}
+                  onClick={() => setDraft((d) => ({ ...d, logoMediaId: null, logoUrl: null }))}
                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                 >
                   <X className="size-3" />
@@ -199,7 +200,7 @@ export function BrandingForm({
               {draft.faviconUrl && (
                 <button
                   type="button"
-                  onClick={() => set("faviconUrl", null)}
+                  onClick={() => setDraft((d) => ({ ...d, faviconMediaId: null, faviconUrl: null }))}
                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                 >
                   <X className="size-3" />

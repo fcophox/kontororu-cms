@@ -2,6 +2,18 @@ import { BRAND_TOKENS } from "@/lib/tokens.generated";
 import { isValidHex, shade, accessiblePair } from "./color";
 
 export type TenantBranding = {
+  /**
+   * Qué archivo es el logo. Lo persistente es el id en `media`, no su URL:
+   * el bucket es privado y toda URL suya caduca.
+   */
+  logoMediaId: string | null;
+  faviconMediaId: string | null;
+  /**
+   * URL vigente para pintar, la resuelve `resolveBrandingMedia()` en cada
+   * lectura. Lo que llega del JSONB puede ser una URL firmada guardada por
+   * versiones anteriores, y esa ya está caducada: sirve sólo como rastro
+   * para recuperar la ruta del archivo.
+   */
   logoUrl: string | null;
   faviconUrl: string | null;
   primary: string;
@@ -14,6 +26,8 @@ export type TenantBranding = {
  * por defecto del CMS es editar el YAML, no tocar este archivo.
  */
 export const DEFAULT_BRANDING: TenantBranding = {
+  logoMediaId: null,
+  faviconMediaId: null,
   logoUrl: null,
   faviconUrl: null,
   primary: BRAND_TOKENS.primary,
@@ -31,6 +45,8 @@ const RADIUS_RE = /^\d+(\.\d+)?(rem|px)$/;
 export function parseBranding(raw: unknown): TenantBranding {
   const b = (raw ?? {}) as Record<string, unknown>;
   return {
+    logoMediaId: safeId(b.logoMediaId),
+    faviconMediaId: safeId(b.faviconMediaId),
     logoUrl: safeUrl(b.logoUrl),
     faviconUrl: safeUrl(b.faviconUrl),
     primary: isValidHex(b.primary) ? normalize(b.primary) : DEFAULT_BRANDING.primary,
@@ -56,6 +72,12 @@ function safeUrl(value: unknown): string | null {
     // Ruta relativa del propio Storage: se acepta, no puede cambiar de origen.
     return value.startsWith("/") && !value.startsWith("//") ? value : null;
   }
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function safeId(value: unknown): string | null {
+  return typeof value === "string" && UUID_RE.test(value) ? value : null;
 }
 
 function normalize(hex: string): string {
