@@ -245,6 +245,18 @@ describe("webhooks", () => {
   const sign = (body: string, timestamp: number) =>
     `sha256=${createHmac("sha256", secret).update(`${timestamp}.${body}`).digest("hex")}`;
 
+  /**
+   * Altera el último carácter de la firma garantizando que cambia.
+   *
+   * `replace(/.$/, "0")` —lo que hacía antes— deja la firma intacta cuando el
+   * digest ya termina en "0": una de cada dieciséis ejecuciones enviaba una
+   * firma perfectamente válida y el test fallaba por no lanzar. Como el
+   * timestamp entra en el HMAC, el digest cambia en cada ejecución y el fallo
+   * salía en CI de forma aparentemente aleatoria, sin relación con el commit.
+   */
+  const tamper = (signature: string) =>
+    signature.replace(/.$/, (last) => (last === "0" ? "1" : "0"));
+
   const payload = (extra: Record<string, unknown> = {}) =>
     JSON.stringify({
       event: "post.published",
@@ -286,7 +298,7 @@ describe("webhooks", () => {
         secret,
         headers: {
           "x-kontororu-timestamp": String(ts),
-          "x-kontororu-signature": sign(body, ts).replace(/.$/, "0"),
+          "x-kontororu-signature": tamper(sign(body, ts)),
         },
       }),
     ).toThrow(WebhookVerificationError);
