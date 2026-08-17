@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useTransition } from "react";
-import { UserPlus, Trash2, Loader2, Clock } from "lucide-react";
+import { UserPlus, Trash2, Loader2, Clock, PauseCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ type Member = {
   fullName: string | null;
   isSelf: boolean;
   pending: boolean;
+  suspended: boolean;
 };
 
 const ROLE_LABELS: Record<TenantRole, string> = {
@@ -81,6 +82,12 @@ export function TeamList({
                     <span className="flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                       <Clock className="size-3" />
                       invitación pendiente
+                    </span>
+                  )}
+                  {member.suspended && (
+                    <span className="flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                      <PauseCircle className="size-3" />
+                      acceso en pausa
                     </span>
                   )}
                 </div>

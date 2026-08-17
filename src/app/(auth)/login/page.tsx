@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
+import { resolveLandingPath } from "@/lib/auth/landing";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Quote } from "lucide-react";
@@ -15,19 +16,17 @@ async function signIn(formData: FormData) {
   const next = String(formData.get("next") ?? "");
 
   const supabase = await createServerClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   // Mensaje genérico a propósito: distinguir "usuario no existe" de
   // "contraseña incorrecta" permite enumerar quién es cliente de Rukma Studio.
-  if (error) redirect(`/login?error=invalid`);
+  if (error || !data.user) redirect(`/login?error=invalid`);
 
-  const { data: memberships } = await supabase
-    .from("tenant_users")
-    .select("tenant:tenants(slug)")
-    .limit(1);
+  // `next` manda cuando existe: quien llegó aquí desde una URL protegida
+  // espera volver a ella, aunque sea SuperAdmin.
+  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "";
 
-  const first = memberships?.[0]?.tenant as unknown as { slug: string } | undefined;
-  redirect(next || (first ? `/${first.slug}` : "/switch"));
+  redirect(safeNext || (await resolveLandingPath(data.user.id)));
 }
 
 export default async function LoginPage({

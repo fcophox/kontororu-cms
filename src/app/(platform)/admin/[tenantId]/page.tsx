@@ -1,11 +1,23 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createServerClient } from "@/lib/supabase/server";
 import { asLimits } from "@/lib/content/json";
 import { formatBytes, PLANS, type TenantStatus } from "@/lib/auth/plans";
+import { parseBranding } from "@/lib/theme/branding";
+import { resolveBrandingMedia } from "@/lib/theme/branding-media";
+import type { TenantRole } from "@/lib/auth/roles";
 import { TenantControls } from "./tenant-controls";
-import { updatePlanAndLimits, setTenantStatus, type PlatformState } from "../actions";
+import { MemberList, type PlatformMember } from "./member-list";
+import {
+  updatePlanAndLimits,
+  setTenantStatus,
+  setMemberRole,
+  setMemberSuspended,
+  removeMember,
+  type PlatformState,
+} from "../actions";
 
 type Props = { params: Promise<{ tenantId: string }> };
 
@@ -17,7 +29,9 @@ export default async function TenantDetailPage({ params }: Props) {
     supabase.from("platform_tenant_overview").select("*").eq("id", tenantId).maybeSingle(),
     supabase
       .from("tenant_users")
-      .select("id, role, accepted_at, profile:users_profiles!tenant_users_user_id_fkey(email, full_name)")
+      .select(
+        "id, role, accepted_at, suspended_at, created_at, profile:users_profiles!tenant_users_user_id_fkey(email, full_name)",
+      )
       .eq("tenant_id", tenantId)
       .order("created_at"),
     supabase
@@ -30,10 +44,29 @@ export default async function TenantDetailPage({ params }: Props) {
 
   // Postgres no garantiza NOT NULL en las columnas de una vista, así que los
   // tipos generados las marcan nullables. Se estrechan aquí, en el borde.
-  if (!tenant?.slug || !tenant.created_at) notFound();
+  if (!tenant?.slug || !tenant.created_at || !tenant.name) notFound();
 
   const limits = asLimits(tenant.limits);
   const status = tenant.status as TenantStatus;
+
+  // El logo vive en un bucket privado: hay que firmarlo en cada lectura.
+  const branding = await resolveBrandingMedia(parseBranding(tenant.branding), tenantId);
+
+  const team: PlatformMember[] = (members ?? []).map((m) => {
+    const profile = m.profile as unknown as {
+      email: string;
+      full_name: string | null;
+    } | null;
+    return {
+      id: m.id,
+      role: m.role as TenantRole,
+      email: profile?.email ?? "—",
+      fullName: profile?.full_name ?? null,
+      pending: m.accepted_at === null,
+      suspended: m.suspended_at !== null,
+      joinedAt: m.created_at,
+    };
+  });
 
   const save = async (prev: PlatformState, formData: FormData) => {
     "use server";
@@ -42,6 +75,18 @@ export default async function TenantDetailPage({ params }: Props) {
   const changeStatus = async (next: string) => {
     "use server";
     await setTenantStatus(tenantId, next);
+  };
+  const changeMemberRole = async (memberId: string, role: string) => {
+    "use server";
+    return setMemberRole(tenantId, memberId, role);
+  };
+  const suspendMember = async (memberId: string, suspended: boolean) => {
+    "use server";
+    return setMemberSuspended(tenantId, memberId, suspended);
+  };
+  const deleteMember = async (memberId: string) => {
+    "use server";
+    return removeMember(tenantId, memberId);
   };
 
   return (
@@ -55,15 +100,39 @@ export default async function TenantDetailPage({ params }: Props) {
           Clientes
         </Link>
 
-        <h1 className="text-2xl font-semibold tracking-tight">{tenant.name}</h1>
-        <p className="mt-1 font-mono text-sm text-muted-foreground">
-          /{tenant.slug} · alta el{" "}
-          {new Date(tenant.created_at).toLocaleDateString("es-ES", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}
-        </p>
+        <div className="flex items-center gap-4">
+          {/* La marca del cliente es la forma más rápida de saber en qué ficha
+              estás: aquí se opera sobre todos los espacios y todos se parecen. */}
+          {branding.logoUrl ? (
+            <Image
+              src={branding.logoUrl}
+              alt=""
+              width={56}
+              height={56}
+              unoptimized /* la URL firmada caduca: optimizarla la cachearía rota */
+              className="size-14 shrink-0 rounded-[var(--radius)] border bg-card object-contain p-1"
+            />
+          ) : (
+            <span
+              className="grid size-14 shrink-0 place-items-center rounded-[var(--radius)] text-lg font-semibold text-white"
+              style={{ background: branding.primary }}
+            >
+              {tenant.name.slice(0, 2).toUpperCase()}
+            </span>
+          )}
+
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight">{tenant.name}</h1>
+            <p className="mt-1 font-mono text-sm text-muted-foreground">
+              /{tenant.slug} · alta el{" "}
+              {new Date(tenant.created_at).toLocaleDateString("es-ES", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </p>
+          </div>
+        </div>
       </div>
 
       <section className="grid gap-3 sm:grid-cols-4">
@@ -89,38 +158,13 @@ export default async function TenantDetailPage({ params }: Props) {
         statusAction={changeStatus}
       />
 
-      <section>
-        <h2 className="mb-2 font-medium">
-          Equipo{" "}
-          <span className="text-sm font-normal text-muted-foreground">
-            ({members?.length ?? 0} de {limits.maxUsers})
-          </span>
-        </h2>
-        <div className="divide-y rounded-[var(--radius)] border bg-card">
-          {(members ?? []).map((m) => {
-            const profile = m.profile as unknown as {
-              email: string;
-              full_name: string | null;
-            } | null;
-            return (
-              <div key={m.id} className="flex items-center gap-3 p-3 text-sm">
-                <span className="min-w-0 flex-1 truncate">
-                  {profile?.full_name ?? profile?.email ?? "—"}
-                  {profile?.full_name && (
-                    <span className="ml-2 text-xs text-muted-foreground">{profile.email}</span>
-                  )}
-                </span>
-                {m.accepted_at === null && (
-                  <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">
-                    invitación pendiente
-                  </span>
-                )}
-                <span className="shrink-0 text-xs text-muted-foreground">{m.role}</span>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      <MemberList
+        members={team}
+        maxUsers={limits.maxUsers}
+        roleAction={changeMemberRole}
+        suspendAction={suspendMember}
+        removeAction={deleteMember}
+      />
 
       <section>
         <h2 className="mb-2 font-medium">Actividad reciente</h2>

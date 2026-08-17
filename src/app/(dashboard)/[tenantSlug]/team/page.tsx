@@ -24,7 +24,7 @@ export default async function TeamPage({
   const { data: members, error } = await supabase
     .from("tenant_users")
     .select(
-      "id, role, accepted_at, created_at, profile:users_profiles!tenant_users_user_id_fkey(id, email, full_name)",
+      "id, role, accepted_at, suspended_at, created_at, profile:users_profiles!tenant_users_user_id_fkey(id, email, full_name)",
     )
     .eq("tenant_id", tenant.id)
     .order("created_at");
@@ -47,6 +47,10 @@ export default async function TeamPage({
       isSelf: profile?.id === user.id,
       // Sin `accepted_at`, la invitación se envió pero nadie la aceptó.
       pending: m.accepted_at === null,
+      // La pausa la aplica Rukma Studio desde el panel de plataforma. Se
+      // muestra aquí porque, si no, esta lista presenta como activo a quien
+      // no puede entrar y el espacio parece tener más gente de la que tiene.
+      suspended: m.suspended_at !== null,
     };
   });
 

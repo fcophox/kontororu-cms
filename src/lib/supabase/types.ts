@@ -755,6 +755,7 @@ export type Database = {
           id: string
           invited_by: string | null
           role: Database["public"]["Enums"]["tenant_role"]
+          suspended_at: string | null
           tenant_id: string
           user_id: string
         }
@@ -764,6 +765,7 @@ export type Database = {
           id?: string
           invited_by?: string | null
           role?: Database["public"]["Enums"]["tenant_role"]
+          suspended_at?: string | null
           tenant_id: string
           user_id: string
         }
@@ -773,6 +775,7 @@ export type Database = {
           id?: string
           invited_by?: string | null
           role?: Database["public"]["Enums"]["tenant_role"]
+          suspended_at?: string | null
           tenant_id?: string
           user_id?: string
         }
