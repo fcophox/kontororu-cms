@@ -16,9 +16,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Versión fija a propósito. Con `latest`, el CI de un commit que no toca
+      # nada puede ponerse rojo porque Supabase publicó una release esa mañana,
+      # y un job bloqueante que falla por su cuenta deja de leerse: cuando salte
+      # por una fuga real entre tenants, nadie lo va a distinguir del ruido.
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.114.0
 
       - name: Levantar Supabase local
         run: supabase start

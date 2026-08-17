@@ -41,8 +41,9 @@ beforeAll(async () => {
 
   const { data: category } = await admin
     .from("categories")
-    .insert({ tenant_id: tenantId, slug: "blog", name: "Blog", kind: "BLOG", locale: "es" })
-    .select("id, translation_group_id")
+    // La categoría no lleva idioma: es transversal a las traducciones.
+    .insert({ tenant_id: tenantId, slug: "blog", name: "Blog", kind: "BLOG" })
+    .select("id")
     .single();
 
   const { data: post } = await admin

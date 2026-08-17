@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createClient } from "@supabase/supabase-js";
-import { PLAN_RATE_LIMITS } from "@/lib/api/rate-limit";
+import { PLAN_RATE_LIMITS, WINDOW_SECONDS } from "@/lib/api/rate-limit";
 
 /**
  * Rate limiting de la API pública.
@@ -105,6 +105,17 @@ describe("aislamiento de cupos", () => {
 describe("respuesta 429", () => {
   it("corta la ráfaga de un plan FREE y explica cuándo reintentar", async () => {
     const limit = PLAN_RATE_LIMITS.FREE;
+
+    // La ventana es fija y se alinea al minuto de reloj, así que una ráfaga
+    // que cruce el corte se cuenta mitad en cada una y pasan hasta el doble.
+    // Es propio de una ventana fija, no un fallo — pero si el test dispara sin
+    // mirar el reloj, falla una de cada tantas veces y acaba siendo ruido.
+    // Se espera al siguiente minuto cuando queda poco margen.
+    const msIntoWindow = Date.now() % (WINDOW_SECONDS * 1000);
+    const msLeft = WINDOW_SECONDS * 1000 - msIntoWindow;
+    if (msLeft < 15_000) {
+      await new Promise((r) => setTimeout(r, msLeft + 250));
+    }
 
     // Se dispara todo junto para que quepa en una sola ventana de un minuto.
     const responses = await Promise.all(
