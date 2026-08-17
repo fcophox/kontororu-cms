@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Quote } from "lucide-react";
 
 export const metadata = { title: "Actualizar contraseña" };
@@ -52,25 +53,23 @@ export default async function UpdatePasswordPage({
           <form action={updatePasswordAction} className="space-y-4">
             <div className="space-y-1.5 text-left">
               <label htmlFor="password" className="text-sm font-medium text-foreground">Nueva contraseña</label>
-              <input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
                 required
+                autoComplete="new-password"
                 placeholder="••••••••"
-                className="h-10 w-full rounded-[var(--radius)] border bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               />
             </div>
             
             <div className="space-y-1.5 text-left">
               <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">Confirmar contraseña</label>
-              <input
+              <PasswordInput
                 id="confirmPassword"
                 name="confirmPassword"
-                type="password"
                 required
+                autoComplete="new-password"
                 placeholder="••••••••"
-                className="h-10 w-full rounded-[var(--radius)] border bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               />
             </div>
 
