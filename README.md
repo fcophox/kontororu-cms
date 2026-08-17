@@ -29,7 +29,7 @@ npm run db:types              # genera los tipos (sustituye el placeholder)
 npm run dev
 ```
 
-Usuarios del seed (contraseña `password123`):
+Usuarios del seed, sólo para desarrollo local (contraseña `password123`):
 
 | Email | Rol |
 |---|---|
