@@ -5,6 +5,9 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/unit/**/*.test.ts", "tests/integration/**/*.test.ts"],
+    // Las suites de integración leen las credenciales de `process.env`, y
+    // vitest no carga `.env.local` por su cuenta. Ver tests/setup-env.ts.
+    setupFiles: ["tests/setup-env.ts"],
     // Cada suite crea usuarios y tenants reales contra Supabase local:
     // en paralelo se pisarían entre sí y los fallos serían intermitentes.
     fileParallelism: false,
