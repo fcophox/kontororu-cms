@@ -58,6 +58,32 @@ supabase gen types typescript --local > src/lib/supabase/types.ts
 
 ⚠️ `SUPABASE_SERVICE_ROLE_KEY` no debe aparecer nunca en un archivo `"use client"`.
 
+## Despliegue
+
+La aplicación corre en **Railway**, que construye y arranca pero no toca la
+base de datos. Las migraciones las aplica **GitHub Actions**: el job `migrate`
+de [ci.yml](.github/workflows/ci.yml) hace `supabase db push` en cada push a
+`main`, y sólo después de que pasen los tests de aislamiento y de calidad.
+
+Secrets que necesita, en *Settings → Secrets and variables → Actions*:
+
+| Secret | De dónde sale |
+|---|---|
+| `SUPABASE_ACCESS_TOKEN` | Cuenta de Supabase → *Account → Access Tokens* |
+| `SUPABASE_PROJECT_REF` | Referencia del proyecto (`supabase.com/dashboard/project/<ref>`) |
+| `SUPABASE_DB_PASSWORD` | Contraseña de la base del proyecto |
+
+El job está asociado al Environment `production`: si le añades revisores
+requeridos, cada aplicación espera una aprobación manual y queda registrado
+quién la dio.
+
+⚠️ **La primera ejecución merece supervisión.** `db push` aplica lo que falte
+según `supabase_migrations.schema_migrations` del proyecto remoto. Si alguna
+migración se aplicó a mano sin quedar registrada ahí, intentará reaplicarla y
+fallará. Comprueba antes con `supabase migration list` que el historial remoto
+coincide con `supabase/migrations/`, y si no, alinéalo con
+`supabase migration repair`.
+
 ## Estructura
 
 ```

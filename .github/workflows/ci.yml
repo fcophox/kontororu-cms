@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Para reaplicar migraciones a mano sin tener que empujar un commit vacío
+  # —por ejemplo cuando un push falló a medias y hay que reintentarlo.
+  workflow_dispatch:
 
 jobs:
   # ===================================================================
@@ -72,3 +75,84 @@ jobs:
       - run: npx tsc --noEmit
       - name: Guardia de service role key
         run: ./scripts/check-service-role-leak.sh
+
+  # ===================================================================
+  # Migraciones de producción.
+  #
+  # Existe porque el despliegue de Railway sólo construye y arranca la app:
+  # `railway.json` no toca Supabase, así que el esquema se actualizaba a
+  # mano. Eso funciona hasta que alguien se olvida, y entonces el código
+  # nuevo corre contra un esquema viejo — una columna que no existe o un
+  # trigger que no está — sin ningún aviso hasta que un cliente lo nota.
+  #
+  # Depende de los DOS jobs anteriores. Aplicar migraciones a la base real
+  # de los clientes con los tests de aislamiento en rojo es exactamente el
+  # orden equivocado: primero se demuestra que el esquema nuevo no filtra
+  # datos entre tenants, después se aplica.
+  # ===================================================================
+  migrate:
+    name: Aplicar migraciones a producción
+    needs: [rls-isolation, quality]
+    # `push` ya está limitado a main, pero `workflow_dispatch` se puede lanzar
+    # desde cualquier rama: sin esta condición, aplicar a producción el esquema
+    # de una rama a medias sería un desplegable del menú.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    # Enlaza este job con un Environment de GitHub llamado `production`.
+    # Si se le configuran revisores requeridos, cada aplicación queda a la
+    # espera de una aprobación humana y se ve en el historial quién la dio.
+    environment: production
+
+    # Dos ejecuciones simultáneas se pisarían el historial de migraciones.
+    # Sin cancelar la que ya corre: abortar un `db push` a medias deja el
+    # esquema en un estado que nadie ha escrito.
+    concurrency:
+      group: supabase-migrate-production
+      cancel-in-progress: false
+
+    # La CLI los lee del entorno. Puestos a nivel de job para no repetirlos
+    # —y no olvidarlos— en cada paso.
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Misma versión fija que el job de aislamiento, y por la misma razón.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.114.0
+
+      # Sin esto, un secret que falta se manifiesta como un error de la CLI
+      # a mitad del proceso, que es más difícil de leer que decirlo aquí.
+      - name: Comprobar credenciales
+        run: |
+          missing=""
+          [ -n "$SUPABASE_ACCESS_TOKEN" ] || missing="$missing SUPABASE_ACCESS_TOKEN"
+          [ -n "$PROJECT_REF" ]           || missing="$missing SUPABASE_PROJECT_REF"
+          [ -n "$SUPABASE_DB_PASSWORD" ]  || missing="$missing SUPABASE_DB_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Faltan secrets:$missing — configúralos en Settings → Secrets → Actions."
+            exit 1
+          fi
+
+      - name: Enlazar el proyecto
+        run: supabase link --project-ref "$PROJECT_REF"
+
+      # El estado local frente al remoto, ANTES de tocar nada. Si el push
+      # sale mal, el log ya dice de dónde se partía; sin esto hay que
+      # deducirlo del historial de commits.
+      - name: Estado de las migraciones
+        run: supabase migration list
+
+      - name: Qué se va a aplicar
+        run: supabase db push --dry-run
+
+      - name: Aplicar
+        run: supabase db push
+
+      - name: Estado final
+        run: supabase migration list
