@@ -62,8 +62,15 @@ supabase gen types typescript --local > src/lib/supabase/types.ts
 
 La aplicación corre en **Railway**, que construye y arranca pero no toca la
 base de datos. Las migraciones las aplica **GitHub Actions**: el job `migrate`
-de [ci.yml](.github/workflows/ci.yml) hace `supabase db push` en cada push a
-`main`, y sólo después de que pasen los tests de aislamiento y de calidad.
+de [ci.yml](.github/workflows/ci.yml) hace `supabase db push` sólo después de
+que pasen los tests de aislamiento y de calidad.
+
+Hoy se lanza **a mano**: *Actions → CI → Run workflow*, sobre `main`. El paso
+a automático en cada push está pendiente de dos cosas — los secrets de abajo y
+unos revisores en el Environment `production` —; sin ellos, automatizarlo sería
+aplicar migraciones a la base de los clientes sin que nadie lo apruebe. Cuando
+estén, basta con cambiar la condición del job a `github.event_name !=
+'pull_request'`.
 
 Secrets que necesita, en *Settings → Secrets and variables → Actions*:
 

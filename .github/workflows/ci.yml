@@ -93,10 +93,18 @@ jobs:
   migrate:
     name: Aplicar migraciones a producción
     needs: [rls-isolation, quality]
-    # `push` ya está limitado a main, pero `workflow_dispatch` se puede lanzar
-    # desde cualquier rama: sin esta condición, aplicar a producción el esquema
-    # de una rama a medias sería un desplegable del menú.
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    # SÓLO a mano, desde Actions → CI → Run workflow.
+    #
+    # Automático en cada push a main es el destino de esto, pero hoy faltan
+    # los secrets y el Environment `production` no tiene revisores: en cuanto
+    # existan los secrets, un push cualquiera aplicaría migraciones sin que
+    # nadie lo aprobara. Mientras tanto se lanza a conciencia, y de paso main
+    # deja de aparecer en rojo por un paso que aún no está configurado.
+    #
+    # La condición de rama se queda: `workflow_dispatch` se puede lanzar desde
+    # cualquiera, y aplicar a producción el esquema de una rama a medias sería
+    # un desplegable del menú.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     # Enlaza este job con un Environment de GitHub llamado `production`.
