@@ -62,15 +62,16 @@ supabase gen types typescript --local > src/lib/supabase/types.ts
 
 La aplicación corre en **Railway**, que construye y arranca pero no toca la
 base de datos. Las migraciones las aplica **GitHub Actions**: el job `migrate`
-de [ci.yml](.github/workflows/ci.yml) hace `supabase db push` sólo después de
-que pasen los tests de aislamiento y de calidad.
+de [ci.yml](.github/workflows/ci.yml) hace `supabase db push` en los push a
+`main`, y sólo después de que pasen los tests de aislamiento y de calidad.
 
-Hoy se lanza **a mano**: *Actions → CI → Run workflow*, sobre `main`. El paso
-a automático en cada push está pendiente de dos cosas — los secrets de abajo y
-unos revisores en el Environment `production` —; sin ellos, automatizarlo sería
-aplicar migraciones a la base de los clientes sin que nadie lo apruebe. Cuando
-estén, basta con cambiar la condición del job a `github.event_name !=
-'pull_request'`.
+No corre en todos los push: un job previo mira si el push tocó
+`supabase/migrations/` y, si no, `migrate` se salta. Así, con revisores
+configurados, sólo se pide aprobación cuando de verdad hay algo que aplicar —
+una aprobación que casi siempre sobra se acaba dando sin mirar.
+
+También se puede lanzar a mano desde *Actions → CI → Run workflow*, sobre
+`main`, que es lo que hay que usar para reintentar un push interrumpido.
 
 Secrets que necesita, en *Settings → Secrets and variables → Actions*:
 
@@ -84,12 +85,16 @@ El job está asociado al Environment `production`: si le añades revisores
 requeridos, cada aplicación espera una aprobación manual y queda registrado
 quién la dio.
 
-⚠️ **La primera ejecución merece supervisión.** `db push` aplica lo que falte
-según `supabase_migrations.schema_migrations` del proyecto remoto. Si alguna
-migración se aplicó a mano sin quedar registrada ahí, intentará reaplicarla y
-fallará. Comprueba antes con `supabase migration list` que el historial remoto
-coincide con `supabase/migrations/`, y si no, alinéalo con
-`supabase migration repair`.
+⚠️ **Escribe las migraciones para poder reaplicarlas.** `db push` aplica lo que
+falte según `supabase_migrations.schema_migrations` del proyecto remoto, y un
+push interrumpido puede dejar objetos creados sin que la migración conste como
+aplicada: al reintentar, un `create trigger`, `create index` o `create policy`
+sin guarda choca con lo que él mismo creó y no hay salida sin tocar la base a
+mano. Usa `create or replace`, `if not exists`, o un `drop ... if exists`
+previo. Pasó con [20260818000100](supabase/migrations/20260818000100_addon_events.sql).
+
+Si el historial remoto se desalinea del directorio —porque algo se aplicó por
+fuera—, se arregla con `supabase migration repair` antes de volver a empujar.
 
 ## Estructura
 

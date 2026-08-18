@@ -77,6 +77,56 @@ jobs:
         run: ./scripts/check-service-role-leak.sh
 
   # ===================================================================
+  # ¿Este push trae migraciones nuevas?
+  #
+  # Con revisores obligatorios en el Environment, un `migrate` que arranca
+  # en cada push pediría aprobación también cuando no hay nada que aplicar.
+  # Una aprobación que casi siempre es "no hacía falta" se acaba dando sin
+  # mirar, y entonces deja de proteger el día que sí importa.
+  # ===================================================================
+  migrations-changed:
+    name: ¿Hay migraciones nuevas?
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: check
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          # A mano se lanza porque alguien quiere aplicar algo: no se discute.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Disparo manual: se aplica."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Primer push de la rama, force-push o base desconocida: ante la
+          # duda se sigue adelante. `db push` no hace nada si no hay nada
+          # pendiente, así que equivocarse por exceso sólo cuesta un job.
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "Sin base con la que comparar: se aplica por si acaso."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git diff --name-only "$BEFORE" "$AFTER" | grep -q '^supabase/migrations/'; then
+            echo "Migraciones tocadas en este push:"
+            git diff --name-only "$BEFORE" "$AFTER" | grep '^supabase/migrations/'
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Ninguna migración en este push."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ===================================================================
   # Migraciones de producción.
   #
   # Existe porque el despliegue de Railway sólo construye y arranca la app:
@@ -92,19 +142,16 @@ jobs:
   # ===================================================================
   migrate:
     name: Aplicar migraciones a producción
-    needs: [rls-isolation, quality]
-    # SÓLO a mano, desde Actions → CI → Run workflow.
-    #
-    # Automático en cada push a main es el destino de esto, pero hoy faltan
-    # los secrets y el Environment `production` no tiene revisores: en cuanto
-    # existan los secrets, un push cualquiera aplicaría migraciones sin que
-    # nadie lo aprobara. Mientras tanto se lanza a conciencia, y de paso main
-    # deja de aparecer en rojo por un paso que aún no está configurado.
-    #
-    # La condición de rama se queda: `workflow_dispatch` se puede lanzar desde
-    # cualquiera, y aplicar a producción el esquema de una rama a medias sería
-    # un desplegable del menú.
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: [rls-isolation, quality, migrations-changed]
+    # Automático, pero sólo cuando hay algo que aplicar y sólo desde main:
+    # `workflow_dispatch` se puede lanzar desde cualquier rama, y aplicar a
+    # producción el esquema de una rama a medias sería un desplegable del
+    # menú. La aprobación humana, si se quiere, se configura como revisores
+    # del Environment `production` — no se codifica aquí.
+    if: |
+      needs.migrations-changed.outputs.changed == 'true'
+      && github.ref == 'refs/heads/main'
+      && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
 
     # Enlaza este job con un Environment de GitHub llamado `production`.
