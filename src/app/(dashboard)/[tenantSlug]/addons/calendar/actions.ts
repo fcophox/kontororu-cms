@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { can } from "@/lib/auth/roles";
 import { CalendarSettingsSchema, buildSlots } from "@/lib/addons/calendar";
+import { dispatchNow } from "@/lib/content/webhook-dispatch";
 
 export type CalendarState = { error?: string; ok?: string };
 
@@ -77,6 +79,12 @@ export async function saveCalendarSettings(
     return { error: "No se pudo guardar la disponibilidad." };
   }
   if (!data) return { error: "El complemento Calendario no está activo." };
+
+  // El trigger acaba de encolar `addon.updated`; se entrega YA. Esperar al
+  // turno del cron —cinco minutos— dejaría la web del cliente ofreciendo
+  // horas que aquí se acaban de cerrar, que es justo lo que este evento
+  // existe para evitar.
+  after(() => dispatchNow(tenant.id));
 
   revalidatePath(`/${tenantSlug}/addons/calendar`);
   return { ok: "Disponibilidad guardada." };

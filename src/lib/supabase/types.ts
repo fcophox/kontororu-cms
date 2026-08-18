@@ -1275,6 +1275,7 @@ export type Database = {
         | "post.deleted"
         | "category.updated"
         | "media.deleted"
+        | "addon.updated"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1421,6 +1422,7 @@ export const Constants = {
         "post.deleted",
         "category.updated",
         "media.deleted",
+        "addon.updated",
       ],
     },
   },

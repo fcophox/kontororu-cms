@@ -16,6 +16,7 @@ export const WEBHOOK_EVENTS = [
   "post.deleted",
   "category.updated",
   "media.deleted",
+  "addon.updated",
 ] as const;
 
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
@@ -28,4 +29,5 @@ export const WEBHOOK_EVENT_LABELS: Record<WebhookEvent, string> = {
   "post.deleted": "Contenido eliminado",
   "category.updated": "Categoría modificada",
   "media.deleted": "Archivo eliminado",
+  "addon.updated": "Complemento reconfigurado",
 };

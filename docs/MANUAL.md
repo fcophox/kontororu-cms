@@ -275,8 +275,9 @@ la lista para poder auditar qué se usó y cuándo.
 
 ### Webhooks
 
-Avisan a la web del cliente cuando cambia el contenido, para que se actualice
-sola en vez de esperar a la siguiente publicación.
+Avisan a la web del cliente cuando cambia el contenido —y cuando se
+reconfigura un complemento—, para que se actualice sola en vez de esperar a la
+siguiente publicación.
 
 1. **Nuevo webhook** → nombre, dirección (`https://…`) y eventos.
 2. Copia el **secreto**: su web lo necesita para comprobar que el aviso viene
@@ -286,12 +287,28 @@ Sólo se aceptan direcciones públicas por HTTPS. Abajo se ve el registro de
 envíos con su resultado; los fallos se reintentan solos con espera creciente
 —1, 2, 4, 8, 16 y 32 minutos— y hay botón para reintentar a mano.
 
+**Complemento reconfigurado** (`addon.updated`) es el evento que avisa de los
+cambios de configuración: activar o apagar un complemento, y cambiar la
+disponibilidad del Calendario. Sin él, un horario corregido tarda hasta medio
+minuto en aparecer, y más si la web del cliente cachea por su cuenta.
+
+Los webhooks que ya existían cuando se añadió el evento quedaron suscritos
+solos, así que no hay que repasar espacio por espacio. En los que se creen a
+partir de ahora, la casilla se marca a mano como las demás.
+
 ---
 
 ## 6. Preguntas frecuentes
 
 **Publiqué algo y la web del cliente no lo muestra.**
 Mira **Ajustes → Webhooks**: si la última entrega falló, ahí está el motivo.
+
+**Cambié la disponibilidad del Calendario y la web sigue mostrando lo viejo.**
+Primero espera medio minuto: la respuesta de la API se cachea 30 segundos. Si
+sigue igual, mira si el webhook del cliente tiene marcado *Complemento
+reconfigurado* y si la última entrega salió bien. Si ambas cosas están en
+orden, el que cachea de más es su web: estará pidiendo la disponibilidad con
+un `revalidate` largo o en tiempo de compilación.
 Reintenta desde el mismo panel.
 
 **Se me ha borrado media entrada.**

@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { can } from "@/lib/auth/roles";
 import { findAddon, isAddonKey } from "@/lib/addons/catalog";
+import { dispatchNow } from "@/lib/content/webhook-dispatch";
 
 /**
  * Activa o desactiva un complemento del espacio.
@@ -58,6 +60,11 @@ export async function toggleAddon(
     entity: "tenant_addon",
     metadata: { addon: addonKey, name: findAddon(addonKey)?.name ?? addonKey },
   });
+
+  // Apagar un complemento deja su endpoint devolviendo 404: la web del
+  // cliente necesita enterarse a la vez que el panel, no cinco minutos
+  // después con la sección ya rota.
+  after(() => dispatchNow(tenant.id));
 
   revalidatePath(`/${tenantSlug}/addons`);
   revalidatePath(`/${tenantSlug}`, "layout");

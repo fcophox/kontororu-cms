@@ -190,6 +190,49 @@ se hace desde el panel, en **Complementos → Reacciones**.
 
 ---
 
+## `GET /addons/calendar/availability`
+
+> Requiere el complemento **Calendario** activo en el espacio. Sin él, `404`.
+
+La disponibilidad semanal que el cliente ha configurado en **Complementos →
+Calendario**, para que el formulario de agenda de tu web sólo ofrezca tramos
+que existen. Scope `content:read`.
+
+Se devuelve la **semana**, no fechas concretas: la configuración es un patrón
+semanal. Tú ya sabes qué día de la semana cae cada fecha.
+
+```json
+{
+  "data": {
+    "timezone": "America/Santiago",
+    "startTime": "09:00",
+    "endTime": "18:00",
+    "slotMinutes": 30,
+    "slots": [{ "start": "09:00", "end": "09:30" }],
+    "week": [
+      {
+        "weekday": 1,
+        "label": "Lunes",
+        "isClosed": false,
+        "available": [{ "start": "10:00", "end": "10:30" }]
+      }
+    ]
+  }
+}
+```
+
+`slots` es la rejilla completa del día antes de aplicar bloqueos; `available`
+es lo que de verdad se ofrece ese día. **Usa `available`** — `slots` sólo
+sirve si quieres pintar en gris los tramos cerrados.
+
+`weekday` usa el mismo índice que `Date#getDay()`: 0 = domingo, 6 = sábado.
+
+⚠️ **Si cacheas esta respuesta, suscríbete al evento `addon.updated`** (ver
+*Webhooks*) y revalida con él. Sin esa suscripción, no la caches más de lo que
+dice su cabecera: tu web seguiría ofreciendo horas que el cliente ya cerró.
+
+---
+
 ## `GET /media/{id}`
 
 El mismo objeto, con firma recién generada y `expiresIn` en segundos. Sirve
@@ -279,8 +322,22 @@ Siempre la misma forma:
 
 ## Caché
 
-Las respuestas llevan `Cache-Control: public, s-maxage=60, stale-while-revalidate=600`.
-Puedes cachear con tranquilidad: el webhook te avisa en cuanto cambia algo.
+**Contenido** (`/posts`, `/categories`, `/media`) —
+`Cache-Control: public, s-maxage=60, stale-while-revalidate=600`. Puedes
+cachear con tranquilidad: el webhook te avisa en cuanto cambia algo, así que
+la ventana sólo cubre el hueco entre la publicación y el aviso.
+
+**Configuración de complementos** (`/addons/calendar/availability`) —
+`Cache-Control: public, s-maxage=30, must-revalidate`. Ventana más corta y sin
+servir obsoleto, porque aquí **no hay webhook que avise**: los eventos se
+emiten sobre el contenido, no sobre la configuración. Si la cacheas por tu
+cuenta más allá de esos 30 s, un horario que el cliente acaba de corregir
+seguirá apareciendo mal en tu web y no habrá nada que lo despierte.
+
+Si te suscribes al evento `addon.updated` (ver *Webhooks*) puedes cachear esa
+respuesta todo lo que quieras y revalidar cuando te avisemos, que es lo que
+recomendamos. Sin suscripción, respeta la cabecera y no fijes un `revalidate`
+propio más largo.
 
 ## Límite de peticiones
 
@@ -317,7 +374,41 @@ suele significar un bucle en el código, no tráfico real.
 ## Webhooks: mantener la web al día
 
 Configura en **Ajustes → Webhooks** un endpoint de tu web. Te llamamos al
-publicar, actualizar o despublicar contenido.
+publicar, actualizar o despublicar contenido, y al cambiar la configuración de
+un complemento.
+
+### `addon.updated`
+
+Se emite cuando el cliente activa, apaga o reconfigura un complemento — por
+ejemplo, al cambiar su disponibilidad en **Complementos → Calendario**.
+
+```json
+{
+  "event": "addon.updated",
+  "tenantId": "…",
+  "occurredAt": "2026-08-18T19:28:43Z",
+  "data": { "addon": "calendar", "isEnabled": true }
+}
+```
+
+El payload **no trae la configuración**, igual que el de contenido no trae el
+cuerpo del artículo: es un aviso de "esto cambió, vuelve a pedirlo". Revalida
+la etiqueta con la que cacheaste `/addons/calendar/availability` y vuelve a
+leer el endpoint.
+
+`isEnabled: false` significa que el complemento ya no responde: su endpoint
+devuelve `404` y conviene que retires de tu web la sección que lo usa, en vez
+de dejarla pidiendo algo que ya no existe.
+
+Suscribirse es opcional. Si no lo haces, los cambios siguen llegando por la
+caché corta del endpoint (30 s); con el evento llegan en el acto.
+
+> **Si tu webhook ya existía**, lo suscribimos nosotros al desplegar este
+> evento: no tienes que tocar nada, pero **empezarás a recibir entregas con
+> `event: "addon.updated"`**. Comparten forma y firma con las demás, así que
+> un receptor que mire `event` antes de actuar las ignora sin más. Si el tuyo
+> revalida a ciegas, hará alguna revalidación de sobra — y si prefieres no
+> recibirlas, desmarca el evento en **Ajustes → Webhooks**.
 
 Cabeceras de cada entrega:
 
