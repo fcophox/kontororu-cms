@@ -66,6 +66,12 @@ begin
 end;
 $$;
 
+-- `create or replace` no existe para triggers, así que un archivo que se
+-- quede a medias —o que se reintente tras un push interrumpido— choca contra
+-- el trigger que él mismo creó y no hay forma de avanzar sin tocar la base a
+-- mano. Con el drop previo, reaplicarlo es seguro y converge al mismo estado.
+drop trigger if exists tenant_addons_enqueue_events on public.tenant_addons;
+
 create trigger tenant_addons_enqueue_events
   after insert or update or delete on public.tenant_addons
   for each row execute function public.tg_enqueue_addon_event();
