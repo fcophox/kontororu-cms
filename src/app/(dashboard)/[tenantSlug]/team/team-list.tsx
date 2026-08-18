@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
-import { UserPlus, Trash2, Loader2, Clock, PauseCircle } from "lucide-react";
+import { useActionState, useState, useTransition } from "react";
+import { UserPlus, Trash2, Loader2, Clock, PauseCircle, KeyRound, Mail, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { atLeast } from "@/lib/auth/roles";
 import type { TenantRole } from "@/lib/auth/roles";
 import type { TeamState } from "./actions";
@@ -33,26 +34,43 @@ const ROLE_HINTS: Record<TenantRole, string> = {
   CONTRIBUTOR: "Sólo redacta sus propios borradores.",
 };
 
+/**
+ * Contraseña sugerida para el alta directa.
+ *
+ * `crypto.getRandomValues` y no `Math.random()`: esto acaba siendo la
+ * credencial real de una cuenta, aunque se cambie al primer acceso.
+ */
+function suggestPassword(): string {
+  const alphabet = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint32Array(16));
+  return Array.from(bytes, (n) => alphabet[n % alphabet.length]).join("");
+}
+
 export function TeamList({
   members,
   actorRole,
   atLimit,
-  inviteAction,
+  canCreateDirectly,
+  addAction,
   changeRoleAction,
   removeAction,
 }: {
   members: Member[];
   actorRole: TenantRole;
   atLimit: boolean;
-  inviteAction: (prev: TeamState, formData: FormData) => Promise<TeamState>;
+  /** El alta directa con contraseña la reserva Rukma Studio. */
+  canCreateDirectly: boolean;
+  addAction: (prev: TeamState, formData: FormData) => Promise<TeamState>;
   changeRoleAction: (memberId: string, role: TenantRole) => Promise<void>;
   removeAction: (memberId: string) => Promise<void>;
 }) {
-  const [state, formAction, isInviting] = useActionState<TeamState, FormData>(
-    inviteAction,
+  const [state, formAction, isSubmitting] = useActionState<TeamState, FormData>(
+    addAction,
     {},
   );
   const [pending, startTransition] = useTransition();
+  const [mode, setMode] = useState<"invite" | "direct">("invite");
+  const [password, setPassword] = useState("");
 
   // Sólo se ofrecen roles iguales o inferiores al propio. El servidor lo
   // vuelve a comprobar: esto evita ofrecer una opción que va a fallar.
@@ -146,12 +164,79 @@ export function TeamList({
         action={formAction}
         className="h-fit space-y-3 rounded-[var(--radius)] border bg-card p-4"
       >
-        <h2 className="font-medium">Invitar colaborador</h2>
+        <h2 className="font-medium">Añadir colaborador</h2>
+
+        {/* El modo va en el formulario, no en dos formularios distintos: el
+            email y el rol son los mismos y duplicarlos invitaba a que se
+            desincronizaran. */}
+        <input type="hidden" name="mode" value={canCreateDirectly ? mode : "invite"} />
+        {canCreateDirectly && (
+        <div className="grid grid-cols-2 gap-1 rounded-[var(--radius)] bg-muted p-1">
+          {(
+            [
+              ["invite", "Invitar", Mail],
+              ["direct", "Alta directa", KeyRound],
+            ] as const
+          ).map(([value, label, Icon]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setMode(value)}
+              aria-pressed={mode === value}
+              className={`flex items-center justify-center gap-1.5 rounded-[calc(var(--radius)-2px)] px-2 py-1.5 text-xs font-medium transition-colors ${
+                mode === value
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="size-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
+        )}
+
+        <p className="text-xs text-muted-foreground">
+          {!canCreateDirectly || mode === "invite"
+            ? "Recibe un correo y elige su propia contraseña al entrar."
+            : "La cuenta queda creada y confirmada al momento, sin correo de verificación. Entrega la contraseña por un canal seguro y pídele que la cambie en Configuración → Perfil."}
+        </p>
 
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
           <Input id="email" name="email" type="email" required placeholder="persona@empresa.com" />
         </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="fullName">Nombre (opcional)</Label>
+          <Input id="fullName" name="fullName" type="text" placeholder="Nombre y apellidos" />
+        </div>
+
+        {canCreateDirectly && mode === "direct" && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Contraseña</Label>
+              <button
+                type="button"
+                onClick={() => setPassword(suggestPassword())}
+                className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <RefreshCw className="size-3" />
+                Generar
+              </button>
+            </div>
+            <PasswordInput
+              id="password"
+              name="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Mínimo 8 caracteres"
+            />
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <Label htmlFor="role">Rol</Label>
@@ -177,13 +262,17 @@ export function TeamList({
             Has alcanzado el límite de colaboradores de tu plan.
           </p>
         ) : (
-          <Button type="submit" className="w-full" disabled={isInviting}>
-            {isInviting ? (
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? (
               <Loader2 className="size-4 animate-spin" />
+            ) : canCreateDirectly && mode === "direct" ? (
+              <KeyRound className="size-4" />
             ) : (
               <UserPlus className="size-4" />
             )}
-            Enviar invitación
+            {canCreateDirectly && mode === "direct"
+              ? "Crear cuenta y añadir"
+              : "Enviar invitación"}
           </Button>
         )}
       </form>

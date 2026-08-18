@@ -1,7 +1,7 @@
 import { requirePermission } from "@/lib/auth/guards";
 import { createServerClient } from "@/lib/supabase/server";
 import { TeamList } from "./team-list";
-import { inviteMember, changeRole, removeMember, type TeamState } from "./actions";
+import { addMember, changeRole, removeMember, type TeamState } from "./actions";
 import type { TenantRole } from "@/lib/auth/tenant-context";
 
 export const metadata = { title: "Equipo" };
@@ -54,9 +54,9 @@ export default async function TeamPage({
     };
   });
 
-  const invite = async (prev: TeamState, formData: FormData) => {
+  const add = async (prev: TeamState, formData: FormData) => {
     "use server";
-    return inviteMember(tenantSlug, prev, formData);
+    return addMember(tenantSlug, prev, formData);
   };
   const setRole = async (memberId: string, next: TenantRole) => {
     "use server";
@@ -81,7 +81,8 @@ export default async function TeamPage({
         members={rows}
         actorRole={user.isSuperadmin ? "OWNER" : role}
         atLimit={rows.length >= tenant.limits.maxUsers}
-        inviteAction={invite}
+        canCreateDirectly={user.isSuperadmin}
+        addAction={add}
         changeRoleAction={setRole}
         removeAction={remove}
       />

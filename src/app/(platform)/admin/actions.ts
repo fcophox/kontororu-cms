@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/tenant-context";
 import { PLANS, TENANT_STATUSES } from "@/lib/auth/plans";
+import { asLimits } from "@/lib/content/json";
 import { slugify } from "@/lib/content/slug";
 import type { Json } from "@/lib/supabase/types";
 
@@ -317,6 +318,135 @@ export async function setMemberSuspended(
   revalidatePath("/admin");
   revalidatePath(`/admin/${tenantId}`);
   return { ok: suspended ? "Acceso pausado." : "Acceso restablecido." };
+}
+
+const CreateMemberInput = z.object({
+  email: z.string().trim().toLowerCase().email("Email no válido"),
+  fullName: z.string().trim().max(80).optional().or(z.literal("")),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  role: z.enum(MEMBER_ROLES),
+});
+
+/**
+ * Alta directa de un colaborador desde el panel de plataforma.
+ *
+ * Crea la cuenta ya confirmada —`email_confirm: true`— con una contraseña que
+ * fija Rukma Studio, así que la persona entra por /login al instante y no
+ * depende de recibir ningún correo. Existe porque el correo es justo lo que
+ * falla en los casos de soporte: dominios corporativos que filtran los emails
+ * del sistema, o un cliente que perdió el acceso y necesita volver a entrar
+ * hoy, no cuando su equipo de IT desbloquee el remitente.
+ *
+ * Sólo SuperAdmin. Fijarle la contraseña a otra persona es una capacidad que
+ * no debe tener quien administra un espacio: durante un rato hay dos que la
+ * conocen, y aquí queda registrado en `audit_logs` quién la puso.
+ */
+export async function createMemberAccount(
+  tenantId: string,
+  _prev: PlatformState,
+  formData: FormData,
+): Promise<PlatformState> {
+  const actor = await requireSuperadmin();
+
+  const parsed = CreateMemberInput.safeParse({
+    email: formData.get("email"),
+    fullName: formData.get("fullName") ?? "",
+    password: formData.get("password"),
+    role: formData.get("role"),
+  });
+
+  if (!parsed.success) {
+    const issues = z.flattenError(parsed.error).fieldErrors;
+    return { error: Object.values(issues).flat()[0] ?? "Datos no válidos" };
+  }
+
+  const { email, password, role } = parsed.data;
+  const fullName = parsed.data.fullName?.trim() || null;
+
+  const admin = createServiceClient();
+
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("id, limits")
+    .eq("id", tenantId)
+    .maybeSingle();
+
+  if (!tenant) return { error: "Ese espacio ya no existe." };
+
+  // El límite del plan se respeta también desde plataforma: si hace falta
+  // saltárselo, se amplía el límite del cliente y queda constancia, en vez
+  // de que el contador mienta.
+  const { count } = await admin
+    .from("tenant_users")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId);
+
+  const maxUsers = asLimits(tenant.limits).maxUsers;
+  if ((count ?? 0) >= maxUsers) {
+    return {
+      error: `El plan de este cliente permite ${maxUsers} colaboradores. Amplía el límite antes de añadir a nadie más.`,
+    };
+  }
+
+  // Una persona puede colaborar con varios clientes: si ya tiene cuenta se
+  // reutiliza. NO se le cambia la contraseña — eso le rompería el acceso a
+  // los demás espacios donde ya trabaja.
+  const { data: existingProfile } = await admin
+    .from("users_profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+
+  let userId = existingProfile?.id ?? null;
+  const reused = Boolean(userId);
+
+  if (!userId) {
+    const { data, error } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: fullName ? { full_name: fullName } : {},
+    });
+    if (error) return { error: `No se pudo crear la cuenta: ${error.message}` };
+    userId = data.user.id;
+  }
+
+  const { error: linkError } = await admin.from("tenant_users").insert({
+    tenant_id: tenantId,
+    user_id: userId,
+    role,
+    invited_by: actor.id,
+    // Nada que aceptar: no se ha enviado ningún correo.
+    accepted_at: new Date().toISOString(),
+  });
+
+  if (linkError) {
+    // La cuenta recién creada se queda sin espacio al que entrar: se deshace
+    // en vez de dejar un usuario huérfano que bloquea ese email para siempre.
+    if (!reused) await admin.auth.admin.deleteUser(userId);
+
+    if (linkError.message.includes("tenant_users_tenant_id_user_id_key")) {
+      return { error: "Esa persona ya forma parte de este espacio." };
+    }
+    return { error: "No se pudo añadir al colaborador." };
+  }
+
+  await admin.from("audit_logs").insert({
+    tenant_id: tenantId,
+    actor_id: actor.id,
+    action: "member.create",
+    entity: "tenant_users",
+    metadata: { email, role, reused },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath(`/admin/${tenantId}`);
+
+  return {
+    ok: reused
+      ? `${email} ya tenía cuenta: se ha añadido al espacio y conserva su contraseña actual.`
+      : `Cuenta creada para ${email}. Ya puede entrar con la contraseña que has definido.`,
+  };
 }
 
 /**

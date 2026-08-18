@@ -16,6 +16,7 @@ import {
   setMemberRole,
   setMemberSuspended,
   removeMember,
+  createMemberAccount,
   type PlatformState,
 } from "../actions";
 
@@ -87,6 +88,10 @@ export default async function TenantDetailPage({ params }: Props) {
   const deleteMember = async (memberId: string) => {
     "use server";
     return removeMember(tenantId, memberId);
+  };
+  const createMember = async (prev: PlatformState, formData: FormData) => {
+    "use server";
+    return createMemberAccount(tenantId, prev, formData);
   };
 
   return (
@@ -164,6 +169,7 @@ export default async function TenantDetailPage({ params }: Props) {
         roleAction={changeMemberRole}
         suspendAction={suspendMember}
         removeAction={deleteMember}
+        createAction={createMember}
       />
 
       <section>

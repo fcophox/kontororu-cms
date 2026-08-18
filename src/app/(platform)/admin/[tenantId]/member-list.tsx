@@ -5,6 +5,7 @@ import { Clock, PauseCircle, PlayCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { TenantRole } from "@/lib/auth/roles";
 import type { PlatformState } from "../actions";
+import { CreateMemberDialog } from "./create-member-dialog";
 
 export type PlatformMember = {
   id: string;
@@ -44,12 +45,14 @@ export function MemberList({
   roleAction,
   suspendAction,
   removeAction,
+  createAction,
 }: {
   members: PlatformMember[];
   maxUsers: number;
   roleAction: (memberId: string, role: string) => Promise<PlatformState>;
   suspendAction: (memberId: string, suspended: boolean) => Promise<PlatformState>;
   removeAction: (memberId: string) => Promise<PlatformState>;
+  createAction: (prev: PlatformState, formData: FormData) => Promise<PlatformState>;
 }) {
   const [state, setState] = useState<PlatformState>({});
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -68,14 +71,18 @@ export function MemberList({
 
   return (
     <section>
-      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-medium">
-          Equipo{" "}
-          <span className="text-sm font-normal text-muted-foreground">
-            ({active} activos de {maxUsers}
-            {active !== members.length && ` · ${members.length - active} en pausa`})
-          </span>
-        </h2>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="font-medium">
+            Equipo{" "}
+            <span className="text-sm font-normal text-muted-foreground">
+              ({active} activos de {maxUsers}
+              {active !== members.length && ` · ${members.length - active} en pausa`})
+            </span>
+          </h2>
+
+          <CreateMemberDialog action={createAction} />
+        </div>
 
         {state.error && <p className="text-sm text-destructive">{state.error}</p>}
         {state.ok && (

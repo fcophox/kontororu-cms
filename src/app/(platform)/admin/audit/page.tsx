@@ -8,6 +8,8 @@ const ACTION_LABELS: Record<string, string> = {
   "tenant.status": "Cambio de estado",
   "tenant.plan": "Cambio de plan o límites",
   "team.invite": "Invitación a colaborador",
+  "team.create": "Alta directa de colaborador",
+  "member.create": "Alta directa desde plataforma",
   "api_key.create": "API key creada",
   "api_key.revoke": "API key revocada",
   "post.publish": "Contenido publicado",

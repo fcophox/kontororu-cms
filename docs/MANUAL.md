@@ -192,9 +192,32 @@ imagen.
 
 ### Equipo
 
-Invitar por email eligiendo rol, cambiar roles y expulsar. Quien no ha
-aceptado aún aparece como *invitación pendiente*. El contador muestra el
-límite del plan.
+Añadir colaboradores eligiendo rol, cambiar roles y expulsar. El contador
+muestra el límite del plan.
+
+Hay dos formas de dar de alta a alguien:
+
+- **Invitar** — le llega un correo y la cuenta no existe hasta que lo abre.
+  Mientras tanto aparece como *invitación pendiente*. Es lo normal: la
+  contraseña la elige la propia persona y nadie más la conoce.
+- **Alta directa** — *sólo Rukma Studio*. La cuenta se crea aquí mismo, ya
+  confirmada, con la contraseña que escribas (el botón *Generar* propone una
+  segura). Puede entrar por `/login` al instante, sin verificar el correo.
+  Se usa cuando el correo del cliente filtra los emails del sistema o cuando
+  se da el alta con la persona delante.
+
+El alta directa también está en el panel de plataforma: **Clientes → ficha
+del cliente → Equipo → Añadir colaborador**, que abre el mismo formulario en
+una ventana y permite además asignar el rol de propietario.
+
+⚠️ En el alta directa hay un rato en el que dos personas conocen la
+contraseña — por eso queda reservada a Rukma Studio y registrada en
+Actividad. Entrégasela por un canal seguro y pídele que la cambie en
+**Configuración → Perfil** al primer acceso.
+
+Si el email ya tiene cuenta en Kontorōru —porque colabora con otro cliente—
+se reutiliza esa cuenta y conserva su contraseña actual; sólo se le añade al
+espacio.
 
 ---
 
