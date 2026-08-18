@@ -1,6 +1,11 @@
 import { guardApiRequest } from "@/lib/api/authenticate";
 import { createServiceClient } from "@/lib/supabase/server";
-import { apiError, apiJson, corsPreflight } from "@/lib/api/response";
+import {
+  apiError,
+  apiJson,
+  corsPreflight,
+  volatileCacheHeaders,
+} from "@/lib/api/response";
 import {
   parseCalendarSettings,
   buildSlots,
@@ -73,6 +78,8 @@ export async function GET(req: Request) {
         })),
       },
     },
-    guard.headers,
+    // La disponibilidad no la avisa ningún webhook: se sirve con una ventana
+    // corta para que un cambio del panel llegue solo a la web del cliente.
+    { ...guard.headers, ...volatileCacheHeaders() },
   );
 }

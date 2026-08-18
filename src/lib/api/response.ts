@@ -37,6 +37,30 @@ export function apiError(code: ApiErrorCode, message: string) {
 export const CACHE_SECONDS = 60;
 export const STALE_SECONDS = 600;
 
+/**
+ * Respuestas cuyo aviso no está garantizado.
+ *
+ * La ventana de arriba se apoya en una premisa: que el webhook avisa a la web
+ * del cliente en cuanto algo cambia. Para el contenido se cumple sola. Para
+ * la configuración de los complementos sólo se cumple si el consumidor se ha
+ * suscrito a `addon.updated`, y suscribirse es opcional.
+ *
+ * Para quien no lo hace, `stale-while-revalidate` significa servir hasta diez
+ * minutos de disponibilidad vieja sin que nada lo corrija: un horario
+ * arreglado a las 9:00 se sigue ofreciendo a las 9:09, y desde el panel sólo
+ * se ve que "el CMS no guarda".
+ *
+ * Ventana corta y sin servir obsoleto: quien escucha el evento revalida en el
+ * acto, y quien no, se pone al día solo en medio minuto.
+ */
+export const VOLATILE_CACHE_SECONDS = 30;
+
+export function volatileCacheHeaders(): Record<string, string> {
+  return {
+    "Cache-Control": `public, s-maxage=${VOLATILE_CACHE_SECONDS}, must-revalidate`,
+  };
+}
+
 export function apiJson<T>(body: T, extraHeaders: Record<string, string> = {}) {
   return NextResponse.json(body, {
     headers: {
