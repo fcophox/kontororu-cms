@@ -1,7 +1,13 @@
 name: Worker de webhooks
 
 # =====================================================================
-# El cron que Railway no tiene.
+# Red de seguridad de la cola de webhooks.
+#
+# El camino normal ya no pasa por aquí: publicar dispara el drenado en el acto
+# desde la propia Server Action (`dispatchNow`, en lib/content/webhook-dispatch).
+# Este cron es lo que recoge lo que aquel no pudo — los reintentos con backoff,
+# lo encolado mientras la app estaba caída — y lo que purga `api_rate_limits`.
+# Quitarlo deja las entregas fallidas sin reintentar nunca.
 #
 # El repo traía un `vercel.json` que programaba
 # /api/internal/webhooks/dispatch cada minuto, pero ese fichero sólo lo lee
@@ -10,10 +16,13 @@ name: Worker de webhooks
 # también purga `api_rate_limits`, así que esa tabla tampoco se limpiaba.
 # El `vercel.json` ya no está en el repo; este workflow es el único disparador.
 #
-# Cinco minutos, no uno: es el intervalo mínimo de los cron de GitHub
-# Actions, y además se ejecutan cuando hay hueco, no puntuales. Para un
-# webhook que revalida una web es holgado; si algún día hace falta cadencia
-# real de un minuto, esto se sustituye por un servicio cron en Railway.
+# Cinco minutos, no uno: es el intervalo mínimo de los cron de GitHub Actions, y
+# además se ejecutan cuando hay hueco, no puntuales. Para reintentos con backoff
+# de 1 a 32 minutos sobra — la publicación en caliente ya no depende de esto.
+#
+# ⚠️ GitHub desactiva los workflows programados tras 60 días sin actividad en el
+# repositorio. Si esto se apaga, publicar sigue funcionando pero los reintentos
+# dejan de ejecutarse en silencio; el sustituto robusto es un cron en Railway.
 # =====================================================================
 
 on:

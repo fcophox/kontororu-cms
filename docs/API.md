@@ -363,8 +363,16 @@ export async function POST(req: Request) {
 }
 ```
 
+La entrega sale **en el momento de publicar**, no en un turno periódico: entre
+que el editor pulsa Publicar y tu endpoint recibe el POST pasan segundos.
+
 Si tu endpoint falla, reintentamos con espera creciente —1, 2, 4, 8, 16 y 32
 minutos— y verás cada intento en el panel, con opción de reintentar a mano.
+
+**Tu endpoint debe ser idempotente.** Recibir dos veces el mismo evento es
+posible —un reintento tras un timeout en el que la entrega sí llegó— y
+revalidar dos veces no cuesta nada; procesar un cobro o enviar un email desde
+aquí, sí.
 
 ### Cambios de URL
 

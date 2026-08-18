@@ -270,7 +270,7 @@ kontororu-cms/
 │   │       │   └── graphql/route.ts     # Fase 3
 │   │       ├── media/upload/route.ts
 │   │       └── internal/
-│   │           └── webhooks/dispatch/route.ts   # worker, lo invoca el cron de Actions
+│   │           └── webhooks/dispatch/route.ts   # worker periódico (red de seguridad del cron)
 │   │
 │   ├── components/
 │   │   ├── ui/                          # Shadcn — NO editar a mano
@@ -472,21 +472,46 @@ GraphQL (Fase 3) se expone en `/api/v1/graphql` sobre el mismo `authenticate.ts`
 ```
 UPDATE posts SET status='PUBLISHED'
    → trigger posts_enqueue_events        INSERT en webhook_deliveries  (no hace HTTP)
-   → GitHub Actions · webhooks-cron.yml (cada 5 min, **GET**) → /api/internal/webhooks/dispatch
+   → dos disparadores sobre el MISMO worker (`lib/content/webhook-dispatch.ts`):
+       a) la propia Server Action, en `after()` → entrega en segundos
+       b) GitHub Actions · webhooks-cron.yml (cada 5 min, **GET**) → /api/internal/webhooks/dispatch
    → POST firmado al endpoint del cliente
    → backoff exponencial: 1m 2m 4m 8m 16m 32m, 6 intentos
      (`webhook_deliveries.next_attempt_at`; el worker sólo pide lo vencido)
 ```
 
-El disparador es un workflow de GitHub Actions, no la plataforma de despliegue:
-el servicio corre en **Railway**, que no trae cron. Hubo un `vercel.json` que
-programaba este mismo endpoint cada minuto, pero ese fichero sólo lo lee Vercel:
-confiar en él dejó la cola sin drenar diez días, y por eso se borró del repo —
-una configuración que nadie ejecuta sólo sirve para que alguien la dé por buena.
+**El camino normal es (a).** Publicar dispara el drenado del propio espacio en
+`after()`, así que la web del cliente se entera en el mismo segundo. Con sólo el
+cron, el editor pulsaba Publicar y su web tardaba hasta cinco minutos en
+cambiar — y como los cron de Actions se ejecutan cuando hay hueco, a veces más.
+Esa espera se leía desde fuera como "el CMS no ha guardado".
 
-Cinco minutos es el intervalo mínimo de los cron de Actions, y además se
-ejecutan cuando hay hueco, no puntuales. Si algún día hace falta cadencia real
-de un minuto, el sustituto es un servicio cron en Railway.
+Va en `after()` y no en la transacción por lo mismo que el trigger no hace
+HTTP: la web caída de un cliente no puede hacer que Publicar falle ni que se
+quede colgado. `dispatchNow` se traga el error y lo registra; la entrega
+sobrevive en la cola.
+
+**(b) sigue siendo imprescindible**, ahora como red de seguridad: es lo único
+que ejecuta los reintentos con backoff, lo encolado mientras la app estaba
+caída, y las entregas de un drenado inmediato que no llegó a completarse.
+
+El disparador periódico es un workflow de GitHub Actions, no la plataforma de
+despliegue: el servicio corre en **Railway**, que no trae cron. Hubo un
+`vercel.json` que programaba este mismo endpoint cada minuto, pero ese fichero
+sólo lo lee Vercel: confiar en él dejó la cola sin drenar diez días, y por eso
+se borró del repo — una configuración que nadie ejecuta sólo sirve para que
+alguien la dé por buena.
+
+⚠️ GitHub **desactiva los workflows programados tras 60 días sin actividad en el
+repositorio**. Con (a) en su sitio eso ya no congela las publicaciones, pero sí
+deja los reintentos sin ejecutar. Si el repo va a estar quieto largas
+temporadas, el sustituto es un servicio cron en Railway.
+
+Con dos disparadores hay drenados solapados, así que `deliver()` **reserva** la
+fila antes de salir a la red: mueve `next_attempt_at` condicionando el UPDATE al
+valor que leyó. El que no encuentra la fila con ese valor se retira y la cuenta
+como `deferred`. Sin esa reserva, cron y publicación entregarían el mismo evento
+dos veces.
 
 El trigger **no** hace la llamada HTTP. Si lo hiciera (`pg_net`, `http`), la web caída de
 un cliente convertiría cada publicación en un timeout de 30 segundos dentro de una

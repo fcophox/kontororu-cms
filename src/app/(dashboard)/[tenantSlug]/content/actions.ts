@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
@@ -11,6 +12,7 @@ import { renderContent, assertSafeEmbeds } from "@/lib/content/tiptap-to-html";
 import { slugify, uniqueSlug, readingTime } from "@/lib/content/slug";
 import { translateJsonContent, translateText } from "@/lib/content/translate";
 import { asJsonContent, asSeo } from "@/lib/content/json";
+import { dispatchNow } from "@/lib/content/webhook-dispatch";
 
 /**
  * Server Actions del CRUD de contenido.
@@ -152,6 +154,11 @@ export async function saveContent(
       }
     }
 
+    // El trigger acaba de encolar el evento; se entrega YA, sin esperar al
+    // turno del cron. `after()` lo saca del camino crítico: el editor ve su
+    // cambio guardado sin quedarse mirando la petición a la web del cliente.
+    after(() => dispatchNow(tenant.id));
+
     revalidatePath(`/${tenantSlug}/content/${input.postId}`);
     revalidatePath(`/${tenantSlug}/content`);
     return {};
@@ -261,6 +268,11 @@ export async function publishContent(tenantSlug: string, postId: string) {
     revalidatePath(`/${tenantSlug}/content/${sibling.id}`);
   }
 
+  // El trigger acaba de encolar el evento; se entrega YA, sin esperar al turno
+  // del cron. `after()` lo saca del camino crítico: el editor ve su cambio
+  // guardado sin quedarse mirando la petición a la web del cliente.
+  after(() => dispatchNow(tenant.id));
+
   revalidatePath(`/${tenantSlug}/content`);
 }
 
@@ -296,6 +308,12 @@ export async function unpublishContent(tenantSlug: string, postId: string) {
     .is("deleted_at", null);
 
   if (error) throw new Error(mapDbError(error.message));
+
+  // El trigger acaba de encolar el evento; se entrega YA, sin esperar al turno
+  // del cron. `after()` lo saca del camino crítico: el editor ve su cambio
+  // guardado sin quedarse mirando la petición a la web del cliente.
+  after(() => dispatchNow(tenant.id));
+
   revalidatePath(`/${tenantSlug}/content`);
   revalidatePath(`/${tenantSlug}/content/${postId}`);
 }
@@ -314,6 +332,12 @@ export async function archiveContent(tenantSlug: string, postId: string) {
     .eq("tenant_id", tenant.id);
 
   if (error) throw new Error(mapDbError(error.message));
+
+  // El trigger acaba de encolar el evento; se entrega YA, sin esperar al turno
+  // del cron. `after()` lo saca del camino crítico: el editor ve su cambio
+  // guardado sin quedarse mirando la petición a la web del cliente.
+  after(() => dispatchNow(tenant.id));
+
   revalidatePath(`/${tenantSlug}/content`);
 }
 
@@ -343,6 +367,11 @@ export async function trashContent(tenantSlug: string, postId: string) {
 
   if (error) throw new Error(mapDbError(error.message));
 
+  // El trigger acaba de encolar el evento; se entrega YA, sin esperar al turno
+  // del cron. `after()` lo saca del camino crítico: el editor ve su cambio
+  // guardado sin quedarse mirando la petición a la web del cliente.
+  after(() => dispatchNow(tenant.id));
+
   revalidatePath(`/${tenantSlug}/content`);
   redirect(`/${tenantSlug}/content?view=trash`);
 }
@@ -361,6 +390,12 @@ export async function restoreContent(tenantSlug: string, postId: string) {
     .eq("tenant_id", tenant.id);
 
   if (error) throw new Error(mapDbError(error.message));
+
+  // El trigger acaba de encolar el evento; se entrega YA, sin esperar al turno
+  // del cron. `after()` lo saca del camino crítico: el editor ve su cambio
+  // guardado sin quedarse mirando la petición a la web del cliente.
+  after(() => dispatchNow(tenant.id));
+
   revalidatePath(`/${tenantSlug}/content`);
 }
 
@@ -444,6 +479,11 @@ export async function restoreRevision(
 
   if (error) throw new Error(mapDbError(error.message));
 
+  // El trigger acaba de encolar el evento; se entrega YA, sin esperar al turno
+  // del cron. `after()` lo saca del camino crítico: el editor ve su cambio
+  // guardado sin quedarse mirando la petición a la web del cliente.
+  after(() => dispatchNow(tenant.id));
+
   revalidatePath(`/${tenantSlug}/content/${postId}`);
   revalidatePath(`/${tenantSlug}/content`);
 }
@@ -501,6 +541,10 @@ export async function updateSlug(
     .select("id");
 
   if (error) return { error: mapDbError(error.message) };
+
+  // Aquí corre especial prisa: hasta que no llegue el webhook con
+  // `previousSlug`, la web del cliente sirve la URL vieja Y la nueva.
+  after(() => dispatchNow(tenant.id));
 
   for (const row of updated ?? []) {
     revalidatePath(`/${tenantSlug}/content/${row.id}`);
@@ -712,6 +756,11 @@ export async function retranslateContent(tenantSlug: string, postId: string) {
     .eq("id", postId);
 
   if (error) throw new Error(mapDbError(error.message));
+
+  // El trigger acaba de encolar el evento; se entrega YA, sin esperar al turno
+  // del cron. `after()` lo saca del camino crítico: el editor ve su cambio
+  // guardado sin quedarse mirando la petición a la web del cliente.
+  after(() => dispatchNow(tenant.id));
 
   revalidatePath(`/${tenantSlug}/content/${postId}`);
   revalidatePath(`/${tenantSlug}/content`);
