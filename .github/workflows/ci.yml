@@ -17,13 +17,13 @@ jobs:
     name: Aislamiento multi-tenant (bloqueante)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Versión fija a propósito. Con `latest`, el CI de un commit que no toca
       # nada puede ponerse rojo porque Supabase publicó una release esa mañana,
       # y un job bloqueante que falla por su cuenta deja de leerse: cuando salte
       # por una fuga real entre tenants, nadie lo va a distinguir del ruido.
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         with:
           version: 2.114.0
 
@@ -33,7 +33,7 @@ jobs:
       - name: Tests pgTAP (RLS, RBAC, escalada de privilegios)
         run: supabase test db
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -65,8 +65,8 @@ jobs:
     name: Lint · tipos · fugas de credenciales
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -91,7 +91,7 @@ jobs:
     outputs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -174,10 +174,10 @@ jobs:
       PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Misma versión fija que el job de aislamiento, y por la misma razón.
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         with:
           version: 2.114.0
 
