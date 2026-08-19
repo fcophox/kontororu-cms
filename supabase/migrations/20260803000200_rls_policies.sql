@@ -133,18 +133,22 @@ grant all on all tables in schema public to service_role;
 -- ---------------------------------------------------------------------
 -- TENANTS
 -- ---------------------------------------------------------------------
+drop policy if exists tenants_select on public.tenants;
 create policy tenants_select on public.tenants for select to authenticated
   using ( (select public.is_superadmin()) or id in (select unnest(public.user_tenant_ids())) );
 
 -- Alta/baja de clientes: exclusivo Rukma Studio
+drop policy if exists tenants_insert on public.tenants;
 create policy tenants_insert on public.tenants for insert to authenticated
   with check ( (select public.is_superadmin()) );
 
+drop policy if exists tenants_delete on public.tenants;
 create policy tenants_delete on public.tenants for delete to authenticated
   using ( (select public.is_superadmin()) );
 
 -- El Client Admin puede actualizar SU tenant (branding), no su plan/estado.
 -- El bloqueo de columnas sensibles se hace con un trigger, no con RLS.
+drop policy if exists tenants_update on public.tenants;
 create policy tenants_update on public.tenants for update to authenticated
   using ( (select public.is_superadmin()) or public.is_tenant_manager(id) )
   with check ( (select public.is_superadmin()) or public.is_tenant_manager(id) );
@@ -176,6 +180,7 @@ create trigger tenants_protect_columns before update on public.tenants
 -- ---------------------------------------------------------------------
 -- USERS_PROFILES
 -- ---------------------------------------------------------------------
+drop policy if exists profiles_select_self on public.users_profiles;
 create policy profiles_select_self on public.users_profiles for select to authenticated
   using (
     id = (select auth.uid())
@@ -188,6 +193,7 @@ create policy profiles_select_self on public.users_profiles for select to authen
     )
   );
 
+drop policy if exists profiles_update_self on public.users_profiles;
 create policy profiles_update_self on public.users_profiles for update to authenticated
   using ( id = (select auth.uid()) or (select public.is_superadmin()) )
   with check ( id = (select auth.uid()) or (select public.is_superadmin()) );
@@ -209,25 +215,31 @@ create trigger profiles_protect_superadmin before update on public.users_profile
 -- ---------------------------------------------------------------------
 -- TENANT_USERS  (gestión de colaboradores → OWNER/ADMIN)
 -- ---------------------------------------------------------------------
+drop policy if exists tenant_users_select on public.tenant_users;
 create policy tenant_users_select on public.tenant_users for select to authenticated
   using ( (select public.is_superadmin()) or tenant_id in (select unnest(public.user_tenant_ids())) );
 
+drop policy if exists tenant_users_write on public.tenant_users;
 create policy tenant_users_write on public.tenant_users for insert to authenticated
   with check ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) );
 
+drop policy if exists tenant_users_update on public.tenant_users;
 create policy tenant_users_update on public.tenant_users for update to authenticated
   using ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) )
   with check ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) );
 
+drop policy if exists tenant_users_delete on public.tenant_users;
 create policy tenant_users_delete on public.tenant_users for delete to authenticated
   using ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) );
 
 -- ---------------------------------------------------------------------
 -- CATEGORIES / TAGS  (lectura: todo el tenant · escritura: OWNER/ADMIN/EDITOR)
 -- ---------------------------------------------------------------------
+drop policy if exists categories_select on public.categories;
 create policy categories_select on public.categories for select to authenticated
   using ( (select public.is_superadmin()) or tenant_id in (select unnest(public.user_tenant_ids())) );
 
+drop policy if exists categories_write on public.categories;
 create policy categories_write on public.categories for all to authenticated
   using (
     (select public.is_superadmin())
@@ -238,9 +250,11 @@ create policy categories_write on public.categories for all to authenticated
     or public.has_tenant_role(tenant_id, array['OWNER','ADMIN','EDITOR']::tenant_role[])
   );
 
+drop policy if exists tags_select on public.tags;
 create policy tags_select on public.tags for select to authenticated
   using ( (select public.is_superadmin()) or tenant_id in (select unnest(public.user_tenant_ids())) );
 
+drop policy if exists tags_write on public.tags;
 create policy tags_write on public.tags for all to authenticated
   using (
     (select public.is_superadmin())
@@ -256,9 +270,11 @@ create policy tags_write on public.tags for all to authenticated
 --   OWNER/ADMIN/EDITOR : control total dentro del tenant
 --   CONTRIBUTOR        : sólo crea/edita SUS borradores, nunca publica
 -- ---------------------------------------------------------------------
+drop policy if exists posts_select on public.posts;
 create policy posts_select on public.posts for select to authenticated
   using ( (select public.is_superadmin()) or tenant_id in (select unnest(public.user_tenant_ids())) );
 
+drop policy if exists posts_insert on public.posts;
 create policy posts_insert on public.posts for insert to authenticated
   with check (
     (select public.is_superadmin())
@@ -270,6 +286,7 @@ create policy posts_insert on public.posts for insert to authenticated
     )
   );
 
+drop policy if exists posts_update on public.posts;
 create policy posts_update on public.posts for update to authenticated
   using (
     (select public.is_superadmin())
@@ -290,12 +307,14 @@ create policy posts_update on public.posts for update to authenticated
     )
   );
 
+drop policy if exists posts_delete on public.posts;
 create policy posts_delete on public.posts for delete to authenticated
   using (
     (select public.is_superadmin())
     or public.has_tenant_role(tenant_id, array['OWNER','ADMIN']::tenant_role[])
   );
 
+drop policy if exists post_tags_all on public.post_tags;
 create policy post_tags_all on public.post_tags for all to authenticated
   using (
     exists (
@@ -315,16 +334,20 @@ create policy post_tags_all on public.post_tags for all to authenticated
 -- ---------------------------------------------------------------------
 -- MEDIA
 -- ---------------------------------------------------------------------
+drop policy if exists media_select on public.media;
 create policy media_select on public.media for select to authenticated
   using ( (select public.is_superadmin()) or tenant_id in (select unnest(public.user_tenant_ids())) );
 
+drop policy if exists media_insert on public.media;
 create policy media_insert on public.media for insert to authenticated
   with check ( (select public.is_superadmin()) or public.is_tenant_member(tenant_id) );
 
+drop policy if exists media_update on public.media;
 create policy media_update on public.media for update to authenticated
   using ( (select public.is_superadmin()) or public.is_tenant_member(tenant_id) )
   with check ( (select public.is_superadmin()) or public.is_tenant_member(tenant_id) );
 
+drop policy if exists media_delete on public.media;
 create policy media_delete on public.media for delete to authenticated
   using (
     (select public.is_superadmin())
@@ -336,6 +359,7 @@ create policy media_delete on public.media for delete to authenticated
 -- API KEYS  (sólo OWNER/ADMIN · el hash nunca se expone al cliente:
 --            se consulta vía vista/RPC que omite key_hash)
 -- ---------------------------------------------------------------------
+drop policy if exists api_keys_manage on public.api_keys;
 create policy api_keys_manage on public.api_keys for all to authenticated
   using ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) )
   with check ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) );
@@ -352,16 +376,19 @@ revoke all on public.api_keys_public from anon;
 -- ---------------------------------------------------------------------
 -- WEBHOOKS
 -- ---------------------------------------------------------------------
+drop policy if exists webhooks_manage on public.webhooks;
 create policy webhooks_manage on public.webhooks for all to authenticated
   using ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) )
   with check ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) );
 
+drop policy if exists webhook_deliveries_select on public.webhook_deliveries;
 create policy webhook_deliveries_select on public.webhook_deliveries for select to authenticated
   using ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) );
 
 -- ---------------------------------------------------------------------
 -- AUDIT LOGS  (append-only desde el servidor; lectura para managers)
 -- ---------------------------------------------------------------------
+drop policy if exists audit_logs_select on public.audit_logs;
 create policy audit_logs_select on public.audit_logs for select to authenticated
   using ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) );
 
@@ -374,24 +401,28 @@ insert into storage.buckets (id, name, public)
 values ('tenant-media', 'tenant-media', false)
 on conflict (id) do nothing;
 
+drop policy if exists "tenant media read" on storage.objects;
 create policy "tenant media read" on storage.objects for select to authenticated
   using (
     bucket_id = 'tenant-media'
     and (storage.foldername(name))[1]::uuid in (select unnest(public.user_tenant_ids()))
   );
 
+drop policy if exists "tenant media insert" on storage.objects;
 create policy "tenant media insert" on storage.objects for insert to authenticated
   with check (
     bucket_id = 'tenant-media'
     and (storage.foldername(name))[1]::uuid in (select unnest(public.user_tenant_ids()))
   );
 
+drop policy if exists "tenant media update" on storage.objects;
 create policy "tenant media update" on storage.objects for update to authenticated
   using (
     bucket_id = 'tenant-media'
     and (storage.foldername(name))[1]::uuid in (select unnest(public.user_tenant_ids()))
   );
 
+drop policy if exists "tenant media delete" on storage.objects;
 create policy "tenant media delete" on storage.objects for delete to authenticated
   using (
     bucket_id = 'tenant-media'

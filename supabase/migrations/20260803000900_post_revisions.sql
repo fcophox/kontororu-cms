@@ -109,6 +109,7 @@ alter table public.post_revisions force row level security;
 
 grant select on public.post_revisions to authenticated;
 
+drop policy if exists post_revisions_select on public.post_revisions;
 create policy post_revisions_select on public.post_revisions for select to authenticated
   using (
     (select public.is_superadmin())

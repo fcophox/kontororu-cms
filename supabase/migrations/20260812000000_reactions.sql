@@ -86,9 +86,11 @@ alter table public.content_reactions force row level security;
 grant select, delete on public.content_reactions to authenticated;
 grant all on public.content_reactions to service_role;
 
+drop policy if exists content_reactions_select on public.content_reactions;
 create policy content_reactions_select on public.content_reactions for select to authenticated
   using ( (select public.is_superadmin()) or public.is_tenant_member(tenant_id) );
 
+drop policy if exists content_reactions_delete on public.content_reactions;
 create policy content_reactions_delete on public.content_reactions for delete to authenticated
   using ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) );
 

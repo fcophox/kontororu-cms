@@ -81,6 +81,7 @@ alter table public.form_submissions force row level security;
 grant select, insert, update, delete on public.form_submissions to authenticated;
 grant all on public.form_submissions to service_role;
 
+drop policy if exists form_submissions_manage on public.form_submissions;
 create policy form_submissions_manage on public.form_submissions for all to authenticated
   using ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) )
   with check ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) );

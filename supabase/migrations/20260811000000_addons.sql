@@ -64,11 +64,13 @@ grant all on public.tenant_addons to service_role;
 
 -- Leer: cualquier miembro. Un editor necesita saber si el calendario está
 -- activo aunque no pueda activarlo.
+drop policy if exists tenant_addons_select on public.tenant_addons;
 create policy tenant_addons_select on public.tenant_addons for select to authenticated
   using ( (select public.is_superadmin()) or public.is_tenant_member(tenant_id) );
 
 -- Escribir: OWNER/ADMIN. Activar un complemento será facturable, y eso no lo
 -- decide quien redacta las entradas.
+drop policy if exists tenant_addons_write on public.tenant_addons;
 create policy tenant_addons_write on public.tenant_addons for all to authenticated
   using ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) )
   with check ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) );
