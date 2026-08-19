@@ -32,8 +32,8 @@ create table public.post_revisions (
   unique (post_id, version)
 );
 
-create index post_revisions_post_idx on public.post_revisions (post_id, version desc);
-create index post_revisions_tenant_idx on public.post_revisions (tenant_id);
+create index if not exists post_revisions_post_idx on public.post_revisions (post_id, version desc);
+create index if not exists post_revisions_tenant_idx on public.post_revisions (tenant_id);
 
 comment on table public.post_revisions is
   'Instantánea del contenido en cada guardado. La escribe un trigger, nunca la aplicación.';

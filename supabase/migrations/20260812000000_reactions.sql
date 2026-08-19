@@ -59,7 +59,7 @@ comment on column public.content_reactions.translation_group_id is
 
 -- El ranking del complemento y el número del listado: por espacio y de más
 -- reacciones a menos.
-create index content_reactions_tenant_idx
+create index if not exists content_reactions_tenant_idx
   on public.content_reactions (tenant_id, total desc);
 
 drop trigger if exists content_reactions_updated_at on public.content_reactions;

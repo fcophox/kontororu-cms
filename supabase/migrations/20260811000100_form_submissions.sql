@@ -55,11 +55,11 @@ comment on table public.form_submissions is
 
 -- La bandeja: por espacio, sin archivar y por fecha. Es la consulta por
 -- defecto de la pantalla, así que el índice la cubre entera.
-create index form_submissions_inbox_idx
+create index if not exists form_submissions_inbox_idx
   on public.form_submissions (tenant_id, is_archived, created_at desc);
 
 -- El filtro por pestaña de formulario.
-create index form_submissions_form_idx
+create index if not exists form_submissions_form_idx
   on public.form_submissions (tenant_id, form_key, created_at desc);
 
 drop trigger if exists form_submissions_updated_at on public.form_submissions;

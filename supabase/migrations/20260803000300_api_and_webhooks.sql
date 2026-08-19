@@ -140,7 +140,7 @@ create trigger posts_enqueue_events
   for each row execute function public.tg_enqueue_content_event();
 
 -- Cola pendiente para el worker
-create index webhook_deliveries_pending_idx
+create index if not exists webhook_deliveries_pending_idx
   on public.webhook_deliveries (created_at)
   where delivered_at is null and attempt < 6;
 

@@ -43,7 +43,7 @@ comment on column public.tenant_addons.addon_key is
   'Clave del catálogo (src/lib/addons/catalog.ts). Una clave desconocida es un complemento retirado, no un error.';
 
 -- Se filtra por activos porque es la consulta de cada carga del panel.
-create index tenant_addons_tenant_idx on public.tenant_addons (tenant_id) where is_enabled;
+create index if not exists tenant_addons_tenant_idx on public.tenant_addons (tenant_id) where is_enabled;
 
 drop trigger if exists tenant_addons_updated_at on public.tenant_addons;
 create trigger tenant_addons_updated_at before update on public.tenant_addons

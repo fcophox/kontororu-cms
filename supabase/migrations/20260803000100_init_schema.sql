@@ -79,7 +79,7 @@ create table public.tenants (
     db_mode = 'SHARED' or (external_db_url is not null and external_db_key_ref is not null)
   )
 );
-create index tenants_status_idx on public.tenants (status) where deleted_at is null;
+create index if not exists tenants_status_idx on public.tenants (status) where deleted_at is null;
 drop trigger if exists tenants_updated_at on public.tenants;
 create trigger tenants_updated_at before update on public.tenants
   for each row execute function public.tg_set_updated_at();
@@ -134,8 +134,8 @@ create table public.tenant_users (
   created_at  timestamptz not null default now(),
   unique (tenant_id, user_id)
 );
-create index tenant_users_user_idx   on public.tenant_users (user_id);
-create index tenant_users_tenant_idx on public.tenant_users (tenant_id);
+create index if not exists tenant_users_user_idx   on public.tenant_users (user_id);
+create index if not exists tenant_users_tenant_idx on public.tenant_users (tenant_id);
 
 -- ---------------------------------------------------------------------
 -- CATEGORIES  (jerárquicas: Blog / Casos de Estudio / Servicios)
@@ -154,7 +154,7 @@ create table public.categories (
   updated_at  timestamptz not null default now(),
   unique (tenant_id, slug)
 );
-create index categories_tenant_kind_idx on public.categories (tenant_id, kind, position);
+create index if not exists categories_tenant_kind_idx on public.categories (tenant_id, kind, position);
 drop trigger if exists categories_updated_at on public.categories;
 create trigger categories_updated_at before update on public.categories
   for each row execute function public.tg_set_updated_at();
@@ -170,7 +170,7 @@ create table public.tags (
   created_at timestamptz not null default now(),
   unique (tenant_id, slug)
 );
-create index tags_tenant_idx on public.tags (tenant_id);
+create index if not exists tags_tenant_idx on public.tags (tenant_id);
 
 -- ---------------------------------------------------------------------
 -- MEDIA
@@ -191,7 +191,7 @@ create table public.media (
   created_at   timestamptz not null default now(),
   unique (bucket, path)
 );
-create index media_tenant_idx on public.media (tenant_id, created_at desc);
+create index if not exists media_tenant_idx on public.media (tenant_id, created_at desc);
 
 -- Blindaje: la ruta física SIEMPRE debe empezar por el tenant_id.
 alter table public.media
@@ -235,9 +235,9 @@ create table public.posts (
   )
 );
 
-create index posts_tenant_status_idx on public.posts (tenant_id, status, published_at desc nulls last);
-create index posts_tenant_category_idx on public.posts (tenant_id, category_id);
-create index posts_custom_fields_gin on public.posts using gin (custom_fields jsonb_path_ops);
+create index if not exists posts_tenant_status_idx on public.posts (tenant_id, status, published_at desc nulls last);
+create index if not exists posts_tenant_category_idx on public.posts (tenant_id, category_id);
+create index if not exists posts_custom_fields_gin on public.posts using gin (custom_fields jsonb_path_ops);
 
 -- Búsqueda full-text por tenant
 alter table public.posts add column search_vector tsvector
@@ -245,7 +245,7 @@ alter table public.posts add column search_vector tsvector
     setweight(to_tsvector('simple', coalesce(title, '')), 'A') ||
     setweight(to_tsvector('simple', coalesce(excerpt, '')), 'B')
   ) stored;
-create index posts_search_idx on public.posts using gin (search_vector);
+create index if not exists posts_search_idx on public.posts using gin (search_vector);
 
 drop trigger if exists posts_updated_at on public.posts;
 create trigger posts_updated_at before update on public.posts
@@ -256,7 +256,7 @@ create table public.post_tags (
   tag_id  uuid not null references public.tags(id) on delete cascade,
   primary key (post_id, tag_id)
 );
-create index post_tags_tag_idx on public.post_tags (tag_id);
+create index if not exists post_tags_tag_idx on public.post_tags (tag_id);
 
 -- Integridad cruzada: un post no puede referenciar entidades de otro tenant.
 create or replace function public.tg_assert_same_tenant()
@@ -299,7 +299,7 @@ create table public.api_keys (
   created_by   uuid references public.users_profiles(id) on delete set null,
   created_at   timestamptz not null default now()
 );
-create index api_keys_tenant_idx on public.api_keys (tenant_id) where revoked_at is null;
+create index if not exists api_keys_tenant_idx on public.api_keys (tenant_id) where revoked_at is null;
 
 -- ---------------------------------------------------------------------
 -- WEBHOOKS  + entregas
@@ -316,7 +316,7 @@ create table public.webhooks (
   updated_at  timestamptz not null default now(),
   constraint webhooks_url_https check (url ~* '^https://')
 );
-create index webhooks_tenant_idx on public.webhooks (tenant_id) where is_active;
+create index if not exists webhooks_tenant_idx on public.webhooks (tenant_id) where is_active;
 drop trigger if exists webhooks_updated_at on public.webhooks;
 create trigger webhooks_updated_at before update on public.webhooks
   for each row execute function public.tg_set_updated_at();
@@ -333,7 +333,7 @@ create table public.webhook_deliveries (
   delivered_at timestamptz,
   created_at  timestamptz not null default now()
 );
-create index webhook_deliveries_tenant_idx on public.webhook_deliveries (tenant_id, created_at desc);
+create index if not exists webhook_deliveries_tenant_idx on public.webhook_deliveries (tenant_id, created_at desc);
 
 -- ---------------------------------------------------------------------
 -- AUDIT LOG
@@ -348,4 +348,4 @@ create table public.audit_logs (
   metadata    jsonb not null default '{}'::jsonb,
   created_at  timestamptz not null default now()
 );
-create index audit_logs_tenant_idx on public.audit_logs (tenant_id, created_at desc);
+create index if not exists audit_logs_tenant_idx on public.audit_logs (tenant_id, created_at desc);
