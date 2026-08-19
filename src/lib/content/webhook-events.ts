@@ -22,18 +22,24 @@ export const WEBHOOK_EVENTS = [
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
 
 /**
- * Lo que viene marcado al crear un webhook.
+ * Lo que viene marcado al crear un webhook: TODO el catálogo.
  *
- * Incluye `addon.updated` a propósito. Antes se premarcaban sólo los `post.*`
- * —`event.startsWith("post.")`, escrito cuando los complementos aún no
- * emitían nada— y el resultado era que un webhook recién creado no se
- * enteraba de un cambio de disponibilidad del Calendario. Al guardar no salta
- * ningún error: el trigger sólo encola para quien está suscrito, así que el
- * panel dice "Disponibilidad guardada" y la web del cliente sigue ofreciendo
- * las horas viejas, sin nada que señale por qué.
+ * Es una lista explícita y no `WEBHOOK_EVENTS` entero para que añadir un
+ * evento nuevo obligue a decidir aquí si entra por defecto. Ese despiste es
+ * exactamente el que costó los dos fallos que la trajeron:
  *
- * El backfill de `20260818000200` cubrió los endpoints que ya existían; esto
- * cubre los que se creen a partir de ahora.
+ *  - Se premarcaban sólo los `post.*` —`event.startsWith("post.")`, escrito
+ *    cuando los complementos aún no emitían nada—, así que un webhook recién
+ *    creado no se enteraba de un cambio de disponibilidad del Calendario.
+ *  - `category.updated` y `media.deleted` llevaban desde el esquema inicial
+ *    en el enum y en el panel sin que NADA los emitiera.
+ *
+ * Los dos fallan en silencio: el trigger sólo encola para quien está
+ * suscrito, así que no hay error en ningún lado — el panel confirma que ha
+ * guardado y la web del cliente sigue mostrando lo viejo.
+ *
+ * Los backfills de `20260818000200` y `20260819000000` cubrieron los
+ * endpoints que ya existían; esto cubre los que se creen a partir de ahora.
  */
 export const WEBHOOK_DEFAULT_EVENTS: readonly WebhookEvent[] = [
   "post.created",
@@ -41,6 +47,8 @@ export const WEBHOOK_DEFAULT_EVENTS: readonly WebhookEvent[] = [
   "post.updated",
   "post.unpublished",
   "post.deleted",
+  "category.updated",
+  "media.deleted",
   "addon.updated",
 ];
 
