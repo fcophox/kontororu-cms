@@ -62,6 +62,7 @@ comment on column public.content_reactions.translation_group_id is
 create index content_reactions_tenant_idx
   on public.content_reactions (tenant_id, total desc);
 
+drop trigger if exists content_reactions_updated_at on public.content_reactions;
 create trigger content_reactions_updated_at before update on public.content_reactions
   for each row execute function public.tg_set_updated_at();
 

@@ -96,6 +96,7 @@ begin
 end;
 $$;
 
+drop trigger if exists posts_capture_revision on public.posts;
 create trigger posts_capture_revision
   after insert or update on public.posts
   for each row execute function public.tg_capture_post_revision();

@@ -169,6 +169,7 @@ begin
   return new;
 end;
 $$;
+drop trigger if exists tenants_protect_columns on public.tenants;
 create trigger tenants_protect_columns before update on public.tenants
   for each row execute function public.tg_protect_tenant_columns();
 
@@ -201,6 +202,7 @@ begin
   return new;
 end;
 $$;
+drop trigger if exists profiles_protect_superadmin on public.users_profiles;
 create trigger profiles_protect_superadmin before update on public.users_profiles
   for each row execute function public.tg_protect_superadmin_flag();
 

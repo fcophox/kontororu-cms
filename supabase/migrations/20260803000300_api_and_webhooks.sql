@@ -134,6 +134,7 @@ begin
 end;
 $$;
 
+drop trigger if exists posts_enqueue_events on public.posts;
 create trigger posts_enqueue_events
   after insert or update or delete on public.posts
   for each row execute function public.tg_enqueue_content_event();

@@ -39,6 +39,7 @@ begin
 end;
 $$;
 
+drop trigger if exists webhook_deliveries_protect_columns on public.webhook_deliveries;
 create trigger webhook_deliveries_protect_columns
   before update on public.webhook_deliveries
   for each row execute function public.tg_protect_delivery_columns();

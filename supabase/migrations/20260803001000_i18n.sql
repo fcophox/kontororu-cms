@@ -117,10 +117,12 @@ begin
 end;
 $$;
 
+drop trigger if exists posts_assert_locale on public.posts;
 create trigger posts_assert_locale
   before insert or update of locale on public.posts
   for each row execute function public.tg_assert_locale_enabled();
 
+drop trigger if exists categories_assert_locale on public.categories;
 create trigger categories_assert_locale
   before insert or update of locale on public.categories
   for each row execute function public.tg_assert_locale_enabled();
@@ -151,6 +153,7 @@ begin
 end;
 $$;
 
+drop trigger if exists posts_assert_category_locale on public.posts;
 create trigger posts_assert_category_locale
   before insert or update on public.posts
   for each row execute function public.tg_assert_category_locale();

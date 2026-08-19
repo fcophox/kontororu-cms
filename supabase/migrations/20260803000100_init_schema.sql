@@ -80,6 +80,7 @@ create table public.tenants (
   )
 );
 create index tenants_status_idx on public.tenants (status) where deleted_at is null;
+drop trigger if exists tenants_updated_at on public.tenants;
 create trigger tenants_updated_at before update on public.tenants
   for each row execute function public.tg_set_updated_at();
 
@@ -96,6 +97,7 @@ create table public.users_profiles (
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
+drop trigger if exists users_profiles_updated_at on public.users_profiles;
 create trigger users_profiles_updated_at before update on public.users_profiles
   for each row execute function public.tg_set_updated_at();
 
@@ -114,6 +116,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.tg_handle_new_user();
@@ -152,6 +155,7 @@ create table public.categories (
   unique (tenant_id, slug)
 );
 create index categories_tenant_kind_idx on public.categories (tenant_id, kind, position);
+drop trigger if exists categories_updated_at on public.categories;
 create trigger categories_updated_at before update on public.categories
   for each row execute function public.tg_set_updated_at();
 
@@ -243,6 +247,7 @@ alter table public.posts add column search_vector tsvector
   ) stored;
 create index posts_search_idx on public.posts using gin (search_vector);
 
+drop trigger if exists posts_updated_at on public.posts;
 create trigger posts_updated_at before update on public.posts
   for each row execute function public.tg_set_updated_at();
 
@@ -274,6 +279,7 @@ begin
   return new;
 end;
 $$;
+drop trigger if exists posts_assert_tenant on public.posts;
 create trigger posts_assert_tenant before insert or update on public.posts
   for each row execute function public.tg_assert_same_tenant();
 
@@ -311,6 +317,7 @@ create table public.webhooks (
   constraint webhooks_url_https check (url ~* '^https://')
 );
 create index webhooks_tenant_idx on public.webhooks (tenant_id) where is_active;
+drop trigger if exists webhooks_updated_at on public.webhooks;
 create trigger webhooks_updated_at before update on public.webhooks
   for each row execute function public.tg_set_updated_at();
 

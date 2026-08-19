@@ -62,6 +62,7 @@ create index form_submissions_inbox_idx
 create index form_submissions_form_idx
   on public.form_submissions (tenant_id, form_key, created_at desc);
 
+drop trigger if exists form_submissions_updated_at on public.form_submissions;
 create trigger form_submissions_updated_at before update on public.form_submissions
   for each row execute function public.tg_set_updated_at();
 
