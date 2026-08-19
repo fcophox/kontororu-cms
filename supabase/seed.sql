@@ -99,7 +99,7 @@ begin
 
   insert into public.webhooks (tenant_id, name, url, events)
   values (v_rukma, 'Revalidar web', 'https://rukma.studio/api/revalidate',
-          array['post.published','post.updated','post.unpublished','post.deleted']::webhook_event[]);
+          array['post.published','post.updated','post.unpublished','post.deleted','addon.updated']::webhook_event[]);
 
   raise notice 'Seed listo — alice@rukma.studio / bob@acme.com / fcojhormazabalh@gmail.com (password123)';
 end $$;

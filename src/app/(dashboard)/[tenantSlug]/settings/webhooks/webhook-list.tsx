@@ -5,7 +5,11 @@ import { Plus, Pencil, Trash2, Loader2, RotateCw, Eye, EyeOff, Copy, Check } fro
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { WEBHOOK_EVENTS, WEBHOOK_EVENT_LABELS } from "@/lib/content/webhook-events";
+import {
+  WEBHOOK_EVENTS,
+  WEBHOOK_EVENT_LABELS,
+  WEBHOOK_DEFAULT_EVENTS,
+} from "@/lib/content/webhook-events";
 import type { WebhookState } from "./actions";
 
 export type WebhookRow = {
@@ -165,7 +169,7 @@ export function WebhookList({
                 type="checkbox"
                 name="events"
                 value={event}
-                defaultChecked={event.startsWith("post.")}
+                defaultChecked={WEBHOOK_DEFAULT_EVENTS.includes(event)}
                 className="size-4 rounded border-input accent-[var(--primary)]"
               />
               {label(event)}

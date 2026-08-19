@@ -78,8 +78,8 @@ export async function GET(req: Request) {
         })),
       },
     },
-    // La disponibilidad no la avisa ningún webhook: se sirve con una ventana
-    // corta para que un cambio del panel llegue solo a la web del cliente.
+    // `addon.updated` avisa a quien se haya suscrito. La ventana corta es
+    // para quien no: se pone al día solo, sin servir nada obsoleto.
     { ...guard.headers, ...volatileCacheHeaders() },
   );
 }
