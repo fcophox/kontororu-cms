@@ -107,7 +107,7 @@ export function PortfolioSettingsDrawer({
                   return (
                     <label
                       key={option.value}
-                      className={`flex cursor-pointer items-center gap-3 rounded-[var(--radius)] border p-3 text-sm transition-colors ${
+                      className={`flex cursor-pointer items-start gap-3 rounded-[var(--radius)] border p-3 text-sm transition-colors ${
                         isSelected ? "border-primary bg-primary/5" : "hover:bg-accent"
                       }`}
                     >
@@ -117,9 +117,14 @@ export function PortfolioSettingsDrawer({
                         value={option.value}
                         checked={isSelected}
                         onChange={() => setGallery(option.value)}
-                        className="size-4 accent-[var(--primary)]"
+                        className="mt-0.5 size-4 shrink-0 accent-[var(--primary)]"
                       />
-                      {option.label}
+                      <span className="min-w-0">
+                        <span className="block font-medium">{option.label}</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {option.summary}
+                        </span>
+                      </span>
                     </label>
                   );
                 })}

@@ -2,7 +2,7 @@ import { guardApiRequest } from "@/lib/api/authenticate";
 import { createServiceClient } from "@/lib/supabase/server";
 import { apiError, apiJson, corsPreflight, volatileCacheHeaders } from "@/lib/api/response";
 import { signMediaBatch } from "@/lib/api/serializers";
-import { parsePortfolioSettings } from "@/lib/addons/portfolio";
+import { galleryLayout, parsePortfolioSettings } from "@/lib/addons/portfolio";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -83,6 +83,14 @@ export async function GET(req: Request) {
     {
       data: {
         gallery: settings.gallery,
+        /*
+         * Qué significa esa galería, resuelto aquí.
+         *
+         * La clave sola obligaba a cada web a inventarse tres maquetaciones y
+         * a mantener su propia tabla de equivalencias; con esto, cambiar de
+         * galería en el panel cambia la web sin tocar su código.
+         */
+        layout: galleryLayout(settings.gallery),
         items: settings.items.map((item) => {
           const media = byId.get(item.imageMediaId);
           const url = media ? urls.get(media.path) : undefined;

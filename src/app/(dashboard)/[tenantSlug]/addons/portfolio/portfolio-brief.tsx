@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { GALLERY_OPTIONS, type GalleryValue } from "@/lib/addons/portfolio";
+import { GALLERY_OPTIONS, galleryLayout, type GalleryValue } from "@/lib/addons/portfolio";
 
 /**
  * El encargo para quien programa la web del cliente, listo para copiar.
@@ -19,8 +19,26 @@ export function PortfolioBrief({ gallery }: { gallery: GalleryValue }) {
 
   const base = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const endpoint = `${base}/api/v1/addons/portfolio`;
-  const galleryLabel =
-    GALLERY_OPTIONS.find((option) => option.value === gallery)?.label ?? gallery;
+  const chosen = GALLERY_OPTIONS.find((option) => option.value === gallery);
+  const layout = galleryLayout(gallery);
+
+  // Las tres maquetaciones van enteras en el encargo, no sólo la elegida: el
+  // cliente puede cambiar de galería desde el panel sin volver a pedir nada,
+  // y quien programa necesita haberlas montado las tres para que ese cambio
+  // no acabe en un correo pidiendo otra iteración.
+  const galleryBlock = GALLERY_OPTIONS.map(
+    (option) =>
+      `- "${option.value}" (${option.label}): ${option.summary}\n` +
+      `  columnas en escritorio: ${option.layout.columns} · imagen: ${
+        option.layout.aspect === "original"
+          ? "sin recortar, en su proporción original"
+          : `recortada a ${option.layout.aspect}`
+      } · texto: ${
+        { below: "debajo de la imagen", overlay: "encima de la imagen", beside: "al lado de la imagen" }[
+          option.layout.textPlacement
+        ]
+      } · descripción: ${option.layout.showsDescription ? "se pinta en la tarjeta" : "no se pinta"}`,
+  ).join("\n");
 
   const brief = `Necesito una sección de portfolio en la web, alimentada desde el CMS.
 
@@ -34,6 +52,7 @@ QUÉ DEVUELVE
 {
   "data": {
     "gallery": "${gallery}",
+    "layout": { "columns": ${layout.columns}, "aspect": "${layout.aspect}", "textPlacement": "${layout.textPlacement}", "showsDescription": ${layout.showsDescription} },
     "items": [
       {
         "id": "…",
@@ -54,7 +73,14 @@ QUÉ HAY QUE MONTAR
 - Si "externalUrl" no es null, la tarjeta enlaza ahí, en pestaña nueva y con rel="noopener".
 - Si "image" es null, la tarjeta se maqueta igual sin foto: no la ocultes.
 - Si "category" no es null, se puede usar para filtrar la rejilla.
-- Plantilla elegida ahora mismo en el panel: ${galleryLabel} ("${gallery}"). El campo "gallery" puede cambiar desde el panel, así que léelo de la respuesta en vez de fijarlo en el código.
+- En móvil, todas las galerías van a una columna.
+
+LAS TRES GALERÍAS
+Hay que montar las tres: el cliente cambia de una a otra desde el panel, sin avisar y sin tocar código.
+${galleryBlock}
+
+Elegida ahora mismo: ${chosen?.label ?? gallery} ("${gallery}").
+No la fijes en el código: lee "gallery" de la respuesta y decide con eso. El objeto "layout" que viene al lado dice lo mismo en datos (columns, aspect, textPlacement, showsDescription), por si prefieres montarlo genérico en vez de con tres componentes.
 
 CUÁNDO NO SE PINTA
 Si el endpoint responde 404, la sección de portfolio NO se muestra: significa que en el panel está desactivada la visibilidad. No es un error, no hace falta avisar de nada; simplemente no se pinta la sección ni su enlace en el menú.

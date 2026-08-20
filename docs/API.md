@@ -245,6 +245,12 @@ pintarlos como tarjetas. Scope `content:read`.
 {
   "data": {
     "gallery": "gallery-1",
+    "layout": {
+      "columns": 3,
+      "aspect": "4/3",
+      "textPlacement": "below",
+      "showsDescription": true
+    },
     "items": [
       {
         "id": "0f1c…",
@@ -265,9 +271,22 @@ más antiguo. `category` y `externalUrl` son `null` cuando el cliente no los
 rellenó, y `image` es `null` cuando el elemento no tiene foto o su archivo ya
 no está: maqueta la tarjeta igualmente en vez de ocultarla.
 
-`gallery` es la plantilla elegida en el panel (`gallery-1`, `gallery-2` o
-`gallery-3`). **Léela de la respuesta**, no la fijes en tu código: el cliente
-puede cambiarla sin avisarte.
+`gallery` es la plantilla elegida en el panel y `layout` es lo que esa
+plantilla significa, para que no tengas que mantener tu propia tabla de
+equivalencias:
+
+| `gallery` | Columnas | Imagen | Texto | Descripción |
+|---|---|---|---|---|
+| `gallery-1` | 3 | recortada a `4/3` | debajo | sí |
+| `gallery-2` | 2 | sin recortar (`original`) | encima | no |
+| `gallery-3` | 1 | recortada a `16/9` | al lado | sí |
+
+En móvil, las tres van a una columna.
+
+**Monta las tres y decide con lo que llega en la respuesta.** El cliente cambia
+de galería desde el panel, sin avisarte y sin que nadie toque tu código: si la
+fijas, el cambio no se nota o rompe la sección. Puedes ramificar por `gallery`
+con tres componentes, o leer `layout` y montarlo genérico.
 
 ⚠️ **El `404` no es un error que debas mostrar.** Significa que el cliente ha
 apagado la visibilidad; oculta la sección de portfolio y su enlace en el menú,

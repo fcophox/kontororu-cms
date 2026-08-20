@@ -9,16 +9,61 @@
 import { z } from "zod";
 
 /**
- * Las galerías disponibles. Viven aquí y no en la base por lo mismo que el
- * catálogo de complementos: cada una será una plantilla que se despliega con
- * la aplicación, y poder elegir una que este despliegue no sabe pintar deja
- * la web del cliente sin portfolio.
+ * Las tres galerías, con lo que cada una significa.
+ *
+ * Viven aquí y no en la base por lo mismo que el catálogo de complementos:
+ * cada una es una maquetación concreta que la web del cliente tiene que saber
+ * pintar, y poder elegir una que nadie ha implementado deja la sección rota.
+ *
+ * `layout` no es decoración del panel: sale por la API y va en el encargo al
+ * equipo que monta la web. Sin él, «Galería 2» significaba lo que cada
+ * front-end quisiera, y el cliente elegía a ciegas entre tres etiquetas.
+ * Cambiar un valor de aquí cambia lo que ya está publicado en las webs que lo
+ * leen, así que se añaden galerías nuevas en vez de redefinir las que hay.
  */
 export const GALLERY_OPTIONS = [
-  { value: "gallery-1", label: "Galería 1" },
-  { value: "gallery-2", label: "Galería 2" },
-  { value: "gallery-3", label: "Galería 3" },
+  {
+    value: "gallery-1",
+    label: "Galería 1",
+    summary: "Rejilla clásica, con el texto bajo cada imagen.",
+    layout: {
+      /** Tarjetas por fila. El móvil siempre va a una, no se declara. */
+      columns: 3,
+      /** Proporción a la que se recorta la imagen. */
+      aspect: "4/3",
+      /** Dónde va el texto respecto de la imagen. */
+      textPlacement: "below",
+      /** Si la descripción se pinta en la tarjeta o se guarda para el detalle. */
+      showsDescription: true,
+    },
+  },
+  {
+    value: "gallery-2",
+    label: "Galería 2",
+    summary: "Mosaico a dos columnas; el texto aparece sobre la imagen.",
+    layout: {
+      columns: 2,
+      // La imagen manda: es la galería para trabajo visual, donde recortar
+      // todo a la misma caja estropea justo lo que se quiere enseñar.
+      aspect: "original",
+      textPlacement: "overlay",
+      showsDescription: false,
+    },
+  },
+  {
+    value: "gallery-3",
+    label: "Galería 3",
+    summary: "Una por fila, imagen grande y texto al lado.",
+    layout: {
+      columns: 1,
+      aspect: "16/9",
+      textPlacement: "beside",
+      showsDescription: true,
+    },
+  },
 ] as const;
+
+export type GalleryLayout = (typeof GALLERY_OPTIONS)[number]["layout"];
 
 export type GalleryValue = (typeof GALLERY_OPTIONS)[number]["value"];
 
@@ -86,6 +131,18 @@ export type PortfolioSettings = z.infer<typeof PortfolioSettingsSchema>;
  * galería que ya no existe— devuelve los valores por defecto. La pantalla de
  * un complemento activo no debería reventar por un campo de más.
  */
+/**
+ * La maquetación de una galería.
+ *
+ * Devuelve la de `gallery-1` si la clave no se reconoce: es preferible a un
+ * `undefined` que obligaría a comprobarlo en cada consumo, y una galería
+ * desconocida sólo puede venir de una configuración anterior a un cambio.
+ */
+export function galleryLayout(value: string): GalleryLayout {
+  const found = GALLERY_OPTIONS.find((option) => option.value === value);
+  return (found ?? GALLERY_OPTIONS[0]).layout;
+}
+
 export function parsePortfolioSettings(raw: unknown): PortfolioSettings {
   const parsed = PortfolioSettingsSchema.safeParse(raw ?? {});
   return parsed.success ? parsed.data : PortfolioSettingsSchema.parse({});
