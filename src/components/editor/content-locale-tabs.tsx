@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, unstable_rethrow } from "next/navigation";
 import { Languages, Loader2, AlertCircle } from "lucide-react";
 import { localeLabel } from "@/lib/content/locales";
 
@@ -52,8 +52,17 @@ export function ContentLocaleTabs({
       try {
         await fn();
       } catch (err) {
+        /*
+         * Traducir termina en `redirect()`, y Next señala ese salto lanzando.
+         * Sin esto el `catch` lo trataba como un fallo y pintaba "NEXT_REDIRECT"
+         * en rojo justo antes de navegar: la traducción salía bien, pero el
+         * mensaje decía lo contrario. `unstable_rethrow` deja pasar las señales
+         * del framework y sólo cae abajo lo que de verdad es un error.
+         */
+        unstable_rethrow(err);
         setError(err instanceof Error ? err.message : "No se pudo traducir el contenido.");
-      } finally {
+        // Sólo se apaga aquí: si la traducción salió bien viene una navegación
+        // detrás, y el indicador debe seguir girando hasta que llegue.
         setBusyLocale(null);
       }
     });

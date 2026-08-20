@@ -294,182 +294,192 @@ export function PostEditor({
 
           {/* Contenido de la pestaña activa */}
           <div className="flex-1 overflow-y-auto p-4 space-y-6 pr-2 scrollbar-thin">
-            {activeTab === "general" && (
-              <div className="space-y-6">
-                <section className="space-y-2">
-                  <Label htmlFor="categoryId">Categoría</Label>
-                  <select
-                    id="categoryId"
-                    // Sin `key`, el select no reflejaba la categoría recién
-                    // guardada: es un campo no controlado, y al refrescar el
-                    // servidor con el nuevo `draft.categoryId` React no vuelve
-                    // a aplicar `defaultValue` sobre el mismo nodo. El usuario
-                    // veía "Sin categoría" tras guardar aunque sí se hubiera
-                    // asignado — sólo se corregía al recargar la página.
-                    key={draft.categoryId ?? "none"}
-                    name="categoryId"
-                    form={formId}
-                    defaultValue={draft.categoryId ?? ""}
-                    onChange={() => setDirty(true)}
-                    className="h-9 w-full rounded-[var(--radius)] border border-input bg-background px-3 text-xs font-medium outline-hidden hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-all cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%20stroke%3D%22%23a1a1aa%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_10px_center] bg-[size:16px_auto] bg-no-repeat pr-8"
-                  >
-                    <option value="">Sin categoría</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </section>
+            {/*
+              Las tres pestañas se quedan MONTADAS y sólo se ocultan.
 
-                <section className="space-y-2">
-                  <Label>Imagen de portada</Label>
-                  {coverUrl ? (
-                    <div className="relative group overflow-hidden rounded-[var(--radius)] border bg-muted aspect-video">
-                      <Image
-                        src={coverUrl}
-                        alt="Vista previa de portada"
-                        fill
-                        unoptimized /* la URL firmada caduca: optimizarla la cachearía rota */
-                        className="object-cover transition duration-300 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200">
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          onClick={handleRemoveCover}
-                          className="gap-1.5"
-                        >
-                          <Trash className="size-3.5" />
-                          Eliminar
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-[var(--radius)] p-4 hover:bg-muted/50 cursor-pointer relative group transition-colors duration-200 min-h-24">
-                      {isUploadingCover ? (
-                        <div className="flex flex-col items-center gap-1.5">
-                          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">Subiendo...</span>
-                        </div>
-                      ) : (
-                        <>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleCoverUpload}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                          />
-                          <div className="flex flex-col items-center gap-1">
-                            <UploadCloud className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                            <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
-                              Subir portada
-                            </span>
-                            <span className="text-[10px] text-muted-foreground">
-                              PNG, JPG, WebP hasta 5MB
-                            </span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  {coverError && (
-                    <p className="text-[11px] text-destructive mt-1">{coverError}</p>
-                  )}
-                  {/* Se avisa aquí y no en la ayuda: quien cambia la portada
-                      tiene que saber en ese momento que afecta a los demás
-                      idiomas, no descubrirlo al revisar la web. */}
-                  <p className="text-[10px] text-muted-foreground">
-                    La portada es la misma en todos los idiomas.
-                  </p>
-                </section>
+              Desmontarlas se llevaba por delante lo que contienen: el extracto
+              y la categoría se asocian al formulario por `form=`, así que al
+              pasar a Metadatos desaparecían del FormData y Guardar los
+              escribía a null. Se perdía el extracto por haber tocado un campo
+              personalizado, sin aviso ninguno.
 
-                <section className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="publishedAtInput">Fecha de publicación</Label>
-                    {publishedAt && (
-                      <button
+              Ocultar en vez de desmontar conserva además lo tecleado al ir y
+              volver entre pestañas.
+            */}
+            <div className="space-y-6" hidden={activeTab !== "general"}>
+              <section className="space-y-2">
+                <Label htmlFor="categoryId">Categoría</Label>
+                <select
+                  id="categoryId"
+                  // Sin `key`, el select no reflejaba la categoría recién
+                  // guardada: es un campo no controlado, y al refrescar el
+                  // servidor con el nuevo `draft.categoryId` React no vuelve
+                  // a aplicar `defaultValue` sobre el mismo nodo. El usuario
+                  // veía "Sin categoría" tras guardar aunque sí se hubiera
+                  // asignado — sólo se corregía al recargar la página.
+                  key={draft.categoryId ?? "none"}
+                  name="categoryId"
+                  form={formId}
+                  defaultValue={draft.categoryId ?? ""}
+                  onChange={() => setDirty(true)}
+                  className="h-9 w-full rounded-[var(--radius)] border border-input bg-background px-3 text-xs font-medium outline-hidden hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-all cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%20stroke%3D%22%23a1a1aa%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_10px_center] bg-[size:16px_auto] bg-no-repeat pr-8"
+                >
+                  <option value="">Sin categoría</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </section>
+
+              {/* La URL va pegada a la categoría: las dos responden a "dónde
+                  vive esto", y buscarla al final de la columna —tras portada,
+                  fecha y extracto— obligaba a bajar por todo el panel para
+                  comprobar una dirección. */}
+              {slugEditor}
+
+              <section className="space-y-2">
+                <Label>Imagen de portada</Label>
+                {coverUrl ? (
+                  <div className="relative group overflow-hidden rounded-[var(--radius)] border bg-muted aspect-video">
+                    <Image
+                      src={coverUrl}
+                      alt="Vista previa de portada"
+                      fill
+                      unoptimized /* la URL firmada caduca: optimizarla la cachearía rota */
+                      className="object-cover transition duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200">
+                      <Button
                         type="button"
-                        onClick={() => {
-                          setPublishedAt("");
-                          setDirty(true);
-                        }}
-                        className="text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleRemoveCover}
+                        className="gap-1.5"
                       >
-                        Restablecer
-                      </button>
+                        <Trash className="size-3.5" />
+                        Eliminar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-[var(--radius)] p-4 hover:bg-muted/50 cursor-pointer relative group transition-colors duration-200 min-h-24">
+                    {isUploadingCover ? (
+                      <div className="flex flex-col items-center gap-1.5">
+                        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Subiendo...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleCoverUpload}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <div className="flex flex-col items-center gap-1">
+                          <UploadCloud className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                          <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
+                            Subir portada
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            PNG, JPG, WebP hasta 5MB
+                          </span>
+                        </div>
+                      </>
                     )}
                   </div>
-                  <Input
-                    id="publishedAtInput"
-                    type="datetime-local"
-                    value={publishedAt}
-                    onChange={(e) => {
-                      setPublishedAt(e.target.value);
-                      setDirty(true);
-                    }}
-                    className="relative w-full cursor-pointer text-xs font-medium pl-8 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:left-2.5 [&::-webkit-calendar-picker-indicator]:opacity-50"
-                  />
-                  {!publishedAt && (
-                    <p className="text-[10px] text-muted-foreground">
-                      Por defecto se fijará al momento de presionar &quot;Publicar&quot;.
-                    </p>
+                )}
+                {coverError && (
+                  <p className="text-[11px] text-destructive mt-1">{coverError}</p>
+                )}
+                {/* Se avisa aquí y no en la ayuda: quien cambia la portada
+                    tiene que saber en ese momento que afecta a los demás
+                    idiomas, no descubrirlo al revisar la web. */}
+                <p className="text-[10px] text-muted-foreground">
+                  La portada es la misma en todos los idiomas.
+                </p>
+              </section>
+
+              <section className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="publishedAtInput">Fecha de publicación</Label>
+                  {publishedAt && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPublishedAt("");
+                        setDirty(true);
+                      }}
+                      className="text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      Restablecer
+                    </button>
                   )}
-                </section>
-
-                <section className="space-y-2">
-                  <Label htmlFor="excerpt">Extracto</Label>
-                  <Textarea
-                    // Mismo motivo que el título: sin `key`, el textarea se
-                    // quedaría con el extracto anterior cuando el servidor
-                    // devuelve el traducido. Si no hay extracto, la clave no
-                    // cambia y aquí no pasa nada.
-                    key={draft.excerpt}
-                    id="excerpt"
-                    name="excerpt"
-                    form={formId}
-                    defaultValue={draft.excerpt}
-                    onChange={() => setDirty(true)}
-                    maxLength={400}
-                    rows={3}
-                    placeholder="Resumen breve para listados y redes sociales."
-                  />
-                </section>
-
-                {translations}
-
-                {reactions}
-
-                {slugEditor}
-              </div>
-            )}
-
-            {activeTab === "history" && (
-              <div className="space-y-6">
-                {history}
-                {lifecycle}
-              </div>
-            )}
-
-            {activeTab === "metadata" && (
-              <div className="space-y-6">
-                <section className="space-y-2">
-                  <Label>Campos personalizados</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Metadatos libres que viajan en la API dentro de{" "}
-                    <code className="rounded bg-muted px-1">custom_fields</code>.
+                </div>
+                <Input
+                  id="publishedAtInput"
+                  type="datetime-local"
+                  value={publishedAt}
+                  onChange={(e) => {
+                    setPublishedAt(e.target.value);
+                    setDirty(true);
+                  }}
+                  className="relative w-full cursor-pointer text-xs font-medium pl-8 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:left-2.5 [&::-webkit-calendar-picker-indicator]:opacity-50"
+                />
+                {!publishedAt && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Por defecto se fijará al momento de presionar &quot;Publicar&quot;.
                   </p>
-                  <CustomFieldsEditor
-                    value={customFields}
-                    onChange={(next) => {
-                      setCustomFields(next);
-                      setDirty(true);
-                    }}
-                  />
-                </section>
-              </div>
-            )}
+                )}
+              </section>
+
+              <section className="space-y-2">
+                <Label htmlFor="excerpt">Extracto</Label>
+                <Textarea
+                  // Mismo motivo que el título: sin `key`, el textarea se
+                  // quedaría con el extracto anterior cuando el servidor
+                  // devuelve el traducido. Si no hay extracto, la clave no
+                  // cambia y aquí no pasa nada.
+                  key={draft.excerpt}
+                  id="excerpt"
+                  name="excerpt"
+                  form={formId}
+                  defaultValue={draft.excerpt}
+                  onChange={() => setDirty(true)}
+                  maxLength={400}
+                  rows={3}
+                  placeholder="Resumen breve para listados y redes sociales."
+                />
+              </section>
+
+              {translations}
+
+              {reactions}
+            </div>
+
+            <div className="space-y-6" hidden={activeTab !== "history"}>
+              {history}
+              {lifecycle}
+            </div>
+
+            <div className="space-y-6" hidden={activeTab !== "metadata"}>
+              <section className="space-y-2">
+                <Label>Campos personalizados</Label>
+                <p className="text-xs text-muted-foreground">
+                  Metadatos libres que viajan en la API dentro de{" "}
+                  <code className="rounded bg-muted px-1">custom_fields</code>.
+                </p>
+                <CustomFieldsEditor
+                  value={customFields}
+                  onChange={(next) => {
+                    setCustomFields(next);
+                    setDirty(true);
+                  }}
+                />
+              </section>
+            </div>
           </div>
         </aside>
       </div>

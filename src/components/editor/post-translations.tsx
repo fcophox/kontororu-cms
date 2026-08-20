@@ -1,8 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Languages, Plus, Loader2 } from "lucide-react";
+import { unstable_rethrow } from "next/navigation";
+import { AlertCircle, Languages, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { localeLabel } from "@/lib/content/locales";
@@ -36,9 +37,33 @@ export function PostTranslations({
   createAction: (locale: string) => Promise<void>;
 }) {
   const [pending, startTransition] = useTransition();
+  const [busyLocale, setBusyLocale] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Sólo hay algo que enseñar si el espacio tiene más de un idioma.
   if (availableLocales.length < 2) return null;
+
+  const create = (locale: string) => {
+    setError(null);
+    setBusyLocale(locale);
+    startTransition(async () => {
+      try {
+        await createAction(locale);
+      } catch (err) {
+        /*
+         * Crear un idioma acaba en `redirect()`, y Next señala ese salto
+         * lanzando. `unstable_rethrow` deja pasar esa señal para que la
+         * navegación ocurra; abajo sólo cae lo que de verdad falló —permisos,
+         * un idioma ya traducido— que antes se perdía en silencio.
+         */
+        unstable_rethrow(err);
+        setError(err instanceof Error ? err.message : "No se pudo traducir el contenido.");
+        // Sólo se apaga aquí: si salió bien viene una navegación detrás y el
+        // indicador debe seguir girando hasta que llegue.
+        setBusyLocale(null);
+      }
+    });
+  };
 
   const existing = new Map(translations.map((t) => [t.locale, t]));
   const missing = availableLocales.filter((l) => l !== currentLocale && !existing.has(l));
@@ -80,10 +105,10 @@ export function PostTranslations({
               variant="outline"
               size="sm"
               className="h-7 text-xs"
-              disabled={Boolean(pending)}
-              onClick={() => startTransition(async () => createAction(locale))}
+              disabled={pending}
+              onClick={() => create(locale)}
             >
-              {pending ? (
+              {pending && busyLocale === locale ? (
                 <Loader2 className="size-3 animate-spin" />
               ) : (
                 <Plus className="size-3" />
@@ -92,6 +117,13 @@ export function PostTranslations({
             </Button>
           ))}
         </div>
+      )}
+
+      {error && (
+        <p className="flex items-center gap-1.5 text-xs text-destructive">
+          <AlertCircle className="size-3.5" />
+          {error}
+        </p>
       )}
 
       <p className="text-xs text-muted-foreground">
