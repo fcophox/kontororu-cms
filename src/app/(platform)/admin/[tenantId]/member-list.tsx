@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Clock, PauseCircle, PlayCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { TenantRole } from "@/lib/auth/roles";
 import type { PlatformState } from "../actions";
 import { CreateMemberDialog } from "./create-member-dialog";
@@ -57,6 +58,11 @@ export function MemberList({
   const [state, setState] = useState<PlatformState>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Qué se está confirmando y sobre quién. Un solo estado para los dos avisos:
+  // nunca hay dos abiertos a la vez.
+  const [confirming, setConfirming] = useState<
+    { kind: "suspend" | "remove"; member: PlatformMember } | null
+  >(null);
 
   const run = (memberId: string, action: () => Promise<PlatformState>) => {
     setBusyId(memberId);
@@ -161,16 +167,12 @@ export function MemberList({
                 }
                 onClick={() => {
                   // Pausar corta el acceso de golpe: la persona puede estar
-                  // trabajando en este momento.
-                  if (
-                    !member.suspended &&
-                    !window.confirm(
-                      `${member.email} dejará de entrar a este espacio hasta que lo restablezcas. ¿Continuar?`,
-                    )
-                  ) {
+                  // trabajando en este momento. Restablecer no se pregunta.
+                  if (!member.suspended) {
+                    setConfirming({ kind: "suspend", member });
                     return;
                   }
-                  run(member.id, () => suspendAction(member.id, !member.suspended));
+                  run(member.id, () => suspendAction(member.id, false));
                 }}
               >
                 {member.suspended ? (
@@ -192,16 +194,7 @@ export function MemberList({
                 size="icon"
                 disabled={busy}
                 aria-label={`Eliminar a ${member.email} del espacio`}
-                onClick={() => {
-                  if (
-                    !window.confirm(
-                      `Se elimina a ${member.email} de este espacio. Su cuenta y su trabajo se conservan, pero pierde el acceso y habrá que volver a invitarle. ¿Continuar?`,
-                    )
-                  ) {
-                    return;
-                  }
-                  run(member.id, () => removeAction(member.id));
-                }}
+                onClick={() => setConfirming({ kind: "remove", member })}
               >
                 <Trash2 className="size-4" />
               </Button>
@@ -209,6 +202,32 @@ export function MemberList({
           );
         })}
       </div>
+
+      <ConfirmDialog
+        isOpen={confirming !== null}
+        title={
+          confirming?.kind === "remove"
+            ? "¿Eliminar a este colaborador?"
+            : "¿Pausar el acceso?"
+        }
+        description={
+          confirming?.kind === "remove"
+            ? `Se elimina a ${confirming.member.email} de este espacio. Su cuenta y su trabajo se conservan, pero pierde el acceso y habrá que volver a invitarle.`
+            : `${confirming?.member.email ?? ""} dejará de entrar a este espacio hasta que lo restablezcas. Si está trabajando ahora mismo, se corta de golpe.`
+        }
+        confirmText={confirming?.kind === "remove" ? "Eliminar" : "Pausar"}
+        onConfirm={async () => {
+          if (!confirming) return;
+          const { kind, member } = confirming;
+          setConfirming(null);
+          run(member.id, () =>
+            kind === "remove" ? removeAction(member.id) : suspendAction(member.id, true),
+          );
+        }}
+        onCancel={() => setConfirming(null)}
+        variant={confirming?.kind === "remove" ? "destructive" : "warning"}
+        icon={confirming?.kind === "remove" ? Trash2 : PauseCircle}
+      />
     </section>
   );
 }

@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { UserPlus, Trash2, Loader2, Clock, PauseCircle, KeyRound, Mail, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -69,6 +70,9 @@ export function TeamList({
     {},
   );
   const [pending, startTransition] = useTransition();
+  // El miembro a expulsar, no un booleano: el diálogo se monta fuera de la
+  // lista y necesita su email para decir a quién se está quitando.
+  const [toRemove, setToRemove] = useState<Member | null>(null);
   const [mode, setMode] = useState<"invite" | "direct">("invite");
   const [password, setPassword] = useState("");
 
@@ -145,12 +149,7 @@ export function TeamList({
                   size="icon"
                   aria-label={`Expulsar a ${member.email}`}
                   disabled={Boolean(pending)}
-                  onClick={() => {
-                    if (!window.confirm(`¿Quitar a ${member.email} de este espacio?`)) return;
-                    startTransition(async () => {
-                      await removeAction(member.id);
-                    });
-                  }}
+                  onClick={() => setToRemove(member)}
                 >
                   <Trash2 className="size-4" />
                 </Button>
@@ -276,6 +275,20 @@ export function TeamList({
           </Button>
         )}
       </form>
+
+      <ConfirmDialog
+        isOpen={toRemove !== null}
+        title="¿Quitar a este colaborador?"
+        description={`${toRemove?.email ?? ""} perderá el acceso a este espacio. El contenido que haya creado se queda.`}
+        confirmText="Quitar"
+        onConfirm={async () => {
+          if (toRemove) await removeAction(toRemove.id);
+          setToRemove(null);
+        }}
+        onCancel={() => setToRemove(null)}
+        variant="destructive"
+        icon={Trash2}
+      />
     </div>
   );
 }

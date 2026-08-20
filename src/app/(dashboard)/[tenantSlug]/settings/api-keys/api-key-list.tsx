@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
-import { KeyRound, Plus, Loader2, Copy, Check, AlertTriangle } from "lucide-react";
+import { useActionState, useState } from "react";
+import { KeyRound, Plus, Loader2, Copy, Check, AlertTriangle, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ApiKeyState } from "./actions";
@@ -38,7 +39,9 @@ export function ApiKeyList({
     createAction,
     {},
   );
-  const [pending, startTransition] = useTransition();
+  // La clave a revocar, no un booleano: el diálogo vive fuera de la lista y
+  // necesita saber de cuál habla para nombrarla en el aviso.
+  const [toRevoke, setToRevoke] = useState<ApiKeyRow | null>(null);
 
   const active = keys.filter((k) => !k.revokedAt);
   const revoked = keys.filter((k) => k.revokedAt);
@@ -83,18 +86,7 @@ export function ApiKeyList({
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={Boolean(pending)}
-                    onClick={() => {
-                      if (
-                        !window.confirm(
-                          `Revocar "${key.name}" cortará el acceso de inmediato a cualquier web que la use. ¿Continuar?`,
-                        )
-                      )
-                        return;
-                      startTransition(async () => {
-                        await revokeAction(key.id);
-                      });
-                    }}
+                    onClick={() => setToRevoke(key)}
                   >
                     Revocar
                   </Button>
@@ -175,6 +167,23 @@ export function ApiKeyList({
           )}
         </form>
       </div>
+
+      <ConfirmDialog
+        isOpen={toRevoke !== null}
+        title={`¿Revocar "${toRevoke?.name ?? ""}"?`}
+        description="El acceso se corta de inmediato para cualquier web que use esta clave, y no se puede deshacer: habrá que crear una nueva y cambiarla allí."
+        confirmText="Revocar"
+        onConfirm={async () => {
+          // Se cierra DESPUÉS de que el servidor responda: así el diálogo
+          // sostiene el "Procesando…" en vez de dejar la lista un instante
+          // con la clave todavía activa.
+          if (toRevoke) await revokeAction(toRevoke.id);
+          setToRevoke(null);
+        }}
+        onCancel={() => setToRevoke(null)}
+        variant="destructive"
+        icon={Ban}
+      />
     </div>
   );
 }

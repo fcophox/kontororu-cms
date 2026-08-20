@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useActionState, useState } from "react";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { CategoryState } from "./actions";
@@ -29,7 +30,9 @@ export function CategoryList({
     createAction,
     {},
   );
-  const [pendingId, startTransition] = useTransition();
+  // La categoría a borrar, no un booleano: el diálogo se monta fuera de la
+  // lista y necesita el nombre y el recuento para el aviso.
+  const [toDelete, setToDelete] = useState<Category | null>(null);
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
@@ -63,17 +66,7 @@ export function CategoryList({
               variant="ghost"
               size="icon"
               aria-label={`Eliminar ${category.name}`}
-              disabled={Boolean(pendingId)}
-              onClick={() => {
-                const warning =
-                  category.postCount > 0
-                    ? `${category.postCount} entrada(s) quedarán sin categoría. ¿Eliminar "${category.name}"?`
-                    : `¿Eliminar "${category.name}"?`;
-                if (!window.confirm(warning)) return;
-                startTransition(async () => {
-                  await deleteAction(category.id);
-                });
-              }}
+              onClick={() => setToDelete(category)}
             >
               <Trash2 className="size-4" />
             </Button>
@@ -116,6 +109,24 @@ export function CategoryList({
           Crear categoría
         </Button>
       </form>
+
+      <ConfirmDialog
+        isOpen={toDelete !== null}
+        title={`¿Eliminar "${toDelete?.name ?? ""}"?`}
+        description={
+          toDelete && toDelete.postCount > 0
+            ? `${toDelete.postCount} ${toDelete.postCount === 1 ? "entrada quedará" : "entradas quedarán"} sin categoría. Las entradas no se borran.`
+            : "La categoría no tiene entradas, así que no se pierde nada al borrarla."
+        }
+        confirmText="Eliminar"
+        onConfirm={async () => {
+          if (toDelete) await deleteAction(toDelete.id);
+          setToDelete(null);
+        }}
+        onCancel={() => setToDelete(null)}
+        variant="destructive"
+        icon={Trash2}
+      />
     </div>
   );
 }

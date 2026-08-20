@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { Plus, Pencil, Trash2, Loader2, RotateCw, Eye, EyeOff, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -212,6 +213,7 @@ function WebhookRowItem({
   startTransition: (fn: () => void) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [state, formAction, isSaving] = useActionState<WebhookState, FormData>(updateAction, {});
 
   // Al guardar con éxito se cierra el formulario. El `ok` sólo llega cuando el
@@ -335,18 +337,27 @@ function WebhookRowItem({
           size="icon"
           aria-label={`Eliminar ${hook.name}`}
           disabled={pending}
-          onClick={() => {
-            if (!window.confirm(`¿Eliminar el webhook "${hook.name}"?`)) return;
-            startTransition(async () => {
-              await deleteAction(hook.id);
-            });
-          }}
+          onClick={() => setConfirmingDelete(true)}
         >
           <Trash2 className="size-4" />
         </Button>
       </div>
 
       <SecretField secret={hook.secret} />
+
+      <ConfirmDialog
+        isOpen={confirmingDelete}
+        title={`¿Eliminar el webhook "${hook.name}"?`}
+        description="Dejarás de recibir estos eventos en tu web. El historial de entregas se va con él."
+        confirmText="Eliminar"
+        onConfirm={async () => {
+          await deleteAction(hook.id);
+          setConfirmingDelete(false);
+        }}
+        onCancel={() => setConfirmingDelete(false)}
+        variant="destructive"
+        icon={Trash2}
+      />
     </div>
   );
 }

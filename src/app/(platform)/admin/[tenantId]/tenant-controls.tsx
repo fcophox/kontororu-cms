@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
-import { Loader2, Check, ExternalLink } from "lucide-react";
+import { useActionState, useState, useTransition } from "react";
+import { Loader2, Check, ExternalLink, PauseCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -36,6 +37,9 @@ export function TenantControls({
     {},
   );
   const [pending, startTransition] = useTransition();
+  // Sólo se pregunta al dejar de servir a un cliente que está operativo:
+  // reactivarlo o cambiar entre dos estados ya cortados no rompe nada.
+  const [toCut, setToCut] = useState<TenantStatus | null>(null);
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -51,11 +55,8 @@ export function TenantControls({
               aria-pressed={s === status}
               onClick={() => {
                 if (isOperational(status) && !isOperational(s)) {
-                  const warning =
-                    s === "CANCELLED"
-                      ? "Cancelar cierra el acceso al panel y deja de servir la API. El contenido se conserva. ¿Continuar?"
-                      : "Suspender corta el acceso del cliente de inmediato, incluida su API. ¿Continuar?";
-                  if (!window.confirm(warning)) return;
+                  setToCut(s);
+                  return;
                 }
                 startTransition(async () => {
                   await statusAction(s);
@@ -135,6 +136,25 @@ export function TenantControls({
           )}
         </div>
       </form>
+
+      <ConfirmDialog
+        isOpen={toCut !== null}
+        title={toCut === "CANCELLED" ? "¿Cancelar este espacio?" : "¿Suspender este espacio?"}
+        description={
+          toCut === "CANCELLED"
+            ? "Se cierra el acceso al panel y su API deja de responder. El contenido se conserva y puedes reactivarlo."
+            : "El cliente pierde el acceso de inmediato, incluida su API. Es reversible: puedes volver a activarlo."
+        }
+        confirmText={toCut === "CANCELLED" ? "Cancelar espacio" : "Suspender"}
+        cancelText="Volver"
+        onConfirm={async () => {
+          if (toCut) await statusAction(toCut);
+          setToCut(null);
+        }}
+        onCancel={() => setToCut(null)}
+        variant="destructive"
+        icon={PauseCircle}
+      />
     </div>
   );
 }
