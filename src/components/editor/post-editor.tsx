@@ -322,6 +322,12 @@ export function PostEditor({
                   </select>
                 </section>
 
+                {/* La URL va pegada a la categoría: las dos responden a "dónde
+                    vive esto", y buscarla al final de la columna —tras portada,
+                    fecha y extracto— obligaba a bajar por todo el panel para
+                    comprobar una dirección. */}
+                {slugEditor}
+
                 <section className="space-y-2">
                   <Label>Imagen de portada</Label>
                   {coverUrl ? (
@@ -440,8 +446,6 @@ export function PostEditor({
                 {translations}
 
                 {reactions}
-
-                {slugEditor}
               </div>
             )}
 
