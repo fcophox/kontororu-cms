@@ -421,6 +421,11 @@ export function PostEditor({
                 <section className="space-y-2">
                   <Label htmlFor="excerpt">Extracto</Label>
                   <Textarea
+                    // Mismo motivo que el título: sin `key`, el textarea se
+                    // quedaría con el extracto anterior cuando el servidor
+                    // devuelve el traducido. Si no hay extracto, la clave no
+                    // cambia y aquí no pasa nada.
+                    key={draft.excerpt}
                     id="excerpt"
                     name="excerpt"
                     form={formId}
