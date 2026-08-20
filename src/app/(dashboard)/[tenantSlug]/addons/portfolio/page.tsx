@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { requirePermission } from "@/lib/auth/guards";
 import { getTenantAddon } from "@/lib/addons/queries";
 import { parsePortfolioSettings } from "@/lib/addons/portfolio";
 import { PortfolioSettingsDrawer } from "./portfolio-settings";
 import { PortfolioCreateButton } from "./portfolio-item-drawer";
 import { PortfolioGrid } from "./portfolio-grid";
+import { PortfolioBrief } from "./portfolio-brief";
 import {
   createPortfolioItem,
   deletePortfolioItem,
@@ -70,7 +71,22 @@ export default async function PortfolioAddonPage({
 
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Portfolio</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">Portfolio</h1>
+            {/* El estado se ve sin abrir la configuración: es la diferencia
+                entre que la web enseñe la sección o no. */}
+            {settings.isPublished ? (
+              <span className="inline-flex items-center gap-1 rounded bg-primary px-1.5 py-0.5 text-xs text-primary-foreground">
+                <Eye className="size-3" />
+                visible en la web
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                <EyeOff className="size-3" />
+                oculto en la web
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             Un espacio propio para los trabajos que quieres mostrar en tu web,
             con su orden y su ficha.
@@ -94,6 +110,8 @@ export default async function PortfolioAddonPage({
         updateAction={update}
         deleteAction={remove}
       />
+
+      <PortfolioBrief gallery={settings.gallery} />
     </div>
   );
 }

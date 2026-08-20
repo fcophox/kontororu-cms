@@ -23,6 +23,7 @@ export function PortfolioSettingsDrawer({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [gallery, setGallery] = useState(initial.gallery);
+  const [isPublished, setIsPublished] = useState(initial.isPublished);
   const [state, formAction, isSaving] = useActionState<PortfolioState, FormData>(
     saveAction,
     {},
@@ -32,6 +33,7 @@ export function PortfolioSettingsDrawer({
   // el radio marcado en algo que no se guardó miente sobre el estado real.
   const close = () => {
     setGallery(initial.gallery);
+    setIsPublished(initial.isPublished);
     setIsOpen(false);
   };
 
@@ -59,9 +61,42 @@ export function PortfolioSettingsDrawer({
           <form action={formAction} className="flex min-h-0 flex-1 flex-col">
             {/* El JSON viaja en un campo oculto: el esquema de Zod valida lo
                 mismo aquí y en el servidor sin traducir nombres de campo. */}
-            <input type="hidden" name="settings" value={JSON.stringify({ gallery })} />
+            <input
+              type="hidden"
+              name="settings"
+              value={JSON.stringify({ gallery, isPublished })}
+            />
 
-            <div className="flex-1 space-y-4 overflow-y-auto p-6">
+            <div className="flex-1 space-y-6 overflow-y-auto p-6">
+              {/* La visibilidad va primero: es la decisión que se viene a
+                  tomar, la galería se elige una vez y no se vuelve a tocar. */}
+              <div className="flex items-start justify-between gap-4 rounded-[var(--radius)] border p-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Visible en la web</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Apagado, tu web deja de recibir el portfolio y la sección
+                    desaparece. Lo que hayas creado se queda aquí intacto.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isPublished}
+                  aria-label="Visible en la web"
+                  onClick={() => setIsPublished((prev) => !prev)}
+                  className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors ${
+                    isPublished ? "bg-primary" : "bg-muted"
+                  }`}
+                >
+                  <span
+                    className={`block size-5 rounded-full bg-background shadow-sm transition-transform ${
+                      isPublished ? "translate-x-5.5" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+
               <fieldset className="space-y-2">
                 <legend className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Galería

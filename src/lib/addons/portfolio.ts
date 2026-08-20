@@ -57,6 +57,15 @@ export type PortfolioItem = z.infer<typeof PortfolioItemSchema>;
 export const PortfolioSettingsSchema = z.object({
   gallery: GalleryEnum.default("gallery-1"),
   /**
+   * Interruptor de visibilidad en la web del cliente.
+   *
+   * Separado de tener el complemento activo: activarlo da acceso al panel y
+   * permite ir montando el portfolio con calma, y esto decide cuándo eso sale
+   * publicado. Sin la separación, el primer trabajo a medio escribir ya
+   * estaría en la web. Arranca apagado por lo mismo.
+   */
+  isPublished: z.boolean().default(false),
+  /**
    * Los elementos que no cumplen el esquema se descartan uno a uno en vez de
    * tumbar la lista entera: un elemento roto no debería vaciar el portfolio.
    */

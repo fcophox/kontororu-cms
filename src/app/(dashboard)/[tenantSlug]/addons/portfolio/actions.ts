@@ -17,8 +17,8 @@ import { dispatchNow } from "@/lib/content/webhook-dispatch";
 
 export type PortfolioState = { error?: string; ok?: string };
 
-/** Sólo la galería: el drawer de configuración no manda los elementos. */
-const GalleryOnlySchema = PortfolioSettingsSchema.pick({ gallery: true });
+/** Lo que manda el drawer de configuración: nunca los elementos. */
+const ConfigSchema = PortfolioSettingsSchema.pick({ gallery: true, isPublished: true });
 
 /** Lo que manda el formulario; el id y la fecha las pone el servidor. */
 const ItemFieldsSchema = PortfolioItemSchema.omit({ id: true, createdAt: true });
@@ -128,7 +128,7 @@ export async function savePortfolioSettings(
     return { error: "No se pudo leer la configuración enviada." };
   }
 
-  const parsed = GalleryOnlySchema.safeParse(json);
+  const parsed = ConfigSchema.safeParse(json);
   if (!parsed.success) return { error: "Esa galería no está disponible." };
 
   const ctx = await loadWritableSettings(tenantSlug);
@@ -137,6 +137,7 @@ export async function savePortfolioSettings(
   const failure = await writeSettings(ctx.supabase, ctx.tenant.id, tenantSlug, {
     ...ctx.settings,
     gallery: parsed.data.gallery,
+    isPublished: parsed.data.isPublished,
   });
 
   return failure ? { error: failure } : { ok: "Configuración guardada." };

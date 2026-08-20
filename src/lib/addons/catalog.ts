@@ -76,7 +76,7 @@ export const ADDONS: readonly Addon[] = [
     name: "Portfolio",
     summary: "Enseña tus trabajos como una colección, no como entradas sueltas.",
     description:
-      "Un espacio propio para los proyectos que quieres mostrar en tu web, con su orden y su ficha. Todavía no tiene nada dentro: de momento sólo se activa y se abre.",
+      "Un espacio propio para los proyectos que quieres mostrar en tu web: cada trabajo con su imagen, su descripción, su categoría y su enlace. Un interruptor decide cuándo la sección se ve en tu web y cuándo no.",
     icon: Images,
     configPath: "/addons/portfolio",
     actionLabel: "Abrir portfolio",

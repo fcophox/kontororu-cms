@@ -233,6 +233,53 @@ dice su cabecera: tu web seguiría ofreciendo horas que el cliente ya cerró.
 
 ---
 
+## `GET /addons/portfolio`
+
+> Requiere el complemento **Portfolio** activo **y** su interruptor «Visible en
+> la web» encendido. Sin cualquiera de las dos cosas, `404`.
+
+Los trabajos que el cliente ha creado en **Complementos → Portfolio**, para
+pintarlos como tarjetas. Scope `content:read`.
+
+```json
+{
+  "data": {
+    "gallery": "gallery-1",
+    "items": [
+      {
+        "id": "0f1c…",
+        "title": "Identidad para Ferretería Sur",
+        "description": "Texto largo, puede venir vacío",
+        "category": "Identidad",
+        "externalUrl": "https://ejemplo.cl/caso",
+        "image": { "id": "9a2b…", "url": "https://…", "alt": null, "width": 1600, "height": 900 },
+        "createdAt": "2026-08-20T10:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+Los elementos llegan **en el orden en que deben pintarse**, del más reciente al
+más antiguo. `category` y `externalUrl` son `null` cuando el cliente no los
+rellenó, y `image` es `null` cuando el elemento no tiene foto o su archivo ya
+no está: maqueta la tarjeta igualmente en vez de ocultarla.
+
+`gallery` es la plantilla elegida en el panel (`gallery-1`, `gallery-2` o
+`gallery-3`). **Léela de la respuesta**, no la fijes en tu código: el cliente
+puede cambiarla sin avisarte.
+
+⚠️ **El `404` no es un error que debas mostrar.** Significa que el cliente ha
+apagado la visibilidad; oculta la sección de portfolio y su enlace en el menú,
+sin ningún mensaje.
+
+Las URLs de imagen vienen firmadas y **caducan a las 24 horas**: no las guardes
+en tu propio almacenamiento ni las sirvas más allá de ese plazo, vuelve a pedir
+el endpoint. Como con el calendario, suscríbete a `addon.updated` para revalidar
+en cuanto el cliente toque algo.
+
+---
+
 ## `GET /media/{id}`
 
 El mismo objeto, con firma recién generada y `expiresIn` en segundos. Sirve
@@ -327,7 +374,8 @@ Siempre la misma forma:
 cachear con tranquilidad: el webhook te avisa en cuanto cambia algo, así que
 la ventana sólo cubre el hueco entre la publicación y el aviso.
 
-**Configuración de complementos** (`/addons/calendar/availability`) —
+**Configuración de complementos** (`/addons/calendar/availability`,
+`/addons/portfolio`) —
 `Cache-Control: public, s-maxage=30, must-revalidate`. Ventana más corta y sin
 servir obsoleto, porque aquí **no hay webhook que avise**: los eventos se
 emiten sobre el contenido, no sobre la configuración. Si la cacheas por tu
