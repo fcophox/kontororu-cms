@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { createServerClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/guards";
-import { asJsonContent, asRecord, asSeo } from "@/lib/content/json";
+import { asJsonContent, asSeo } from "@/lib/content/json";
+import { alignFields, unionFieldKeys } from "@/lib/content/custom-fields";
 import { refreshContentMedia } from "@/lib/api/content-media";
 import { signMediaBatch } from "@/lib/api/serializers";
 import { createServiceClient } from "@/lib/supabase/server";
@@ -79,7 +80,9 @@ export default async function EditContentPage({ params }: Props) {
   // Hermanas de este contenido: mismo grupo, otros idiomas.
   const { data: siblings } = await supabase
     .from("posts")
-    .select("id, locale, status")
+    // `custom_fields` viaja para alinear las claves al abrir: un campo añadido
+    // en otro idioma tiene que verse aquí aunque este post aún no lo tenga.
+    .select("id, locale, status, custom_fields")
     .eq("translation_group_id", post.translation_group_id)
     .neq("id", postId)
     .is("deleted_at", null)
@@ -300,7 +303,15 @@ export default async function EditContentPage({ params }: Props) {
         coverMediaId: post.cover_media_id,
         coverUrl,
         contentJson: asJsonContent(content.json),
-        customFields: asRecord(post.custom_fields),
+        /*
+         * Los campos personalizados son del contenido, no de un idioma: se
+         * muestran los de todas sus versiones, con las que aquí faltan vacías
+         * para rellenar. Guardar las persiste y las propaga al resto.
+         */
+        customFields: alignFields(
+          post.custom_fields,
+          unionFieldKeys(post.custom_fields, ...(siblings ?? []).map((s) => s.custom_fields)),
+        ),
         seo: asSeo(post.seo),
         status: post.status,
         publishedAt: post.published_at,

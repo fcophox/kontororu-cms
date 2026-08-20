@@ -12,6 +12,7 @@ import { renderContent, assertSafeEmbeds } from "@/lib/content/tiptap-to-html";
 import { slugify, uniqueSlug, readingTime } from "@/lib/content/slug";
 import { translateJsonContent, translateText } from "@/lib/content/translate";
 import { asJsonContent, asSeo } from "@/lib/content/json";
+import { alignFields, hasSameFieldKeys, unionFieldKeys } from "@/lib/content/custom-fields";
 import { dispatchNow } from "@/lib/content/webhook-dispatch";
 
 /**
@@ -152,6 +153,13 @@ export async function saveContent(
       if (coverError) {
         console.error("No se pudo propagar la portada a las traducciones", coverError);
       }
+
+      await syncCustomFieldKeys(
+        supabase,
+        updated.translation_group_id,
+        input.postId,
+        payload.custom_fields,
+      );
     }
 
     // El trigger acaba de encolar el evento; se entrega YA, sin esperar al
@@ -572,6 +580,56 @@ function mapDbError(message: string): string {
     return "No tienes permiso para realizar esta acción.";
   }
   return "No se pudo guardar. Inténtalo de nuevo.";
+}
+
+/**
+ * Iguala las claves de campos personalizados en el resto de idiomas.
+ *
+ * Un campo personalizado es del contenido, no de una de sus versiones: si la
+ * web pide `duracion`, tiene que venir tanto en español como en inglés. Antes
+ * sólo se copiaban al crear la traducción, así que cualquier campo añadido
+ * después existía en un idioma y faltaba en el otro.
+ *
+ * Se propaga la CLAVE y no el valor: "3 meses" y "3 months" son el mismo campo
+ * con texto distinto. Las nuevas entran vacías y lo ya escrito no se toca.
+ *
+ * Mismo trato que la portada: si falla, se registra y ya. El contenido que el
+ * editor acaba de escribir está guardado, y tumbar el guardado por no haber
+ * podido alinear una clave en otro idioma sería peor que la desalineación.
+ */
+async function syncCustomFieldKeys(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  groupId: string,
+  postId: string,
+  customFields: Json,
+) {
+  const keys = unionFieldKeys(customFields);
+
+  const { data: siblings, error } = await supabase
+    .from("posts")
+    .select("id, custom_fields")
+    .eq("translation_group_id", groupId)
+    .neq("id", postId);
+
+  if (error) {
+    console.error("No se pudieron leer las traducciones para alinear campos", error);
+    return;
+  }
+
+  for (const sibling of siblings ?? []) {
+    // Sin cambio de claves no se escribe: cada escritura genera revisión, y
+    // sincronizar no es una edición que merezca salir en el historial.
+    if (hasSameFieldKeys(sibling.custom_fields, keys)) continue;
+
+    const { error: fieldsError } = await supabase
+      .from("posts")
+      .update({ custom_fields: alignFields(sibling.custom_fields, keys) as Json })
+      .eq("id", sibling.id);
+
+    if (fieldsError) {
+      console.error("No se pudieron alinear los campos de una traducción", fieldsError);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------
