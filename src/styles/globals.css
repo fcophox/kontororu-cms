@@ -122,3 +122,14 @@
   animation: modal-scale-in 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+
+/* El drawer entra desde el borde derecho: el gesto dice de dónde viene y a
+   dónde vuelve al cerrarse, cosa que un fundido no cuenta. */
+@keyframes drawer-slide-in {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@utility animate-drawer-in {
+  animation: drawer-slide-in 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

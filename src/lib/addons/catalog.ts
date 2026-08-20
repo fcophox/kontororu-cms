@@ -10,9 +10,9 @@
  * servidor. Nada de `next/headers` ni de Supabase aquí.
  */
 
-import { Calendar, Heart, Inbox, type LucideIcon } from "lucide-react";
+import { Calendar, Heart, Inbox, Images, type LucideIcon } from "lucide-react";
 
-export type AddonKey = "calendar" | "contacts" | "reactions";
+export type AddonKey = "calendar" | "contacts" | "reactions" | "portfolio";
 
 export type Addon = {
   key: AddonKey;
@@ -68,6 +68,18 @@ export const ADDONS: readonly Addon[] = [
     icon: Heart,
     configPath: "/addons/reactions",
     actionLabel: "Ver reacciones",
+    billing: "INCLUDED",
+    priceLabel: "Incluido",
+  },
+  {
+    key: "portfolio",
+    name: "Portfolio",
+    summary: "Enseña tus trabajos como una colección, no como entradas sueltas.",
+    description:
+      "Un espacio propio para los proyectos que quieres mostrar en tu web, con su orden y su ficha. Todavía no tiene nada dentro: de momento sólo se activa y se abre.",
+    icon: Images,
+    configPath: "/addons/portfolio",
+    actionLabel: "Abrir portfolio",
     billing: "INCLUDED",
     priceLabel: "Incluido",
   },
