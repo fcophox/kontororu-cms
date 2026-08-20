@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, Check, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -19,9 +20,30 @@ export function LocalesForm({
   counts: Record<string, number>;
   saveAction: (prev: LocalesState, formData: FormData) => Promise<LocalesState>;
 }) {
+  const router = useRouter();
   const [state, formAction, isSaving] = useActionState<LocalesState, FormData>(saveAction, {});
   const [selected, setSelected] = useState<string[]>(active);
   const [primary, setPrimary] = useState(defaultLocale);
+
+  // Tras guardar, el servidor es la verdad. Sin este refresco el árbol cliente
+  // se queda con la respuesta anterior y los checks sólo cuadran al recargar
+  // la URL a mano. Cada resultado de la acción es un objeto nuevo, así que
+  // depender de `state` dispara el refresco también al guardar dos veces.
+  useEffect(() => {
+    if (state.ok) router.refresh();
+  }, [state, router]);
+
+  // Y cuando esa versión nueva llega, los checks la siguen: si algo dejó la
+  // pantalla mostrando los idiomas de antes, aquí se corrige sola en vez de
+  // enseñar un estado que ya no es el guardado. Se compara por valor, no por
+  // identidad, para no pisar una selección a medias en cada re-render.
+  const activeKey = active.join(",");
+  const [syncedActive, setSyncedActive] = useState(activeKey);
+  if (syncedActive !== activeKey) {
+    setSyncedActive(activeKey);
+    setSelected(active);
+    setPrimary(defaultLocale);
+  }
 
   const toggle = (code: string) => {
     setSelected((prev) => {
