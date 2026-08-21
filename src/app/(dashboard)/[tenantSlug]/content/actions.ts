@@ -131,27 +131,38 @@ export async function saveContent(
     if (error) return { error: mapDbError(error.message) };
 
     /*
-     * La portada es UNA para todas las traducciones.
+     * La portada y la categoría son UNA para todas las traducciones.
      *
-     * Es la misma foto del mismo artículo: obligar a subirla en cada idioma
-     * duplica el trabajo y, en cuanto alguien cambia una y olvida la otra, la
-     * web enseña una imagen distinta según el idioma del visitante.
+     * Es la misma foto y la misma sección del mismo artículo. Obligar a
+     * elegirlas en cada idioma duplica el trabajo y, en cuanto alguien cambia
+     * una y olvida la otra, la web enseña una imagen —o clasifica la entrada—
+     * distinta según el idioma del visitante.
      *
-     * Se propaga al guardar y no sólo al traducir porque el problema no es
-     * crear la traducción —eso ya copiaba la portada— sino que las dos versiones
-     * se separen después, al editar una de ellas.
+     * La categoría dejó de tener idioma en `categories_transversal`: "Blog" es
+     * la misma tanto si clasifica el español como el inglés, así que asignarla
+     * es una decisión sobre el contenido, no sobre una de sus versiones.
+     *
+     * Se propagan al guardar y no sólo al traducir porque el problema no es
+     * crear la traducción —eso ya las copiaba— sino que las dos versiones se
+     * separen después, al editar una de ellas.
      */
     if (updated?.translation_group_id) {
-      const { error: coverError } = await supabase
+      const { error: sharedError } = await supabase
         .from("posts")
-        .update({ cover_media_id: payload.cover_media_id })
+        .update({
+          cover_media_id: payload.cover_media_id,
+          category_id: payload.category_id,
+        })
         .eq("translation_group_id", updated.translation_group_id)
         .neq("id", input.postId);
 
-      // La portada de las traducciones no puede tumbar el guardado: el
-      // contenido que el editor acaba de escribir ya está a salvo.
-      if (coverError) {
-        console.error("No se pudo propagar la portada a las traducciones", coverError);
+      // Lo compartido no puede tumbar el guardado: el contenido que el editor
+      // acaba de escribir ya está a salvo.
+      if (sharedError) {
+        console.error(
+          "No se pudieron propagar la portada y la categoría a las traducciones",
+          sharedError,
+        );
       }
 
       await syncCustomFieldKeys(
@@ -209,6 +220,11 @@ export async function saveContent(
     .single();
 
   if (error) return { error: mapDbError(error.message) };
+
+  // Una traducción de un contenido publicado nace publicada, y el trigger
+  // acaba de encolar su `post.published`: se entrega ya, sin esperar al cron,
+  // o la web del cliente tardaría hasta un turno en enterarse de la URL nueva.
+  after(() => dispatchNow(tenant.id));
 
   revalidatePath(`/${tenantSlug}/content`);
   redirect(`/${tenantSlug}/content/${created.id}`);
@@ -471,7 +487,7 @@ export async function restoreRevision(
 
   if (!revision) throw new Error("Esa versión ya no existe.");
 
-  const { error } = await supabase
+  const { data: restored, error } = await supabase
     .from("posts")
     .update({
       title: revision.title,
@@ -483,9 +499,27 @@ export async function restoreRevision(
       category_id: revision.category_id,
     })
     .eq("id", postId)
-    .eq("tenant_id", tenant.id);
+    .eq("tenant_id", tenant.id)
+    .select("translation_group_id")
+    .maybeSingle();
 
   if (error) throw new Error(mapDbError(error.message));
+
+  // La categoría es del contenido, no de esta versión: si restaurar la cambia,
+  // la cambia para todos los idiomas. De lo contrario el español volvería a
+  // "Blog" y el inglés se quedaría en la categoría de después, que es
+  // exactamente el descuadre que se acaba de arreglar en el guardado.
+  if (restored?.translation_group_id) {
+    const { error: categoryError } = await supabase
+      .from("posts")
+      .update({ category_id: revision.category_id })
+      .eq("translation_group_id", restored.translation_group_id)
+      .neq("id", postId);
+
+    if (categoryError) {
+      console.error("No se pudo propagar la categoría restaurada", categoryError);
+    }
+  }
 
   // El trigger acaba de encolar el evento; se entrega YA, sin esperar al turno
   // del cron. `after()` lo saca del camino crítico: el editor ve su cambio
@@ -646,9 +680,16 @@ async function syncCustomFieldKeys(
  * a la web sin imagen, sin fecha y fuera de todo listado: técnicamente
  * publicada, invisible en la práctica.
  *
- * Queda en BORRADOR — una traducción automática es un punto de partida para
- * revisar, no algo que deba salir publicado solo. El slug lleva sufijo si ya
- * está ocupado.
+ * HEREDA EL ESTADO del original. Publicar es una decisión sobre el contenido,
+ * no sobre un idioma: si el artículo ya está publicado, traducirlo no debería
+ * dejar media web sin la versión inglesa hasta que alguien se acuerde de
+ * volver a pulsar Publicar. Traducir un borrador sigue dando un borrador.
+ *
+ * El precio es que la traducción automática sale a la web sin revisar; a
+ * cambio, no hay contenidos publicados a medias. Retocarla después es editar
+ * y guardar, como cualquier otra entrada.
+ *
+ * El slug lleva sufijo si ya está ocupado.
  */
 export async function createTranslation(
   tenantSlug: string,
@@ -668,7 +709,7 @@ export async function createTranslation(
   const { data: source } = await supabase
     .from("posts")
     .select(
-      "title, excerpt, content_json, content_html, custom_fields, seo, translation_group_id, slug, category_id, cover_media_id, published_at, scheduled_for",
+      "title, excerpt, content_json, content_html, custom_fields, seo, translation_group_id, slug, category_id, cover_media_id, published_at, scheduled_for, status",
     )
     .eq("id", postId)
     .eq("tenant_id", tenant.id)
@@ -725,7 +766,9 @@ export async function createTranslation(
       published_at: source.published_at,
       scheduled_for: source.scheduled_for,
       category_id: categoryId,
-      status: "DRAFT",
+      // ARCHIVED no se hereda: archivar es una decisión sobre UNA versión, y
+      // una traducción recién creada no nace retirada.
+      status: source.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT",
     })
     .select("id")
     .single();
@@ -736,6 +779,11 @@ export async function createTranslation(
     }
     throw new Error(mapDbError(error.message));
   }
+
+  // Una traducción de un contenido publicado nace publicada, y el trigger
+  // acaba de encolar su `post.published`: se entrega ya, sin esperar al cron,
+  // o la web del cliente tardaría hasta un turno en enterarse de la URL nueva.
+  after(() => dispatchNow(tenant.id));
 
   revalidatePath(`/${tenantSlug}/content`);
   redirect(`/${tenantSlug}/content/${created.id}`);

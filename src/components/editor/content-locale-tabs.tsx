@@ -19,14 +19,16 @@ export type LocaleTab = {
  * en el mismo editor obligaría a decidir qué significa "Guardar".
  *
  * La pestaña de un idioma que aún no existe lo crea traducido de forma
- * automática, en BORRADOR. La traducción es un punto de partida para revisar,
- * nunca algo que salga publicado solo.
+ * automática, heredando el estado del original: traducir algo publicado deja
+ * el idioma nuevo publicado también, porque publicar es una decisión sobre el
+ * contenido y no sobre una de sus versiones.
  */
 export function ContentLocaleTabs({
   currentLocale,
   tabs,
   tenantSlug,
   canTranslate,
+  isPublished,
   createTranslatedAction,
   retranslateAction,
 }: {
@@ -34,6 +36,8 @@ export function ContentLocaleTabs({
   tabs: LocaleTab[];
   tenantSlug: string;
   canTranslate: boolean;
+  /** El original está publicado, así que la traducción nacerá publicada. */
+  isPublished: boolean;
   createTranslatedAction: (locale: string) => Promise<void>;
   /** Ausente cuando este contenido es el original y no hay nada que retraducir. */
   retranslateAction?: () => Promise<void>;
@@ -97,7 +101,9 @@ export function ContentLocaleTabs({
               title={
                 tab.postId || isActive
                   ? undefined
-                  : `Crear la versión en ${localeLabel(tab.locale)} traduciendo este contenido`
+                  : `Crear la versión en ${localeLabel(tab.locale)} traduciendo este contenido${
+                      isPublished ? " (saldrá publicada, como el original)" : ""
+                    }`
               }
               className={`flex items-center gap-1.5 pb-2 pt-2.5 text-xs font-medium transition-all cursor-pointer border-b-2 -mb-[1px] disabled:cursor-not-allowed disabled:opacity-60 ${
                 isActive

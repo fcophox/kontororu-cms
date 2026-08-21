@@ -56,6 +56,16 @@ type Props = {
    * traducción automática sin querer.
    */
   publishLocales?: string[];
+  /**
+   * Idiomas del contenido que todavía NO están publicados.
+   *
+   * Publicar y despublicar son del contenido entero, así que el botón mira al
+   * grupo y no a la fila que hay abierta: mientras quede un idioma pendiente
+   * sigue ofreciendo Publicar, aunque esta versión ya lo esté. Antes decía
+   * "Despublicar" desde el español y no había forma de sacar el inglés sin
+   * cambiar de pestaña.
+   */
+  pendingLocales?: string[];
 };
 
 export function PostEditor({
@@ -74,7 +84,11 @@ export function PostEditor({
   localeTabs,
   reactions,
   publishLocales = [],
+  pendingLocales = [],
 }: Props) {
+  // Publicado de verdad = esta versión y todas sus traducciones.
+  const isGroupPublished = draft.status === "PUBLISHED" && pendingLocales.length === 0;
+
   const [state, formAction, isSaving] = useActionState<ActionState, FormData>(
     saveAction,
     {},
@@ -212,8 +226,11 @@ export function PostEditor({
                   className="hidden text-xs text-muted-foreground sm:inline"
                   title={publishLocales.map(localeLabel).join(", ")}
                 >
-                  {draft.status === "PUBLISHED" ? "Retira" : "Publica"}{" "}
-                  {publishLocales.length} idiomas
+                  {isGroupPublished
+                    ? `Retira ${publishLocales.length} idiomas`
+                    : pendingLocales.length > 0 && draft.status === "PUBLISHED"
+                      ? `Falta ${pendingLocales.map(localeLabel).join(", ")}`
+                      : `Publica ${publishLocales.length} idiomas`}
                 </span>
               )}
               <Button
@@ -222,13 +239,13 @@ export function PostEditor({
                 disabled={isTransitioning}
                 onClick={() =>
                   startTransition(async () => {
-                    if (draft.status === "PUBLISHED") await onUnpublish?.();
+                    if (isGroupPublished) await onUnpublish?.();
                     else await onPublish?.();
                   })
                 }
               >
                 {isTransitioning && <Loader2 className="size-4 animate-spin" />}
-                {draft.status === "PUBLISHED" ? "Despublicar" : "Publicar"}
+                {isGroupPublished ? "Despublicar" : "Publicar"}
               </Button>
             </div>
           )}
