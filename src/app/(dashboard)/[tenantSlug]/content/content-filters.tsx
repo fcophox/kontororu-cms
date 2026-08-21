@@ -85,28 +85,15 @@ export function ContentFilters({
   const showLocales = locales.length > 1;
 
   return (
-    <>
-      <div className="relative w-full md:w-auto md:ml-auto">
-        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          type="search"
-          name="q"
-          value={term}
-          onChange={(e) => setTerm(e.target.value)}
-          // Enter no aporta nada cuando ya se busca solo, pero recargaría la
-          // página si el navegador lo tratara como envío.
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.preventDefault();
-          }}
-          placeholder="Buscar por título…"
-          aria-label="Buscar por título"
-          className="w-full md:w-56 pl-8 pr-8"
-        />
-        {isPending && (
-          <Loader2 className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-        )}
-      </div>
-
+    /*
+     * Los tres filtros viajan juntos y pegados al borde derecho: `ml-auto` se
+     * aplica al grupo, no al buscador, para que los desplegables no se queden
+     * sueltos en el hueco del medio.
+     *
+     * En móvil la fila se apila y el grupo ocupa el ancho entero, así que ahí
+     * no hay derecha a la que alinearse.
+     */
+    <div className="flex w-full flex-col gap-3 md:ml-auto md:w-auto md:flex-row md:items-center">
       {showLocales && (
         <select
           name="locale"
@@ -140,6 +127,29 @@ export function ContentFilters({
           ))}
         </select>
       )}
-    </>
+
+      {/* El buscador cierra el grupo, con los desplegables inmediatamente a
+          su izquierda. */}
+      <div className="relative w-full md:w-auto">
+        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="search"
+          name="q"
+          value={term}
+          onChange={(e) => setTerm(e.target.value)}
+          // Enter no aporta nada cuando ya se busca solo, pero recargaría la
+          // página si el navegador lo tratara como envío.
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.preventDefault();
+          }}
+          placeholder="Buscar por título…"
+          aria-label="Buscar por título"
+          className="w-full md:w-56 pl-8 pr-8"
+        />
+        {isPending && (
+          <Loader2 className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+        )}
+      </div>
+    </div>
   );
 }
