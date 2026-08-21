@@ -142,6 +142,9 @@ export default async function ContentListPage({
         status: String(row.status ?? "DRAFT"),
         locale: String(row.locale ?? ""),
         updatedAt: String(row.updated_at ?? ""),
+        // Un borrador nunca se publicó, así que aquí no hay fecha que pintar:
+        // la fila cae de vuelta en la de edición.
+        publishedAt: typeof row.published_at === "string" ? row.published_at : null,
         categoryName:
           typeof row.category_id === "string"
             ? (categoryNames.get(row.category_id) ?? null)
@@ -383,10 +386,22 @@ export default async function ContentListPage({
                 </div>
               )}
               <div className="min-w-0 flex-1">
+                {/* Junto al título va lo que describe el contenido: en qué
+                    idiomas existe y cuánto se ha reaccionado a él. El estado
+                    se fue a la derecha, con la fecha: las dos cosas dicen en
+                    qué punto de su ciclo está, no de qué trata. */}
                 <div className="flex items-center gap-2">
                   <span className="truncate font-medium">{post.title}</span>
-                  <StatusBadge status={post.status} />
                   <LocaleBadges versions={post.versions} originalLocale={post.locale} />
+                  {reactions > 0 && (
+                    <span
+                      className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
+                      title={`${reactions} ${reactions === 1 ? "reacción" : "reacciones"}`}
+                    >
+                      <Heart className="size-3.5" />
+                      <span className="tabular-nums">{reactions}</span>
+                    </span>
+                  )}
                 </div>
                 {post.excerpt && (
                   <p className="mt-0.5 truncate text-sm text-muted-foreground">
@@ -398,21 +413,30 @@ export default async function ContentListPage({
                   /{post.slug}
                 </p>
               </div>
-              {reactions > 0 && (
-                <span
-                  className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
-                  title={`${reactions} ${reactions === 1 ? "reacción" : "reacciones"}`}
+              {/* Estado y fecha comparten columna, alineados al borde
+                  derecho: leídos en vertical forman una sola lectura —qué es
+                  y de cuándo— en vez de dos datos sueltos por la fila.
+
+                  De lo publicado se enseña cuándo salió, que es la fecha por
+                  la que se pregunta. De lo que aún no ha salido no existe esa
+                  fecha, así que se enseña la de edición: dejar el hueco vacío
+                  o poner un guion haría creer que la fila está incompleta. El
+                  `title` dice cuál de las dos es en cada caso. */}
+              <div className="flex shrink-0 flex-col items-end gap-1.5">
+                <StatusBadge status={post.status} />
+                <time
+                  dateTime={post.publishedAt ?? post.updatedAt}
+                  title={`${post.publishedAt ? "Publicado" : "Editado"} el ${new Date(
+                    post.publishedAt ?? post.updatedAt,
+                  ).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}`}
+                  className="text-xs text-muted-foreground"
                 >
-                  <Heart className="size-3.5" />
-                  <span className="tabular-nums">{reactions}</span>
-                </span>
-              )}
-              <time className="shrink-0 text-xs text-muted-foreground">
-                {new Date(post.updatedAt).toLocaleDateString("es-ES", {
-                  day: "numeric",
-                  month: "short",
-                })}
-              </time>
+                  {new Date(post.publishedAt ?? post.updatedAt).toLocaleDateString("es-ES", {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </time>
+              </div>
             </Link>
           );
         })}

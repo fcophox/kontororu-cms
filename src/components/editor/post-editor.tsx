@@ -2,11 +2,11 @@
 
 import { useActionState, useState, useTransition } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import type { JSONContent } from "@tiptap/react";
-import { Loader2, Check, AlertCircle, UploadCloud, Trash, ArrowLeft } from "lucide-react";
+import { Loader2, Check, AlertCircle, UploadCloud, Trash } from "lucide-react";
 import { TiptapEditor, type EditorPayload } from "./tiptap-editor";
 import { CustomFieldsEditor } from "./custom-fields-editor";
+import { BackButton } from "@/components/shared/back-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -188,11 +188,7 @@ export function PostEditor({
         />
 
         <header className="sticky top-0 z-10 flex items-center gap-3 bg-background/95 px-8 py-3 backdrop-blur">
-          <Button variant="outline" size="icon" asChild className="size-8">
-            <Link href={`/${tenantSlug}/content`} title="Volver a Contenido">
-              <ArrowLeft className="size-4" />
-            </Link>
-          </Button>
+          <BackButton href={`/${tenantSlug}/content`} label="Volver a Contenido" />
 
           <div className="min-w-0 flex-1">
             <Input
