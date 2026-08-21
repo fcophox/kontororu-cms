@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, Plus, Search } from "lucide-react";
+import { Heart, Plus } from "lucide-react";
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { signMediaBatch } from "@/lib/api/serializers";
@@ -8,10 +8,10 @@ import { can } from "@/lib/auth/guards";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { LocaleBadges } from "@/components/shared/locale-badges";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { asContentStatus } from "@/lib/content/json";
 import { localeLabel, asLocaleVersions } from "@/lib/content/locales";
 import { getTenantAddon } from "@/lib/addons/queries";
+import { ContentFilters } from "./content-filters";
 import { TrashActions } from "./trash-actions";
 import { restoreContent, purgeContent } from "./actions";
 
@@ -291,52 +291,12 @@ export default async function ContentListPage({
           </Link>
         </nav>
 
-        <form action={`/${tenantSlug}/content`} className="relative w-full md:w-auto md:ml-auto">
-          {status && <input type="hidden" name="status" value={status} />}
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            name="q"
-            defaultValue={q}
-            placeholder="Buscar por título…"
-            className="w-full md:w-56 pl-8"
-          />
-        </form>
-
-        {tenant.locales.length > 1 && (
-          <form action={`/${tenantSlug}/content`}>
-            {status && <input type="hidden" name="status" value={status} />}
-            <select
-              name="locale"
-              defaultValue={locale ?? ""}
-              className="h-9 rounded-[var(--radius)] border border-input bg-background px-3 text-xs font-medium outline-hidden hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-all cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%20stroke%3D%22%23a1a1aa%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_10px_center] bg-[size:16px_auto] bg-no-repeat pr-8"
-            >
-              <option value="">Todos los idiomas</option>
-              {tenant.locales.map((code) => (
-                <option key={code} value={code}>
-                  {localeLabel(code)}
-                </option>
-              ))}
-            </select>
-          </form>
-        )}
-
-        {(categories ?? []).length > 0 && (
-          <form action={`/${tenantSlug}/content`}>
-            {status && <input type="hidden" name="status" value={status} />}
-            <select
-              name="category"
-              defaultValue={category}
-              className="h-9 rounded-[var(--radius)] border border-input bg-background px-3 text-xs font-medium outline-hidden hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-all cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%20stroke%3D%22%23a1a1aa%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_10px_center] bg-[size:16px_auto] bg-no-repeat pr-8"
-            >
-              <option value="">Todas las categorías</option>
-              {(categories ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </form>
-        )}
+        <ContentFilters
+          tenantSlug={tenantSlug}
+          current={{ status, q, category, locale: localeFilter ?? "", view: view ?? "" }}
+          locales={tenant.locales}
+          categories={categories ?? []}
+        />
       </div>
 
       <div className="divide-y rounded-[var(--radius)] border bg-card">
