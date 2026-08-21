@@ -78,7 +78,11 @@ export class KontororuClient {
     });
   }
 
-  getPost(slug: string, options: { locale?: string } = {}, extras?: RequestExtras) {
+  getPost(
+    slug: string,
+    options: { locale?: string; fallback?: "none" } = {},
+    extras?: RequestExtras,
+  ) {
     return this.get<{ data: Post }>(`/posts/${encodeURIComponent(slug)}`, options, {
       tags: ["posts", `post:${slug}`],
       ...extras,

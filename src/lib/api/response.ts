@@ -121,3 +121,20 @@ export function readLocale(
   }
   return { locale: requested };
 }
+
+/**
+ * ¿Puede la respuesta caer al idioma principal?
+ *
+ * Un contenido no siempre está traducido a todo. Antes, pedir `?locale=en` un
+ * artículo que sólo existe en español devolvía 404 en el detalle y un hueco en
+ * el listado: la web del cliente enseñaba una sección medio vacía sin que nada
+ * fallara, y la única salida era traducirlo todo o consultar dos veces.
+ *
+ * Por eso el respaldo viene activado: falta la traducción, se sirve la versión
+ * que haya —principal primero— con su `locale` real, para que el front pueda
+ * marcarla o enlazarla como corresponda. Quien prefiera el hueco lo desactiva
+ * con `?fallback=none`.
+ */
+export function readFallback(url: URL): boolean {
+  return url.searchParams.get("fallback") !== "none";
+}

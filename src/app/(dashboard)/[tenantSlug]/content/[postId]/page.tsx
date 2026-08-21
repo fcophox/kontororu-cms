@@ -235,12 +235,29 @@ export default async function EditContentPage({ params }: Props) {
         post.locale,
         ...(siblings ?? []).filter((s) => s.status !== "ARCHIVED").map((s) => s.locale),
       ]}
+      /*
+       * Idiomas del contenido que aún no están publicados.
+       *
+       * Con esto el botón habla del contenido y no de la fila abierta: desde
+       * el español ya publicado sigue diciendo "Publicar" mientras el inglés
+       * siga en borrador, en vez de ofrecer "Despublicar" y dejar el otro
+       * idioma sin salida.
+       */
+      pendingLocales={[
+        ...(post.status === "PUBLISHED" ? [] : [post.locale]),
+        ...(siblings ?? [])
+          .filter((s) => s.status === "DRAFT")
+          .map((s) => s.locale),
+      ]}
       localeTabs={
         <ContentLocaleTabs
           currentLocale={post.locale}
           tabs={localeTabs}
           tenantSlug={tenantSlug}
           canTranslate={user.isSuperadmin || can(role, "content.create")}
+          // Traducir hereda el estado: desde un publicado, la versión nueva
+          // sale publicada, y la pestaña lo avisa antes de pulsarla.
+          isPublished={post.status === "PUBLISHED"}
           createTranslatedAction={translateInto}
           // Sólo tiene sentido retraducir si hay un original del que partir.
           retranslateAction={

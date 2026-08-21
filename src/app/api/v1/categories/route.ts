@@ -1,6 +1,6 @@
 import { guardApiRequest } from "@/lib/api/authenticate";
 import { createServiceClient } from "@/lib/supabase/server";
-import { apiError, apiJson, corsPreflight, readLocale } from "@/lib/api/response";
+import { apiError, apiJson, corsPreflight, readFallback, readLocale } from "@/lib/api/response";
 import { serializeCategory } from "@/lib/api/serializers";
 
 export const runtime = "nodejs";
@@ -39,8 +39,23 @@ export async function GET(req: Request) {
    * en esta categoría" sigue siendo una pregunta con sentido, y devolver el
    * total mezclando idiomas descuadraría cualquier portada.
    */
-  const locale = readLocale(new URL(req.url), ctx);
+  const url = new URL(req.url);
+
+  const locale = readLocale(url, ctx);
   if ("error" in locale) return apiError("bad_request", locale.error);
+
+  /*
+   * El conteo cuenta lo mismo que devuelve el listado.
+   *
+   * Con respaldo, `/posts?locale=en` sirve el español de lo que no está
+   * traducido; si aquí se contara sólo el inglés, el menú diría "0" junto a
+   * una categoría que al abrirla tiene entradas. Se cuentan CONTENIDOS, no
+   * filas: el grupo que existe en los dos idiomas vale uno.
+   */
+  const localeSet =
+    readFallback(url) && locale.locale !== ctx.defaultLocale
+      ? [locale.locale, ctx.defaultLocale]
+      : [locale.locale];
 
   const db = createServiceClient();
 
@@ -58,9 +73,9 @@ export async function GET(req: Request) {
     // una subconsulta por categoría sería N+1 contra la base.
     db
       .from("posts")
-      .select("category_id")
+      .select("category_id, translation_group_id")
       .eq("tenant_id", ctx.tenantId)
-      .eq("locale", locale.locale)
+      .in("locale", localeSet)
       .eq("status", "PUBLISHED")
       .is("deleted_at", null)
       .lte("published_at", new Date().toISOString()),
@@ -72,8 +87,12 @@ export async function GET(req: Request) {
   }
 
   const counts = new Map<string, number>();
+  const seen = new Set<string>();
   for (const p of posts ?? []) {
-    if (p.category_id) counts.set(p.category_id, (counts.get(p.category_id) ?? 0) + 1);
+    if (!p.category_id) continue;
+    if (seen.has(p.translation_group_id)) continue;
+    seen.add(p.translation_group_id);
+    counts.set(p.category_id, (counts.get(p.category_id) ?? 0) + 1);
   }
 
   return apiJson(

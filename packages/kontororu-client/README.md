@@ -57,6 +57,17 @@ const post = await cms.getPost(slug, { locale: "en" });
 ))}
 ```
 
+Lo que no está traducido **no desaparece**: llega en el idioma que sí exista,
+empezando por el principal. `post.locale` dice cuál es de verdad, así que
+puedes marcarlo o esconderlo tú:
+
+```tsx
+{post.locale !== "en" && <p>Disponible sólo en español</p>}
+```
+
+Si prefieres que falte, pasa `{ fallback: "none" }` — en `listPosts`,
+`getPost` (404) y `listCategories` (conteos estrictos).
+
 ## Errores
 
 ```ts

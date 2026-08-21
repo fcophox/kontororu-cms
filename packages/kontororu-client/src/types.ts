@@ -89,11 +89,21 @@ export type ListPostsOptions = {
   tag?: string;
   /** Busca en el título. */
   q?: string;
+  /**
+   * `"none"` desactiva el respaldo al idioma principal.
+   *
+   * Por defecto, un contenido que no está traducido llega en el idioma que sí
+   * exista —su campo `locale` lo dice— en vez de faltar. Con `"none"`
+   * simplemente no aparece.
+   */
+  fallback?: "none";
 };
 
 export type ListCategoriesOptions = {
   locale?: Locale;
   kind?: Category["kind"];
+  /** `"none"` cuenta sólo lo traducido a `locale`. Ver `ListPostsOptions`. */
+  fallback?: "none";
 };
 
 export type ListMediaOptions = {
