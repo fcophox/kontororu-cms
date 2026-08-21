@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronsUpDown, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,34 @@ export function UserProfileButton({ email, fullName, role, tenantSlug }: Props) 
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  /*
+   * El menú se cierra al tocar cualquier otra cosa.
+   *
+   * Se escucha `pointerdown` y no `click`: con `click` el menú seguía abierto
+   * durante todo el gesto y un enlace de debajo llegaba a recibir la
+   * pulsación con el desplegable aún encima.
+   *
+   * El listener sólo existe mientras el menú está abierto; dejarlo puesto
+   * siempre haría que cada clic del panel pasara por aquí para nada.
+   */
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const closeOnOutside = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setIsOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsOpen(false);
+    };
+
+    document.addEventListener("pointerdown", closeOnOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isOpen]);
+
   const name = fullName || email.split("@")[0] || "Usuario";
   const initials = getInitials(name, email);
 
@@ -39,6 +67,8 @@ export function UserProfileButton({ email, fullName, role, tenantSlug }: Props) 
       <Button
         variant="ghost"
         onClick={() => setIsOpen(!isOpen)}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
         className="h-auto w-full justify-between gap-3 px-3 py-2.5 border border-border/80 bg-card/40 hover:bg-accent/60 hover:text-accent-foreground rounded-[var(--radius)]"
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -66,18 +96,31 @@ export function UserProfileButton({ email, fullName, role, tenantSlug }: Props) 
       </Button>
 
       {isOpen && (
-        <div className="absolute bottom-full left-0 right-0 mb-1 rounded-md border bg-background shadow-md">
+        <div
+          role="menu"
+          // Las opciones se separan con aire, no con una línea: el bloque es
+          // corto y el propio hueco ya agrupa. Cada una lleva su radio y su
+          // respiro dentro del acolchado del menú, así que el resaltado al
+          // pasar por encima queda como una pastilla y no como una banda de
+          // borde a borde.
+          className="absolute bottom-full left-0 right-0 mb-2 flex flex-col gap-0.5 rounded-[var(--radius)] border bg-background p-1.5 shadow-md"
+        >
           <Link
             href={`/${tenantSlug}/settings/profile`}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            role="menuitem"
+            className="flex items-center gap-2.5 rounded-[var(--radius-sm)] px-2.5 py-2 text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
             onClick={() => setIsOpen(false)}
           >
             <User className="size-4" />
             Ver Perfil
           </Link>
           <button
+            role="menuitem"
             onClick={() => signOut()}
-            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            // Cerrar sesión se marca en rojo: es la única opción del menú que
+            // deshace algo, y el resaltado mantiene el color en vez de
+            // devolverla al gris del resto al pasar por encima.
+            className="flex w-full items-center gap-2.5 rounded-[var(--radius-sm)] px-2.5 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10 hover:text-destructive"
           >
             <LogOut className="size-4" />
             Cerrar sesión
