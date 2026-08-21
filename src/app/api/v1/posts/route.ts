@@ -1,6 +1,6 @@
 import { guardApiRequest } from "@/lib/api/authenticate";
 import { createServiceClient } from "@/lib/supabase/server";
-import { apiError, apiJson, corsPreflight, readLimit, readLocale } from "@/lib/api/response";
+import { apiError, apiJson, corsPreflight, readFallback, readLimit, readLocale } from "@/lib/api/response";
 import { attachTranslations, fetchTranslations } from "@/lib/api/translations";
 import { collectMedia, serializePost, signMediaBatch } from "@/lib/api/serializers";
 
@@ -29,6 +29,20 @@ export async function GET(req: Request) {
 
   const locale = readLocale(url, ctx);
   if ("error" in locale) return apiError("bad_request", locale.error);
+
+  const fallback = readFallback(url);
+  /*
+   * Con respaldo se piden los dos idiomas y se colapsa después por grupo.
+   *
+   * No hay forma de decirle a PostgREST "el inglés de este contenido y, si no
+   * lo hay, el español": eso es un DISTINCT ON por grupo, y la API REST no lo
+   * expone. Traer las dos filas y quedarse con una en memoria cuesta como
+   * mucho el doble de filas en una página; una consulta por grupo sería N+1.
+   */
+  const localeSet =
+    fallback && locale.locale !== ctx.defaultLocale
+      ? [locale.locale, ctx.defaultLocale]
+      : [locale.locale];
 
   const limit = readLimit(url);
   const cursor = url.searchParams.get("cursor");
@@ -65,12 +79,15 @@ export async function GET(req: Request) {
     )
     // Filtro de tenant explícito: el service role no aplica RLS.
     .eq("tenant_id", ctx.tenantId)
-    .eq("locale", locale.locale)
+    .in("locale", localeSet)
     .eq("status", "PUBLISHED")
     .is("deleted_at", null)
     .lte("published_at", new Date().toISOString())
     .order("published_at", { ascending: false })
-    .limit(limit + 1);
+    // Cada grupo aporta como mucho una fila por idioma pedido, así que pedir el
+    // doble garantiza que tras colapsar sigue habiendo `limit + 1` contenidos
+    // distintos con los que decidir si hay página siguiente.
+    .limit((limit + 1) * localeSet.length);
 
   if (cursor) query = query.lt("published_at", cursor);
   if (category) query = query.eq("categories.slug", category);
@@ -83,8 +100,13 @@ export async function GET(req: Request) {
     return apiError("server_error", "No se pudo recuperar el contenido.");
   }
 
-  const hasMore = data.length > limit;
-  const rows = (hasMore ? data.slice(0, limit) : data) as unknown as Record<string, unknown>[];
+  const collapsed = collapseByGroup(
+    data as unknown as Record<string, unknown>[],
+    locale.locale,
+  );
+
+  const hasMore = collapsed.length > limit;
+  const rows = hasMore ? collapsed.slice(0, limit) : collapsed;
 
   const [urls, byGroup] = await Promise.all([
     signMediaBatch(db, collectMedia(rows)),
@@ -102,4 +124,28 @@ export async function GET(req: Request) {
     },
     guard.headers,
   );
+}
+
+/**
+ * Deja UNA fila por contenido: la del idioma pedido si existe, si no la otra.
+ *
+ * El orden de las claves de un Map es el de su primera inserción, así que
+ * sustituir el español por el inglés no mueve el contenido de sitio en el
+ * feed: sigue donde lo puso su `published_at`.
+ */
+function collapseByGroup(
+  rows: Record<string, unknown>[],
+  preferred: string,
+): Record<string, unknown>[] {
+  const byGroup = new Map<string, Record<string, unknown>>();
+
+  for (const row of rows) {
+    const group = String(row.translation_group_id);
+    const current = byGroup.get(group);
+    if (!current || (current.locale !== preferred && row.locale === preferred)) {
+      byGroup.set(group, row);
+    }
+  }
+
+  return [...byGroup.values()];
 }

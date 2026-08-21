@@ -1,6 +1,6 @@
 import { guardApiRequest } from "@/lib/api/authenticate";
 import { createServiceClient } from "@/lib/supabase/server";
-import { apiError, apiJson, corsPreflight, readLocale } from "@/lib/api/response";
+import { apiError, apiJson, corsPreflight, readFallback, readLocale } from "@/lib/api/response";
 import { attachTranslations, fetchTranslations } from "@/lib/api/translations";
 import { collectMedia, serializePost, signMediaBatch } from "@/lib/api/serializers";
 import { refreshContentMedia } from "@/lib/api/content-media";
@@ -29,12 +29,25 @@ export async function GET(
 
   const { slug } = await params;
 
-  const locale = readLocale(new URL(req.url), ctx);
+  const url = new URL(req.url);
+
+  const locale = readLocale(url, ctx);
   if ("error" in locale) return apiError("bad_request", locale.error);
 
   const db = createServiceClient();
 
-  const first = await fetchPublishedPost(db, ctx.tenantId, locale.locale, { slug });
+  /*
+   * Orden de preferencia: el idioma pedido y, si el contenido no está
+   * traducido, el principal del espacio. Sin respaldo la lista tiene un solo
+   * idioma y una traducción que falta vuelve a ser un 404.
+   */
+  const fallback = readFallback(url);
+  const prefer =
+    fallback && locale.locale !== ctx.defaultLocale
+      ? [locale.locale, ctx.defaultLocale]
+      : [locale.locale];
+
+  const first = await fetchPublishedPost(db, ctx.tenantId, prefer, { slug });
 
   if ("error" in first) {
     console.error("GET /api/v1/posts/[slug]", first.error);
@@ -65,9 +78,16 @@ export async function GET(
       .maybeSingle();
 
     if (sibling) {
-      const retry = await fetchPublishedPost(db, ctx.tenantId, locale.locale, {
-        groupId: sibling.translation_group_id,
-      });
+      const retry = await fetchPublishedPost(
+        db,
+        ctx.tenantId,
+        prefer,
+        { groupId: sibling.translation_group_id },
+        // Resuelto ya el grupo, el respaldo se estira a CUALQUIER idioma
+        // publicado: un contenido que sólo existe en francés se sirve en
+        // francés antes que devolver un 404 por algo que sí está publicado.
+        { anyLocale: fallback },
+      );
       if ("error" in retry) {
         console.error("GET /api/v1/posts/[slug]", retry.error);
         return apiError("server_error", "No se pudo recuperar el contenido.");
@@ -116,8 +136,10 @@ export async function GET(
 async function fetchPublishedPost(
   db: ReturnType<typeof createServiceClient>,
   tenantId: string,
-  locale: string,
+  /** Idiomas por orden de preferencia: el pedido primero. */
+  prefer: string[],
   by: { slug: string } | { groupId: string },
+  opts: { anyLocale?: boolean } = {},
 ): Promise<{ data: unknown } | { error: unknown }> {
   let query = db
     .from("posts")
@@ -131,17 +153,33 @@ async function fetchPublishedPost(
     // El tenant sale de la clave, nunca de la ruta: dos clientes pueden tener
     // el mismo slug y cada uno debe recibir el suyo.
     .eq("tenant_id", tenantId)
-    // El mismo slug puede existir en varios idiomas: sin este filtro,
-    // `maybeSingle()` fallaría en cuanto hubiera una traducción homónima.
-    .eq("locale", locale)
     .eq("status", "PUBLISHED")
     .is("deleted_at", null)
     .lte("published_at", new Date().toISOString());
+
+  // El mismo slug puede existir en varios idiomas, así que la consulta puede
+  // traer varias filas: se ordenan por preferencia aquí abajo en vez de
+  // dejárselo a un `maybeSingle()` que fallaría con una traducción homónima.
+  if (!opts.anyLocale) query = query.in("locale", prefer);
 
   query = "slug" in by
     ? query.eq("slug", by.slug)
     : query.eq("translation_group_id", by.groupId);
 
-  const { data, error } = await query.maybeSingle();
-  return error ? { error } : { data };
+  const { data, error } = await query.limit(prefer.length + MAX_FALLBACK_LOCALES);
+  if (error) return { error };
+
+  const rows = (data ?? []) as { locale: string }[];
+  const match = prefer.map((l) => rows.find((r) => r.locale === l)).find(Boolean);
+
+  return { data: match ?? rows[0] ?? null };
 }
+
+/**
+ * Cuántas filas de más se traen al buscar por grupo sin filtrar idioma.
+ *
+ * Un grupo tiene una fila por idioma activo del espacio, que son pocos. El
+ * tope existe para que la consulta de respaldo no crezca sin límite si algún
+ * día alguien activa veinte.
+ */
+const MAX_FALLBACK_LOCALES = 10;

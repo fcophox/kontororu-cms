@@ -41,6 +41,7 @@ Listado de contenido publicado, del más reciente al más antiguo.
 | `limit` | 1–100 | Elementos por página (20 por defecto) |
 | `cursor` | ISO 8601 | `pagination.nextCursor` de la respuesta anterior |
 | `locale` | código | Idioma; por defecto, el principal del espacio |
+| `fallback` | `none` | Desactiva el respaldo al idioma principal (ver [Idiomas](#idiomas)) |
 | `category` | slug | Filtra por categoría |
 | `tag` | slug | Filtra por etiqueta |
 | `q` | texto | Busca en el título |
@@ -97,6 +98,11 @@ Igual que un elemento del listado, más el cuerpo:
 Un borrador devuelve **404**, igual que un slug inexistente: que exista un
 borrador con ese nombre no es información pública.
 
+Acepta `?locale=` y `?fallback=none` con el mismo significado que el listado:
+si el contenido no está traducido al idioma pedido, recibes la versión que sí
+existe —mira su campo `locale`— en vez de un 404. El slug puede venir en
+cualquier idioma: la respuesta trae el canónico del que se sirve.
+
 ## `GET /categories`
 
 ```json
@@ -112,6 +118,11 @@ borrador con ese nombre no es información pública.
 
 Filtra con `?kind=BLOG|CASE_STUDY|SERVICE|CUSTOM`. `postCount` cuenta sólo
 entradas publicadas — sirve para no enlazar categorías vacías en tu menú.
+
+Las categorías no tienen idioma, pero `?locale=` sí acota el conteo, y lo hace
+igual que el listado: cuenta los contenidos que `/posts?locale=…` devolvería,
+respaldo incluido, para que el menú no diga "0" junto a una categoría con
+entradas. `?fallback=none` lo vuelve estricto.
 
 ## `GET /media`
 
@@ -319,6 +330,27 @@ empieza a mostrar cada artículo por duplicado.
 
 Pedir un idioma no activado devuelve **400**, no una lista vacía — un 200 con
 cero resultados se confunde con "aún no hay contenido".
+
+### Lo que no está traducido
+
+Un contenido puede no existir en el idioma que pides. En ese caso **recibes la
+versión que sí existe**, empezando por la del idioma principal, y no un hueco:
+`/posts?locale=en` devuelve el artículo español que todavía nadie ha traducido,
+en lugar de dejar la sección inglesa a medias sin que nada falle.
+
+El campo `locale` de cada elemento dice **en qué idioma viene de verdad**, así
+que puedes marcarlo, ocultarlo o enlazarlo como prefieras:
+
+```tsx
+{post.locale !== "en" && <p>Disponible sólo en {post.locale}</p>}
+```
+
+Un contenido nunca aparece dos veces: si existe en los dos idiomas, sólo viaja
+el que pediste. Lo mismo vale para `postCount` en `/categories`, que cuenta
+contenidos y no filas.
+
+Si prefieres el comportamiento estricto —nada en el listado, 404 en el
+detalle— añade **`?fallback=none`**.
 
 Cada elemento trae sus hermanas:
 
