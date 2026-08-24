@@ -10,7 +10,7 @@ import type { JSONContent } from "@tiptap/react";
  * `content_json`, así que traducir sólo el HTML dejaría el cuerpo en el idioma
  * original en cuanto alguien abriese la entrada. Recorriendo el JSON se
  * conserva intacta la estructura —encabezados, listas, imágenes, embeds,
- * enlaces— y sólo cambian los nodos de texto.
+ * enlaces— y sólo cambia lo que es prosa.
  *
  * Es un punto de partida, no una publicación: el resultado se guarda siempre
  * en BORRADOR para que alguien lo revise antes de que salga a la web.
@@ -18,6 +18,22 @@ import type { JSONContent } from "@tiptap/react";
 
 /** Nodos cuyo texto es código o marcado, no prosa: traducirlos lo rompería. */
 const OPAQUE_NODES = new Set(["codeBlock", "code"]);
+
+/**
+ * Atributos que son prosa aunque no sean nodos de texto.
+ *
+ * El pie de una imagen se lee en la página igual que un párrafo, pero vive en
+ * `attrs` y no en el árbol: recorriendo sólo los nodos de texto, la versión en
+ * inglés salía con los pies en español y nadie lo veía hasta publicar. Lo
+ * mismo vale para el `alt`, que es lo que oye quien navega con lector de
+ * pantalla, y para el `title`.
+ *
+ * La lista es una allowlist a propósito: `src` o `mediaId` también son
+ * cadenas, y traducirlos rompería la imagen.
+ */
+const TRANSLATABLE_ATTRS: Record<string, readonly string[]> = {
+  image: ["caption", "alt", "title"],
+};
 
 /**
  * El servicio corta las peticiones muy grandes. Un artículo largo se manda por
@@ -68,17 +84,41 @@ async function translateBatch(texts: string[], to: string): Promise<string[]> {
   return out;
 }
 
-type TextRef = { node: JSONContent };
+/** Un hueco de prosa dentro del documento, sea un nodo de texto o un atributo. */
+type TextRef = {
+  read: () => string;
+  write: (value: string) => void;
+};
 
-function collectTextNodes(node: JSONContent, acc: TextRef[]): void {
+function collectTranslatable(node: JSONContent, acc: TextRef[]): void {
   if (node.type && OPAQUE_NODES.has(node.type)) return;
 
   if (typeof node.text === "string" && /\S/.test(node.text)) {
-    acc.push({ node });
+    acc.push({
+      read: () => node.text as string,
+      write: (value) => {
+        node.text = value;
+      },
+    });
+  }
+
+  const attrs = node.attrs;
+  if (attrs && node.type) {
+    for (const key of TRANSLATABLE_ATTRS[node.type] ?? []) {
+      const value = attrs[key];
+      if (typeof value === "string" && /\S/.test(value)) {
+        acc.push({
+          read: () => attrs[key] as string,
+          write: (translated) => {
+            attrs[key] = translated;
+          },
+        });
+      }
+    }
   }
 
   for (const child of node.content ?? []) {
-    collectTextNodes(child, acc);
+    collectTranslatable(child, acc);
   }
 }
 
@@ -95,16 +135,16 @@ export async function translateJsonContent(
   const copy: JSONContent = JSON.parse(JSON.stringify(json));
 
   const refs: TextRef[] = [];
-  collectTextNodes(copy, refs);
+  collectTranslatable(copy, refs);
   if (refs.length === 0) return copy;
 
   const translated = await translateBatch(
-    refs.map((r) => r.node.text as string),
+    refs.map((ref) => ref.read()),
     to,
   );
 
   refs.forEach((ref, index) => {
-    ref.node.text = translated[index] ?? ref.node.text;
+    ref.write(translated[index] ?? ref.read());
   });
 
   return copy;

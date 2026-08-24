@@ -40,7 +40,7 @@ describe("translateJsonContent", () => {
             { type: "text", marks: [{ type: "bold" }], text: "mundo" },
           ],
         },
-        { type: "image", attrs: { src: "https://example.com/a.png", alt: "Foto" } },
+        { type: "image", attrs: { src: "https://example.com/a.png" } },
       ],
     };
 
@@ -55,8 +55,50 @@ describe("translateJsonContent", () => {
       marks: [{ type: "bold" }],
       text: "[mundo]",
     });
-    // El nodo sin texto pasa tal cual: traducir un src rompería la imagen.
+    // El nodo sin prosa pasa tal cual: traducir un src rompería la imagen.
     expect(out.content?.[2]).toEqual(doc.content[2]);
+  });
+
+  it("traduce el pie, el alt y el title de una imagen", async () => {
+    const doc = {
+      type: "doc",
+      content: [
+        {
+          type: "image",
+          attrs: {
+            src: "https://example.com/a.png",
+            mediaId: "abc-123",
+            caption: "Foto: Ana",
+            alt: "Un gato",
+            title: "Gato",
+          },
+        },
+      ],
+    };
+
+    const out = await translateJsonContent(doc, "en");
+
+    expect(out.content?.[0].attrs).toEqual({
+      // Lo que identifica a la imagen no se toca: sólo cambia lo que se lee.
+      src: "https://example.com/a.png",
+      mediaId: "abc-123",
+      caption: "[Foto: Ana]",
+      alt: "[Un gato]",
+      title: "[Gato]",
+    });
+  });
+
+  it("no llama al servicio por una imagen sin pie ni alt", async () => {
+    const doc = {
+      type: "doc",
+      content: [
+        { type: "image", attrs: { src: "https://example.com/a.png", caption: null, alt: "" } },
+      ],
+    };
+
+    const out = await translateJsonContent(doc, "en");
+    expect(out).toEqual(doc);
+    expect(calls).toHaveLength(0);
   });
 
   it("conserva los espacios de los extremos entre marcas", async () => {
