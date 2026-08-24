@@ -22,7 +22,7 @@ import { editorExtensions } from "@/components/editor/extensions";
 const ALLOWED_TAGS = [
   "p", "br", "strong", "em", "s", "code", "pre", "blockquote",
   "h2", "h3", "h4", "ul", "ol", "li",
-  "a", "img", "hr", "div", "span", "iframe",
+  "a", "img", "figure", "figcaption", "hr", "div", "span", "iframe",
 ];
 
 const ALLOWED_ATTR = [

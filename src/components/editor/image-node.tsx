@@ -7,6 +7,7 @@ import { ImageIcon, Pencil, Replace, Trash2, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { ImageBase, imageOptions } from "./extensions";
 import { uploadMedia } from "./use-media-upload";
@@ -26,7 +27,12 @@ export const KntrImageWithControls = ImageBase.extend({
 
 function ImageNodeView({ node, updateAttributes, deleteNode, selected, extension }: NodeViewProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const { src, alt, title } = node.attrs as { src: string; alt: string | null; title: string | null };
+  const { src, alt, title, caption } = node.attrs as {
+    src: string;
+    alt: string | null;
+    title: string | null;
+    caption: string | null;
+  };
 
   return (
     <NodeViewWrapper
@@ -38,6 +44,10 @@ function ImageNodeView({ node, updateAttributes, deleteNode, selected, extension
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={alt ?? ""} title={title ?? undefined} className="kntr-image !my-0" />
+
+      {caption && (
+        <figcaption className="kntr-caption !mb-0">{caption}</figcaption>
+      )}
 
       {/* Un alt vacío no se ve en la página, pero sí se nota en quien navega
           con lector de pantalla. Se avisa aquí, mientras aún se puede. */}
@@ -73,6 +83,7 @@ function ImageNodeView({ node, updateAttributes, deleteNode, selected, extension
           src={src}
           alt={alt ?? ""}
           title={title ?? ""}
+          caption={caption ?? ""}
           tenantId={(extension.options as { tenantId: string }).tenantId}
           onSave={(attrs) => {
             updateAttributes(attrs);
@@ -89,12 +100,19 @@ function ImageNodeView({ node, updateAttributes, deleteNode, selected, extension
   );
 }
 
-type ImageAttrs = { alt: string; title: string; src?: string; mediaId?: string };
+type ImageAttrs = {
+  alt: string;
+  title: string;
+  caption: string | null;
+  src?: string;
+  mediaId?: string;
+};
 
 function ImageDialog({
   src,
   alt,
   title,
+  caption,
   tenantId,
   onSave,
   onDelete,
@@ -103,6 +121,7 @@ function ImageDialog({
   src: string;
   alt: string;
   title: string;
+  caption: string;
   tenantId: string;
   onSave: (attrs: ImageAttrs) => void;
   onDelete: () => void;
@@ -111,6 +130,7 @@ function ImageDialog({
   const [isMounted, setIsMounted] = useState(false);
   const [altValue, setAltValue] = useState(alt);
   const [titleValue, setTitleValue] = useState(title);
+  const [captionValue, setCaptionValue] = useState(caption);
   // El reemplazo se aplica al guardar, no al elegir el archivo: hasta
   // entonces «Cancelar» sigue significando que nada cambió.
   const [replacement, setReplacement] = useState<{ src: string; mediaId: string } | null>(null);
@@ -118,12 +138,12 @@ function ImageDialog({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const altInput = useRef<HTMLInputElement>(null);
+  const captionInput = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => setIsMounted(true), []);
 
   useEffect(() => {
-    altInput.current?.focus();
+    captionInput.current?.focus();
   }, [isMounted]);
 
   useEffect(() => {
@@ -175,6 +195,9 @@ function ImageDialog({
     onSave({
       alt: altValue.trim(),
       title: titleValue.trim(),
+      // El pie vacío es `null` y no "": así el nodo no arrastra un
+      // `<figcaption>` en blanco al HTML publicado.
+      caption: captionValue.trim() || null,
       ...(replacement ?? {}),
     });
   };
@@ -206,8 +229,8 @@ function ImageDialog({
               Imagen
             </h3>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              El texto alternativo lo lee quien no ve la imagen; el título aparece
-              al dejar el cursor encima.
+              El pie se muestra bajo la imagen; el texto alternativo lo lee quien
+              no la ve, y el título aparece al dejar el cursor encima.
             </p>
           </div>
         </div>
@@ -226,10 +249,21 @@ function ImageDialog({
           </div>
 
           <div className="space-y-1.5">
+            <Label htmlFor="image-caption">Pie de foto</Label>
+            <Textarea
+              id="image-caption"
+              ref={captionInput}
+              value={captionValue}
+              rows={2}
+              placeholder="Se muestra bajo la imagen"
+              onChange={(e) => setCaptionValue(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1.5">
             <Label htmlFor="image-alt">Texto alternativo</Label>
             <Input
               id="image-alt"
-              ref={altInput}
               value={altValue}
               placeholder="Qué se ve en la imagen"
               onChange={(e) => setAltValue(e.target.value)}
