@@ -102,6 +102,18 @@
   .kntr-image {
     @apply my-4 h-auto max-w-full rounded-[var(--radius)];
   }
+
+  .kntr-figure {
+    @apply my-4;
+  }
+  /* Dentro de un figure el margen lo pone el figure: si lo pusiera también
+     la imagen, el pie quedaría despegado de lo que describe. */
+  .kntr-figure .kntr-image {
+    @apply my-0;
+  }
+  .kntr-caption {
+    @apply mt-2 text-sm leading-snug text-muted-foreground;
+  }
 }
 
 @keyframes backdrop-fade-in {

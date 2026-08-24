@@ -5,6 +5,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import Youtube from "@tiptap/extension-youtube";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { Node, mergeAttributes } from "@tiptap/core";
+import type { DOMOutputSpec } from "@tiptap/pm/model";
 import { createLowlight } from "lowlight";
 import bash from "highlight.js/lib/languages/bash";
 import css from "highlight.js/lib/languages/css";
@@ -101,7 +102,59 @@ export const ImageBase = Image.extend<KntrImageOptions>({
         renderHTML: (attrs) =>
           attrs.mediaId ? { "data-media-id": attrs.mediaId as string } : {},
       },
+      /*
+       * El pie no es un atributo del `img`: sale como `<figcaption>` en
+       * `renderHTML`. Aquí se anula su serialización para que no acabe
+       * también como `caption="…"` dentro de la etiqueta.
+       */
+      caption: {
+        default: null,
+        parseHTML: (el) => el.getAttribute("data-caption"),
+        renderHTML: () => ({}),
+      },
     };
+  },
+
+  /*
+   * Al pegar HTML ya publicado, el pie viene como `<figcaption>` y no como
+   * atributo. Sin esta regla la imagen se recupera pero el pie se pierde.
+   */
+  parseHTML() {
+    return [
+      {
+        tag: 'figure[data-type="image"]',
+        contentElement: "img",
+        getAttrs: (el) => {
+          const figure = el as HTMLElement;
+          const img = figure.querySelector("img");
+          if (!img) return false;
+          return {
+            src: img.getAttribute("src"),
+            alt: img.getAttribute("alt"),
+            title: img.getAttribute("title"),
+            mediaId: img.getAttribute("data-media-id"),
+            caption: figure.querySelector("figcaption")?.textContent?.trim() || null,
+          };
+        },
+      },
+      ...(this.parent?.() ?? []),
+    ];
+  },
+
+  renderHTML({ HTMLAttributes, node }) {
+    const img: DOMOutputSpec = [
+      "img",
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
+    ];
+    const caption = node.attrs.caption as string | null;
+    if (!caption) return img;
+
+    return [
+      "figure",
+      { "data-type": "image", class: "kntr-figure" },
+      img,
+      ["figcaption", { class: "kntr-caption" }, caption],
+    ];
   },
 });
 
