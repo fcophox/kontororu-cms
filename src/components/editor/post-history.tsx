@@ -45,7 +45,7 @@ export function PostHistory({
   return (
     <section className="space-y-2">
       <Label className="flex items-center gap-1.5">
-        <History className="size-3.5" />
+        <History className="size-4" />
         Historial
       </Label>
 

@@ -63,7 +63,7 @@ export function CustomFieldsEditor({
             aria-label={`Eliminar campo ${key}`}
             onClick={() => removeField(key)}
           >
-            <X className="size-3.5" />
+            <X className="size-4" />
           </Button>
         </div>
       ))}
@@ -89,7 +89,7 @@ export function CustomFieldsEditor({
           aria-label="Añadir campo"
           onClick={addField}
         >
-          <Plus className="size-3.5" />
+          <Plus className="size-4" />
         </Button>
       </div>
     </div>

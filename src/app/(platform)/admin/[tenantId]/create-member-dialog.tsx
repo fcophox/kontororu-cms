@@ -69,7 +69,7 @@ export function CreateMemberDialog({
 
   const trigger = (
     <Button type="button" size="sm" onClick={() => setOpen(true)}>
-      <UserPlus className="size-3.5" />
+      <UserPlus className="size-4" />
       Añadir colaborador
     </Button>
   );
@@ -106,7 +106,7 @@ export function CreateMemberDialog({
 
             <div className="flex gap-4">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary dark:bg-primary/20">
-                <KeyRound className="size-5" />
+                <KeyRound className="size-4" />
               </div>
               <div className="space-y-1.5">
                 <h3

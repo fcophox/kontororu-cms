@@ -140,7 +140,7 @@ export function ContentLocaleTabs({
 
       {error && (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-destructive">
-          <AlertCircle className="size-3.5" />
+          <AlertCircle className="size-4" />
           {error}
         </p>
       )}

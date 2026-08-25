@@ -74,7 +74,7 @@ export function PostSidebarActions({
           disabled={Boolean(pending)}
           onClick={() => startTransition(async () => restoreAction())}
         >
-          <RotateCcw className="size-3.5" />
+          <RotateCcw className="size-4" />
           Restaurar
         </Button>
       </section>
@@ -89,7 +89,7 @@ export function PostSidebarActions({
       {showSlug && (
         <section className="space-y-2">
           <Label htmlFor="post-slug" className="flex items-center gap-1.5">
-            <Link2 className="size-3.5" />
+            <Link2 className="size-4" />
             URL pública
           </Label>
 
@@ -116,12 +116,12 @@ export function PostSidebarActions({
               <>
                 {isPublished && (
                   <p className="text-xs text-amber-700 dark:text-amber-400 leading-normal">
-                    <AlertTriangle className="mr-1.5 inline-block size-3.5 align-text-bottom shrink-0 text-amber-600 dark:text-amber-500" />
+                    <AlertTriangle className="mr-1.5 inline-block size-4 align-text-bottom shrink-0 text-amber-600 dark:text-amber-500" />
                     Los enlaces a <code className="font-mono break-all bg-amber-500/10 rounded px-1 text-[11px] font-semibold">/{current}</code> dejarán de funcionar. Avisamos a tu web para que retire la dirección antigua.
                   </p>
                 )}
                 <Button type="submit" size="sm" variant="outline" disabled={isSavingSlug}>
-                  {isSavingSlug && <Loader2 className="size-3.5 animate-spin" />}
+                  {isSavingSlug && <Loader2 className="size-4 animate-spin" />}
                   Cambiar URL
                 </Button>
               </>
@@ -135,7 +135,7 @@ export function PostSidebarActions({
       {showLifecycle && canDelete && (
         <section className="space-y-2 border-t pt-4">
           <Label className="flex items-center gap-1.5 text-destructive dark:text-red-400">
-            <Lock className="size-3.5" />
+            <Lock className="size-4" />
             Danger Zone
           </Label>
 
@@ -154,7 +154,7 @@ export function PostSidebarActions({
                   }
                 }}
               >
-                <Archive className="size-3.5" />
+                <Archive className="size-4" />
                 Archivar
               </Button>
             )}
@@ -169,7 +169,7 @@ export function PostSidebarActions({
                 setIsTrashConfirmOpen(true);
               }}
             >
-              <Trash2 className="size-3.5" />
+              <Trash2 className="size-4" />
               Mover a la papelera
             </Button>
           </div>

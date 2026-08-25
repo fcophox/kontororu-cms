@@ -100,7 +100,7 @@ export function ConfirmDialog({
               variant === "default" && "bg-primary/15 text-primary dark:bg-primary/20",
             )}
           >
-            <Icon className="size-5" />
+            <Icon className="size-4" />
           </div>
 
           <div className="flex-1 space-y-1.5">

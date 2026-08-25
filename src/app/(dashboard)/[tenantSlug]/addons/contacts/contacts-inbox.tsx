@@ -385,7 +385,7 @@ function Drawer({
                 href={`mailto:${submission.email}`}
                 className="mt-1 inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
               >
-                <Mail className="size-3.5" />
+                <Mail className="size-4" />
                 {submission.email}
               </a>
             )}

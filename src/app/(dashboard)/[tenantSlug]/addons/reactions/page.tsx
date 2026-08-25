@@ -122,7 +122,7 @@ export default async function ReactionsAddonPage({
       {ranking.length > 0 && (
         <div className="mb-6 flex items-center gap-3 rounded-[var(--radius)] border bg-card p-4">
           <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Heart className="size-5" />
+            <Heart className="size-4" />
           </div>
           <div>
             <p className="text-2xl font-semibold tabular-nums">{grandTotal}</p>

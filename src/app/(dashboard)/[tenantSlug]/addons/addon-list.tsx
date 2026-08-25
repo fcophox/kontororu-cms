@@ -46,7 +46,7 @@ export function AddonList({
                 className="grid size-10 shrink-0 place-items-center rounded-[var(--radius)] border"
                 style={{ background: "var(--muted)" }}
               >
-                <Icon className="size-5" />
+                <Icon className="size-4" />
               </span>
 
               <div className="min-w-0 flex-1">

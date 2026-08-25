@@ -81,7 +81,7 @@ export function TenantControls({
 
         <Button asChild variant="outline" size="sm">
           <Link href={`/${tenantSlug}`}>
-            <ExternalLink className="size-3.5" />
+            <ExternalLink className="size-4" />
             Abrir su panel
           </Link>
         </Button>
