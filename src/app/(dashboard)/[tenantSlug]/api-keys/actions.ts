@@ -74,7 +74,7 @@ export async function createApiKey(
     metadata: { name: parsed.data.name, scopes: parsed.data.scopes },
   });
 
-  revalidatePath(`/${tenantSlug}/settings/api-keys`);
+  revalidatePath(`/${tenantSlug}/api-keys`);
   return { plainKey: data[0].plain_key };
 }
 
@@ -104,5 +104,5 @@ export async function revokeApiKey(tenantSlug: string, keyId: string) {
     entity_id: keyId,
   });
 
-  revalidatePath(`/${tenantSlug}/settings/api-keys`);
+  revalidatePath(`/${tenantSlug}/api-keys`);
 }

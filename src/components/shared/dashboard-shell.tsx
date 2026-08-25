@@ -33,15 +33,15 @@ const GROUP_GESTION: NavItem[] = [
 ];
 
 const GROUP_ADMIN: NavItem[] = [
-  { href: "/settings/branding", label: "Marca", icon: Palette, permission: "branding.manage" },
+  { href: "/branding", label: "Marca", icon: Palette, permission: "branding.manage" },
   { href: "/team", label: "Equipo", icon: Users, permission: "team.manage" },
-  { href: "/settings/locales", label: "Idiomas", icon: Globe, permission: "branding.manage" },
+  { href: "/locales", label: "Idiomas", icon: Globe, permission: "branding.manage" },
   { href: "/addons", label: "Complementos", icon: Puzzle, permission: "addons.manage" },
 ];
 
 const GROUP_CONFIG: NavItem[] = [
-  { href: "/settings/api-keys", label: "API Keys", icon: KeyRound, permission: "apiKeys.manage" },
-  { href: "/settings/webhooks", label: "Webhooks", icon: Webhook, permission: "webhooks.manage" },
+  { href: "/api-keys", label: "API Keys", icon: KeyRound, permission: "apiKeys.manage" },
+  { href: "/webhooks", label: "Webhooks", icon: Webhook, permission: "webhooks.manage" },
 ];
 
 import { usePathname } from "next/navigation";
@@ -251,6 +251,7 @@ export function DashboardShell({
       <main className="flex min-w-0 flex-1 flex-col">
         <BreadcrumbBar
           tenantSlug={tenant.slug}
+          isSidebarOpen={isSidebarOpen}
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
         />
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>

@@ -64,7 +64,7 @@ export function LocalesForm({
 
       <section className="space-y-2">
         <Label className="flex items-center gap-1.5">
-          <Globe className="size-3.5" />
+          <Globe className="size-4" />
           Idiomas activos
         </Label>
 

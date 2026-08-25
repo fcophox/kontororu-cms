@@ -106,7 +106,7 @@ export function UserProfileButton({ email, fullName, role, tenantSlug }: Props) 
           className="absolute bottom-full left-0 right-0 mb-2 flex flex-col gap-0.5 rounded-[var(--radius)] border bg-background p-1.5 shadow-md"
         >
           <Link
-            href={`/${tenantSlug}/settings/profile`}
+            href={`/${tenantSlug}/profile`}
             role="menuitem"
             className="flex items-center gap-2.5 rounded-[var(--radius-sm)] px-2.5 py-2 text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
             onClick={() => setIsOpen(false)}

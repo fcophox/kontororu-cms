@@ -124,7 +124,7 @@ export function WebhookList({
                         })
                       }
                     >
-                      <RotateCw className="size-3.5" />
+                      <RotateCw className="size-4" />
                       Reintentar
                     </Button>
                   )}
@@ -270,7 +270,7 @@ function WebhookRowItem({
 
         <div className="flex gap-2">
           <Button type="submit" size="sm" disabled={isSaving}>
-            {isSaving && <Loader2 className="size-3.5 animate-spin" />}
+            {isSaving && <Loader2 className="size-4 animate-spin" />}
             Guardar
           </Button>
           <Button
@@ -384,7 +384,7 @@ function SecretField({ secret }: { secret: string }) {
         aria-label={visible ? "Ocultar secreto" : "Mostrar secreto"}
         className="text-muted-foreground hover:text-foreground"
       >
-        {visible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
       </button>
       <button
         type="button"
@@ -396,7 +396,7 @@ function SecretField({ secret }: { secret: string }) {
           setTimeout(() => setCopied(false), 2000);
         }}
       >
-        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+        {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
       </button>
     </div>
   );

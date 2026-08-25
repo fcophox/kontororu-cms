@@ -257,10 +257,12 @@ kontororu-cms/
 │   │   │       ├── categories/page.tsx
 │   │   │       ├── media/page.tsx
 │   │   │       ├── team/page.tsx        # ADMIN+
-│   │   │       └── settings/
-│   │   │           ├── branding/page.tsx
-│   │   │           ├── api-keys/page.tsx
-│   │   │           └── webhooks/page.tsx
+│   │   │       ├── branding/page.tsx
+│   │   │       ├── locales/page.tsx
+│   │   │       ├── addons/page.tsx
+│   │   │       ├── profile/page.tsx
+│   │   │       ├── api-keys/page.tsx
+│   │   │       └── webhooks/page.tsx
 │   │   │
 │   │   └── api/
 │   │       ├── v1/                      # ── API Headless pública ──
@@ -384,7 +386,7 @@ export default async function TenantLayout({
 
 ### Previsualización en vivo (pantalla de branding)
 
-En `settings/branding` el usuario debe ver el cambio *mientras* mueve el color picker.
+En `branding` el usuario debe ver el cambio *mientras* mueve el color picker.
 Ahí sí se usa un `useEffect` que escribe sobre `document.getElementById("tenant-scope").style`,
 y al guardar se persiste el JSONB — el server-render toma el relevo en la siguiente navegación.
 
@@ -591,7 +593,7 @@ export async function POST(req: Request) {
 - [x] Cron del worker de webhooks (GitHub Actions) + backoff real
 - [x] Papelera reversible, archivado y cambio de URL desde el editor
 - [ ] Autoguardado con `useOptimistic` en lugar de botón manual
-- [x] Pantallas de settings: marca (con preview en vivo), API keys, webhooks
+- [x] Pantallas de configuración: marca (con preview en vivo), API keys, webhooks
 - [x] Validación anti-SSRF de destinos de webhook, con tests
 
 > **Criterio de salida:** dos tenants seed; el tenant A no ve *ni una fila* del tenant B
