@@ -337,7 +337,6 @@ export default async function ContentListPage({
                       src={coverUrl}
                       alt=""
                       fill
-                      unoptimized /* la URL firmada caduca: optimizarla la cachearía rota */
                       sizes="48px"
                       className="object-cover"
                     />
@@ -379,7 +378,6 @@ export default async function ContentListPage({
                     src={coverUrl}
                     alt=""
                     fill
-                    unoptimized /* la URL firmada caduca: optimizarla la cachearía rota */
                     sizes="56px"
                     className="object-cover"
                   />

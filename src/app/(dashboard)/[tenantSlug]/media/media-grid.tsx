@@ -156,7 +156,6 @@ function MediaCard({
             src={item.url}
             alt={alt || "Sin texto alternativo"}
             fill
-            unoptimized /* la URL firmada caduca: optimizarla la cachearía rota */
             sizes="(max-width: 640px) 50vw, 16vw"
             className="object-cover"
           />

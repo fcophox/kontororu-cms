@@ -107,14 +107,11 @@ export function PortfolioItemDrawer({
 
             {image ? (
               <div className="relative overflow-hidden rounded-[var(--radius)] border">
-                {/* `unoptimized`: la URL viene firmada y caduca, así que el
-                    optimizador la cachearía ya rota. */}
                 <Image
                   src={image.url}
                   alt=""
                   width={640}
                   height={360}
-                  unoptimized
                   className="h-40 w-full object-cover"
                 />
                 <button

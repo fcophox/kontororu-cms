@@ -62,7 +62,6 @@ export function PortfolioGrid({
                 alt=""
                 width={640}
                 height={360}
-                unoptimized /* la URL firmada caduca: optimizarla la cachearía rota */
                 className="h-40 w-full object-cover"
               />
             ) : (

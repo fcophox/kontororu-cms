@@ -22,6 +22,19 @@ const nextConfig: NextConfig = {
   },
 
   images: {
+    /*
+     * Las imágenes del panel se sirven con URL firmada, y el optimizador
+     * cachea su versión optimizada indexada por esa URL. Al revalidar vuelve a
+     * pedir la MISMA URL, así que este valor tiene que quedar por debajo del
+     * TTL de la firma más corta en juego — la de Medios, 1 h. Si lo igualara,
+     * la revalidación caería justo cuando el token acaba de caducar y el
+     * usuario vería un hueco roto sin que nada hubiera fallado.
+     *
+     * Media hora es también la ventana de caché de firma de
+     * `lib/storage/factory`: cada URL se optimiza una vez por ventana.
+     */
+    minimumCacheTTL: 1800,
+
     remotePatterns: [
       // Logos y medios servidos desde el Storage del tenant.
       { protocol: "https", hostname: supabaseHost, pathname: "/storage/v1/object/**" },

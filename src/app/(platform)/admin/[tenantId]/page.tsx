@@ -114,7 +114,6 @@ export default async function TenantDetailPage({ params }: Props) {
               alt=""
               width={56}
               height={56}
-              unoptimized /* la URL firmada caduca: optimizarla la cachearía rota */
               className="size-14 shrink-0 rounded-[var(--radius)] border bg-card object-contain p-1"
             />
           ) : (
