@@ -53,7 +53,7 @@ function ImageNodeView({ node, updateAttributes, deleteNode, selected, extension
           con lector de pantalla. Se avisa aquí, mientras aún se puede. */}
       {!alt && (
         <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-[var(--radius)] bg-warn-surface px-2 py-1 text-xs font-medium text-warn shadow-xs">
-          <TriangleAlert className="size-3.5" />
+          <TriangleAlert className="size-4" />
           Sin texto alternativo
         </span>
       )}
@@ -219,7 +219,7 @@ function ImageDialog({
       >
         <div className="flex gap-4">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary dark:bg-primary/20">
-            <ImageIcon className="size-5" />
+            <ImageIcon className="size-4" />
           </div>
           <div className="flex-1 space-y-1.5">
             <h3

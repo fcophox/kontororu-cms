@@ -122,9 +122,9 @@ function RankingItem({
             }
           >
             {pending ? (
-              <Loader2 className="size-3.5 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
             ) : (
-              <RotateCcw className="size-3.5" />
+              <RotateCcw className="size-4" />
             )}
             Confirmar
           </Button>
@@ -147,7 +147,7 @@ function RankingItem({
           onClick={() => setConfirming(true)}
           title="Poner el contador a cero"
         >
-          <RotateCcw className="size-3.5" />
+          <RotateCcw className="size-4" />
         </Button>
       )}
     </div>

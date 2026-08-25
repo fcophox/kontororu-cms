@@ -53,7 +53,7 @@ export async function createWebhook(
 
   if (error) return { error: "No se pudo crear el webhook." };
 
-  revalidatePath(`/${tenantSlug}/settings/webhooks`);
+  revalidatePath(`/${tenantSlug}/webhooks`);
   return { ok: "Webhook creado." };
 }
 
@@ -108,7 +108,7 @@ export async function updateWebhook(
 
   if (error) return { error: "No se pudo guardar el webhook." };
 
-  revalidatePath(`/${tenantSlug}/settings/webhooks`);
+  revalidatePath(`/${tenantSlug}/webhooks`);
   return { ok: "Webhook actualizado." };
 }
 
@@ -125,7 +125,7 @@ export async function toggleWebhook(tenantSlug: string, webhookId: string, isAct
     .eq("id", webhookId);
 
   if (error) throw new Error("No se pudo cambiar el estado del webhook.");
-  revalidatePath(`/${tenantSlug}/settings/webhooks`);
+  revalidatePath(`/${tenantSlug}/webhooks`);
 }
 
 export async function deleteWebhook(tenantSlug: string, webhookId: string) {
@@ -138,7 +138,7 @@ export async function deleteWebhook(tenantSlug: string, webhookId: string) {
   const { error } = await supabase.from("webhooks").delete().eq("id", webhookId);
   if (error) throw new Error("No se pudo eliminar el webhook.");
 
-  revalidatePath(`/${tenantSlug}/settings/webhooks`);
+  revalidatePath(`/${tenantSlug}/webhooks`);
 }
 
 /**
@@ -162,5 +162,5 @@ export async function retryDelivery(tenantSlug: string, deliveryId: string) {
     .eq("id", deliveryId);
 
   if (error) throw new Error("No se pudo reencolar la entrega.");
-  revalidatePath(`/${tenantSlug}/settings/webhooks`);
+  revalidatePath(`/${tenantSlug}/webhooks`);
 }

@@ -171,7 +171,7 @@ export function CalendarForm({
         <div className="flex flex-wrap items-center justify-between gap-3 border-b p-5">
           <div className="flex items-center gap-3">
             <span className="grid size-10 place-items-center rounded-[var(--radius)] border">
-              <CalendarDays className="size-5" />
+              <CalendarDays className="size-4" />
             </span>
             <div>
               <h2 className="font-medium">
@@ -235,7 +235,7 @@ export function CalendarForm({
       </section>
 
       <section className="flex items-start gap-3 rounded-[var(--radius)] border bg-card p-5">
-        <Info className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+        <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
           Esta disponibilidad se sirve por la API en{" "}
           <code className="font-mono text-xs">

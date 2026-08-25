@@ -92,7 +92,7 @@ export function PortfolioGrid({
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
                 >
-                  <ExternalLink className="size-3.5" />
+                  <ExternalLink className="size-4" />
                   Ver el trabajo
                 </a>
               )}

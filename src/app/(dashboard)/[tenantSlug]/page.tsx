@@ -54,12 +54,12 @@ export default async function OverviewPage({
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">{tenant.name}</h1>
         <div className="mt-1.5 flex items-center gap-3 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <Package className="size-3.5" />
+            <Package className="size-4" />
             Plan {tenant.plan.toLowerCase()}
           </span>
           <span className="opacity-50">·</span>
           <span className="flex items-center gap-1.5">
-            <Shield className="size-3.5" />
+            <Shield className="size-4" />
             Rol: {role.toLowerCase()}
           </span>
         </div>

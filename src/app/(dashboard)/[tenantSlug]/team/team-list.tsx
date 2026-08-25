@@ -188,7 +188,7 @@ export function TeamList({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Icon className="size-3.5" />
+              <Icon className="size-4" />
               {label}
             </button>
           ))}

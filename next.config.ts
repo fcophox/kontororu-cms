@@ -29,6 +29,22 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  /*
+   * Marca e Idiomas colgaban de `/settings/`, pero en el panel viven en
+   * Administración, no en Configuración. Al subirlas un nivel, los enlaces
+   * antiguos —marcadores del cliente, enlaces compartidos— quedarían en 404:
+   * estas redirecciones los mantienen vivos.
+   */
+  async redirects() {
+    return [
+      { source: "/:tenantSlug/settings/branding", destination: "/:tenantSlug/branding", permanent: true },
+      { source: "/:tenantSlug/settings/locales", destination: "/:tenantSlug/locales", permanent: true },
+      { source: "/:tenantSlug/settings/api-keys", destination: "/:tenantSlug/api-keys", permanent: true },
+      { source: "/:tenantSlug/settings/webhooks", destination: "/:tenantSlug/webhooks", permanent: true },
+      { source: "/:tenantSlug/settings/profile", destination: "/:tenantSlug/profile", permanent: true },
+    ];
+  },
+
   async headers() {
     return [
       {

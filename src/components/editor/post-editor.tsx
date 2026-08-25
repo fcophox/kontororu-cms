@@ -371,7 +371,7 @@ export function PostEditor({
                         onClick={handleRemoveCover}
                         className="gap-1.5"
                       >
-                        <Trash className="size-3.5" />
+                        <Trash className="size-4" />
                         Eliminar
                       </Button>
                     </div>
@@ -380,7 +380,7 @@ export function PostEditor({
                   <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-[var(--radius)] p-4 hover:bg-muted/50 cursor-pointer relative group transition-colors duration-200 min-h-24">
                     {isUploadingCover ? (
                       <div className="flex flex-col items-center gap-1.5">
-                        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                        <Loader2 className="size-4 animate-spin text-muted-foreground" />
                         <span className="text-xs text-muted-foreground">Subiendo...</span>
                       </div>
                     ) : (
@@ -392,7 +392,7 @@ export function PostEditor({
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         />
                         <div className="flex flex-col items-center gap-1">
-                          <UploadCloud className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                          <UploadCloud className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
                           <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
                             Subir portada
                           </span>
@@ -512,7 +512,7 @@ function SaveIndicator({
   if (isSaving) {
     return (
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Loader2 className="size-3.5 animate-spin" />
+        <Loader2 className="size-4 animate-spin" />
         Guardando…
       </span>
     );
@@ -523,7 +523,7 @@ function SaveIndicator({
   }
   return (
     <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-      <Check className="size-3.5" />
+      <Check className="size-4" />
       Guardado
     </span>
   );

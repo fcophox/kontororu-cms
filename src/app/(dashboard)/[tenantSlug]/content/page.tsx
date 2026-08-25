@@ -398,7 +398,7 @@ export default async function ContentListPage({
                       className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
                       title={`${reactions} ${reactions === 1 ? "reacción" : "reacciones"}`}
                     >
-                      <Heart className="size-3.5" />
+                      <Heart className="size-4" />
                       <span className="tabular-nums">{reactions}</span>
                     </span>
                   )}

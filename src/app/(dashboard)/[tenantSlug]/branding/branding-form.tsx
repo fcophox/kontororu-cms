@@ -140,9 +140,9 @@ export function BrandingForm({
                 />
                 <span className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[var(--radius)] border px-3 text-sm hover:bg-accent">
                   {isUploadingLogo ? (
-                    <Loader2 className="size-3.5 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    <Upload className="size-3.5" />
+                    <Upload className="size-4" />
                   )}
                   Subir
                 </span>
@@ -189,9 +189,9 @@ export function BrandingForm({
                 />
                 <span className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[var(--radius)] border px-3 text-sm hover:bg-accent">
                   {isUploadingFavicon ? (
-                    <Loader2 className="size-3.5 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    <Upload className="size-3.5" />
+                    <Upload className="size-4" />
                   )}
                   Subir
                 </span>
@@ -258,7 +258,7 @@ export function BrandingForm({
         */}
         {wasAdjusted && (
           <div className="flex gap-2 rounded-[var(--radius)] border bg-muted/50 p-3 text-xs">
-            <Info className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+            <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
             <div className="space-y-1.5">
               <p className="text-muted-foreground">
                 Sobre los botones se aplica un tono ligeramente ajustado de tu

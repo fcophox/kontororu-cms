@@ -51,7 +51,7 @@ export function TrashActions({
           disabled={typed.trim() !== title.trim() || Boolean(pending)}
           onClick={() => startTransition(async () => purgeAction(postId))}
         >
-          {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+          {pending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
           Borrar
         </Button>
         <Button
@@ -78,7 +78,7 @@ export function TrashActions({
         disabled={Boolean(pending)}
         onClick={() => startTransition(async () => restoreAction(postId))}
       >
-        <RotateCcw className="size-3.5" />
+        <RotateCcw className="size-4" />
         Restaurar
       </Button>
       <Button
@@ -88,7 +88,7 @@ export function TrashActions({
         className="text-muted-foreground hover:text-destructive"
         onClick={() => setConfirming(true)}
       >
-        <Trash2 className="size-3.5" />
+        <Trash2 className="size-4" />
         Borrar
       </Button>
     </div>

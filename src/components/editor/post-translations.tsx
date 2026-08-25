@@ -71,7 +71,7 @@ export function PostTranslations({
   return (
     <section className="space-y-2 border-t pt-4">
       <Label className="flex items-center gap-1.5">
-        <Languages className="size-3.5" />
+        <Languages className="size-4" />
         Idiomas
       </Label>
 
@@ -121,7 +121,7 @@ export function PostTranslations({
 
       {error && (
         <p className="flex items-center gap-1.5 text-xs text-destructive">
-          <AlertCircle className="size-3.5" />
+          <AlertCircle className="size-4" />
           {error}
         </p>
       )}

@@ -177,12 +177,12 @@ export function MemberList({
               >
                 {member.suspended ? (
                   <>
-                    <PlayCircle className="size-3.5" />
+                    <PlayCircle className="size-4" />
                     Restablecer
                   </>
                 ) : (
                   <>
-                    <PauseCircle className="size-3.5" />
+                    <PauseCircle className="size-4" />
                     Pausar
                   </>
                 )}
