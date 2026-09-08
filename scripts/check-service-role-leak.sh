@@ -32,13 +32,34 @@ if grep -rn 'NEXT_PUBLIC_SUPABASE_SERVICE' src .env.example 2>/dev/null; then
   fail=1
 fi
 
-echo "→ Verificando que todo createServiceClient() filtre por tenant_id…"
+echo "→ Verificando que todo createServiceClient() consulte filtrando por tenant_id…"
 # Heurística deliberadamente ruidosa: el service role no aplica RLS, así que
-# cada archivo que lo use debe filtrar explícitamente. Revisar los avisos a mano.
+# cada archivo que CONSULTE con él debe filtrar explícitamente. Revisar los
+# avisos a mano — esta sección nunca rompe el build.
+#
+# No basta con "usa createServiceClient y no menciona tenant_id". Desde que las
+# consultas de la API pública viven en `lib/api/queries`, las rutas crean el
+# cliente y se lo pasan a esa capa, que es la que filtra. Con la regla anterior
+# cada fachada sumaba un aviso que no se podía atender —no hay nada que filtrar
+# en un fichero que no consulta— y la lista creció hasta diez entradas. Una
+# lista de avisos que nadie puede vaciar deja de leerse, y entonces el guard ya
+# no protege de nada.
+#
+# Así que se avisa de quien crea el cliente Y ADEMÁS accede a datos por su
+# cuenta (`.from(` o `.rpc(`) sin nombrar el tenant. Quien sólo delega no
+# aparece; el filtro se le exige a `queries.ts`, que sí consulta.
+#
+# Ojo con relajarlo más: si un fichero vuelve a consultar directamente, el
+# aviso reaparece solo. Por eso la condición mira lo que el fichero HACE y no
+# un comentario que alguien pudiera escribir para silenciarlo.
 while IFS= read -r file; do
-  if ! grep -qE 'tenant_id|tenantId' "$file"; then
-    echo "  ⚠ $file usa service_role y no menciona tenant_id — revisar"
+  if grep -qE 'tenant_id|tenantId' "$file"; then
+    continue
   fi
+  if ! grep -qE '\.from\(|\.rpc\(' "$file"; then
+    continue
+  fi
+  echo "  ⚠ $file usa service_role, consulta por su cuenta y no menciona tenant_id — revisar"
 done < <(grep -rl 'createServiceClient' src --include='*.ts' --include='*.tsx' 2>/dev/null || true)
 
 if [ "$fail" -ne 0 ]; then
