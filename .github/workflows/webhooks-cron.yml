@@ -11,9 +11,9 @@ name: Worker de webhooks
 #
 # El repo traía un `vercel.json` que programaba
 # /api/internal/webhooks/dispatch cada minuto, pero ese fichero sólo lo lee
-# Vercel: en Railway nadie invocaba el worker y la cola llevaba desde el 7 de
-# agosto sin drenarse — 315 entregas encoladas y ninguna enviada. El endpoint
-# también purga `api_rate_limits`, así que esa tabla tampoco se limpiaba.
+# Vercel: nadie invocaba el worker y la cola llevaba desde el 7 de agosto sin
+# drenarse — 315 entregas encoladas y ninguna enviada. El endpoint también
+# purga `api_rate_limits`, así que esa tabla tampoco se limpiaba.
 # El `vercel.json` ya no está en el repo; este workflow es el único disparador.
 #
 # Cinco minutos, no uno: es el intervalo mínimo de los cron de GitHub Actions, y
@@ -22,7 +22,10 @@ name: Worker de webhooks
 #
 # ⚠️ GitHub desactiva los workflows programados tras 60 días sin actividad en el
 # repositorio. Si esto se apaga, publicar sigue funcionando pero los reintentos
-# dejan de ejecutarse en silencio; el sustituto robusto es un cron en Railway.
+# dejan de ejecutarse en silencio. El sustituto robusto es el cron nativo de
+# Render, que está escrito y comentado en `render.yaml`: el plan gratuito no
+# tiene cron jobs, así que se activa al pasar a `starter` — y entonces hay que
+# BORRAR este workflow, no dejar los dos.
 # =====================================================================
 
 on:
@@ -45,11 +48,11 @@ jobs:
       - name: Invocar el worker
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          APP_URL: ${{ vars.APP_URL || 'https://kontororu-cms-production.up.railway.app' }}
+          APP_URL: ${{ vars.APP_URL || 'https://kontororu-cms.onrender.com' }}
         run: |
           if [ -z "$CRON_SECRET" ]; then
             echo "::error::Falta el secreto CRON_SECRET del repositorio."
-            echo "Debe valer lo mismo que la variable CRON_SECRET del servicio en Railway."
+            echo "Debe valer lo mismo que la variable CRON_SECRET del servicio en Render."
             exit 1
           fi
 
@@ -66,7 +69,7 @@ jobs:
           # se distingue porque si no, el worker parece "funcionando" mientras
           # la cola sigue creciendo — que es justo el fallo que esto arregla.
           if [ "$code" = "401" ]; then
-            echo "::error::CRON_SECRET no coincide con el del servicio en Railway."
+            echo "::error::CRON_SECRET no coincide con el del servicio en Render."
             exit 1
           fi
           if [ "$code" != "200" ]; then

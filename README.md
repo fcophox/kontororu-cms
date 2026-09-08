@@ -60,7 +60,8 @@ supabase gen types typescript --local > src/lib/supabase/types.ts
 
 ## Despliegue
 
-La aplicación corre en **Railway**, que construye y arranca pero no toca la
+La aplicación corre en **Render**, definida en [render.yaml](render.yaml) y
+desplegada como *Blueprint*. Construye y arranca, pero no toca la
 base de datos. Las migraciones las aplica **GitHub Actions**: el job `migrate`
 de [ci.yml](.github/workflows/ci.yml) hace `supabase db push` en los push a
 `main`, y sólo después de que pasen los tests de aislamiento y de calidad.
@@ -95,6 +96,28 @@ previo. Pasó con [20260818000100](supabase/migrations/20260818000100_addon_even
 
 Si el historial remoto se desalinea del directorio —porque algo se aplicó por
 fuera—, se arregla con `supabase migration repair` antes de volver a empujar.
+
+### Variables del servicio en Render
+
+`render.yaml` las declara con `sync: false`: Render las pide al crear el
+servicio y las guarda cifradas, no viven en el repositorio. Hay que rellenar
+las cinco (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `NEXT_PUBLIC_APP_URL`) o el build
+falla. Las `NEXT_PUBLIC_*` hacen falta **en tiempo de build**, no sólo de
+ejecución: [next.config.ts](next.config.ts) lee `NEXT_PUBLIC_SUPABASE_URL` para
+construir el `remotePatterns` de las imágenes, y sin ella el optimizador
+rechaza en producción todo lo que sirva el Storage.
+
+`CRON_SECRET` debe valer lo mismo aquí y en el secreto del repositorio, o el
+worker de webhooks responde 401 y la cola no se drena.
+
+El plan es `free` mientras no haya clientes: el servicio se duerme a los 15
+minutos de inactividad y tarda cerca de un minuto en despertar. Eso es
+aceptable sin tráfico, pero **deja de serlo en cuanto un front-end de cliente
+consuma `/api/v1`** — ese arranque en frío lo paga la web del cliente, no el
+panel. Subir a `starter` (7 $/mes) es cambiar `plan:` en `render.yaml`. El
+plan gratuito da además 750 horas de instancia al mes por espacio de trabajo,
+y un mes son 744: alcanza para un servicio despierto, no para dos.
 
 ## Estructura
 

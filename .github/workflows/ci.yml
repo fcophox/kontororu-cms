@@ -129,8 +129,8 @@ jobs:
   # ===================================================================
   # Migraciones de producción.
   #
-  # Existe porque el despliegue de Railway sólo construye y arranca la app:
-  # `railway.json` no toca Supabase, así que el esquema se actualizaba a
+  # Existe porque el despliegue de Render sólo construye y arranca la app:
+  # `render.yaml` no toca Supabase, así que el esquema se actualizaba a
   # mano. Eso funciona hasta que alguien se olvida, y entonces el código
   # nuevo corre contra un esquema viejo — una columna que no existe o un
   # trigger que no está — sin ningún aviso hasta que un cliente lo nota.
