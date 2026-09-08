@@ -95,6 +95,7 @@ export const resolvers = {
         limit?: number | null;
         cursor?: string | null;
         locale?: string | null;
+        fallback?: boolean | null;
         category?: string | null;
         tag?: string | null;
         q?: string | null;
@@ -108,7 +109,7 @@ export const resolvers = {
 
     post: async (
       _: unknown,
-      args: { slug: string; locale?: string | null },
+      args: { slug: string; locale?: string | null; fallback?: boolean | null },
       { ctx, db }: GraphQLContext,
     ) => {
       assertScope(ctx, "content:read");
@@ -127,7 +128,7 @@ export const resolvers = {
 
     categories: async (
       _: unknown,
-      args: { locale?: string | null; kind?: string | null },
+      args: { locale?: string | null; fallback?: boolean | null; kind?: string | null },
       { ctx, db }: GraphQLContext,
     ) => {
       assertScope(ctx, "content:read");

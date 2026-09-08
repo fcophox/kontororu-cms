@@ -58,7 +58,6 @@ export const typeDefs = /* GraphQL */ `
     name: String!
     kind: CategoryKind!
     description: String
-    locale: String!
     parentId: ID
     "Sólo entradas publicadas: sirve para no enlazar categorías vacías."
     postCount: Int!
@@ -148,20 +147,35 @@ export const typeDefs = /* GraphQL */ `
 
     Sin \`locale\` se sirve el idioma principal del espacio, nunca todos
     mezclados.
+
+    Con \`fallback: true\`, lo que no esté traducido se sirve en el idioma
+    principal en vez de desaparecer del listado.
     """
     posts(
       limit: Int = 20
       cursor: String
       locale: String
+      fallback: Boolean = false
       category: String
       tag: String
       q: String
     ): PostPage
 
-    "Una entrada por su slug. Devuelve null si no hay nada publicado con él."
-    post(slug: String!, locale: String): Post
+    """
+    Una entrada por su slug. Devuelve null si no hay nada publicado con él.
 
-    categories(locale: String, kind: CategoryKind): [Category!]
+    Con \`fallback: true\` el slug se busca además en los demás idiomas del
+    contenido, así que cambiar de idioma en la web no depende de que el
+    front conozca ya el slug traducido.
+    """
+    post(slug: String!, locale: String, fallback: Boolean = false): Post
+
+    """
+    Categorías del espacio, transversales a los idiomas. \`locale\` y
+    \`fallback\` no filtran el listado: acotan el CONTEO de entradas, para
+    que cuente lo mismo que devolvería \`posts\` con esos argumentos.
+    """
+    categories(locale: String, fallback: Boolean = false, kind: CategoryKind): [Category!]
 
     "Biblioteca de archivos. Requiere el permiso \`media:read\`."
     media(limit: Int = 20, cursor: String, type: MediaType): MediaPage

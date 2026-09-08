@@ -1,13 +1,17 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Heart, Plus } from "lucide-react";
 import { getTenantContext } from "@/lib/auth/tenant-context";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, createServiceClient } from "@/lib/supabase/server";
+import { signMediaBatch } from "@/lib/api/serializers";
 import { can } from "@/lib/auth/guards";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { LocaleBadges } from "@/components/shared/locale-badges";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { asContentStatus } from "@/lib/content/json";
-import { localeLabel } from "@/lib/content/locales";
+import { localeLabel, asLocaleVersions } from "@/lib/content/locales";
+import { getTenantAddon } from "@/lib/addons/queries";
+import { ContentFilters } from "./content-filters";
 import { TrashActions } from "./trash-actions";
 import { restoreContent, purgeContent } from "./actions";
 
@@ -45,41 +49,182 @@ export default async function ContentListPage({
 
   const { tenant, role, user } = await getTenantContext(tenantSlug);
 
-  // Sin filtro se ven TODOS los idiomas: dentro del CMS interesa el inventario
-  // completo, al contrario que en la API, donde mezclarlos duplicaría listados.
+  // El filtro de idioma dice "que TENGA esta versión", no "que esté escrito en
+  // este idioma": el listado ya no enseña una fila por idioma.
   const localeFilter = locale && tenant.locales.includes(locale) ? locale : null;
   const supabase = await createServerClient();
 
   const current = Math.max(1, Number(page) || 1);
   const from = (current - 1) * PAGE_SIZE;
 
-  let query = supabase
-    .from("posts")
-    .select(
-      "id, slug, title, excerpt, status, published_at, updated_at, locale, category:categories(id, name)",
-      { count: "exact" },
-    )
+  /*
+   * Dos fuentes distintas a propósito.
+   *
+   * El inventario sale de `content_index`, que colapsa cada grupo de
+   * traducción a su original: sin eso, traducir un artículo lo duplicaría en
+   * pantalla y con cuatro idiomas el listado sería ilegible.
+   *
+   * La papelera sigue sobre `posts`, fila a fila. Ahí lo que se decide es qué
+   * restaurar y qué destruir, y esconder una traducción dentro de su original
+   * escondería justo lo que hay que revisar.
+   */
+  let query = isTrash
+    ? supabase
+        .from("posts")
+        .select(
+          "id, slug, title, excerpt, status, published_at, updated_at, locale, category_id",
+          { count: "exact" },
+        )
+        .not("deleted_at", "is", null)
+    : supabase
+        .from("content_index")
+        .select(
+          "id, slug, title, excerpt, status, published_at, updated_at, locale, category_id, versions, translation_group_id",
+          { count: "exact" },
+        );
+
+  // RLS deja ver las filas de CUALQUIER tenant al que el usuario tenga acceso
+  // (todos, si es SuperAdmin): no sabe qué `[tenantSlug]` está renderizando
+  // esta página. Sin este filtro, un SuperAdmin o alguien con acceso a varios
+  // espacios ve aquí la unión de todos ellos, no sólo el de la URL.
+  query = query
+    .eq("tenant_id", tenant.id)
     .order("updated_at", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
 
-  // La papelera es `deleted_at`, no un `status`: son ejes distintos y un
-  // contenido archivado puede estar además en la papelera.
-  query = isTrash ? query.not("deleted_at", "is", null) : query.is("deleted_at", null);
-
-  // No hace falta filtrar por tenant_id: RLS ya lo hace. Añadirlo aquí daría
-  // una falsa sensación de que es este filtro el que aísla los datos.
   // El status viene de la query string: se valida contra el enum antes de
   // usarlo como filtro, en vez de confiar en que sea un valor legítimo.
   const statusFilter = status ? asContentStatus(status) : null;
   if (statusFilter) query = query.eq("status", statusFilter);
-  if (localeFilter) query = query.eq("locale", localeFilter);
   if (category) query = query.eq("category_id", category);
   if (q) query = query.ilike("title", `%${q}%`);
 
-  const [{ data: posts, count }, { data: categories }] = await Promise.all([
+  if (localeFilter) {
+    // En la papelera se filtra por el idioma de la fila, que es lo que se ve
+    // ahí. En el inventario, por los idiomas del grupo: pedir "Inglés" es
+    // pedir los contenidos que tienen versión inglesa, no los escritos en
+    // inglés — el original seguiría estando en español.
+    query = isTrash
+      ? query.eq("locale", localeFilter)
+      : query.contains("locales", [localeFilter]);
+  }
+
+  const [{ data: posts, count, error: postsError }, { data: categories }] = await Promise.all([
     query,
-    supabase.from("categories").select("id, name").order("position"),
+    supabase.from("categories").select("id, name").eq("tenant_id", tenant.id).order("position"),
   ]);
+
+  // Una consulta fallida no puede parecerse a un espacio vacío. Antes se
+  // ignoraba el error y la pantalla decía "Todavía no hay contenido": con
+  // decenas de entradas detrás, es el peor mensaje posible.
+  if (postsError) console.error("GET /[tenantSlug]/content", postsError);
+
+  // La categoría se resuelve contra la lista que ya se pide para el filtro, en
+  // vez de con un embed: PostgREST no infiere relaciones a través de la vista.
+  const categoryNames = new Map((categories ?? []).map((c) => [c.id, c.name]));
+
+  /*
+   * Las dos fuentes se normalizan a una sola forma antes de pintar.
+   *
+   * Postgres declara nullable toda columna de una vista, y la papelera no trae
+   * `versions`. Resolverlo aquí evita que cada línea del JSX arrastre su
+   * propio `?? ""`.
+   */
+  const rows = (posts ?? []).flatMap((post) => {
+    const row = post as Record<string, unknown>;
+    if (typeof row.id !== "string") return [];
+    return [
+      {
+        id: row.id,
+        slug: String(row.slug ?? ""),
+        title: String(row.title ?? ""),
+        excerpt: typeof row.excerpt === "string" ? row.excerpt : null,
+        status: String(row.status ?? "DRAFT"),
+        locale: String(row.locale ?? ""),
+        updatedAt: String(row.updated_at ?? ""),
+        // Un borrador nunca se publicó, así que aquí no hay fecha que pintar:
+        // la fila cae de vuelta en la de edición.
+        publishedAt: typeof row.published_at === "string" ? row.published_at : null,
+        categoryName:
+          typeof row.category_id === "string"
+            ? (categoryNames.get(row.category_id) ?? null)
+            : null,
+        versions: asLocaleVersions(row.versions),
+        translationGroupId:
+          typeof row.translation_group_id === "string" ? row.translation_group_id : null,
+      },
+    ];
+  });
+
+  /*
+   * Las portadas de las filas visibles.
+   *
+   * No salen del `select` principal: `content_index` es una vista y PostgREST
+   * no infiere relaciones a través de ella, así que el embed sólo es posible
+   * sobre `posts`. Se pide por los ids ya paginados —veinte como mucho— y se
+   * firma en un solo lote, no una URL por fila.
+   */
+  const coverUrls = new Map<string, string>();
+
+  if (rows.length > 0) {
+    const { data: covers } = await supabase
+      .from("posts")
+      .select("id, cover:media(id, bucket, path, provider, alt_text, width, height)")
+      .in("id", rows.map((r) => r.id))
+      .not("cover_media_id", "is", null);
+
+    const withCover = (covers ?? []).flatMap((row) => {
+      const cover = row.cover as Parameters<typeof signMediaBatch>[1][number];
+      return cover ? [{ postId: row.id, cover }] : [];
+    });
+
+    if (withCover.length > 0) {
+      const signed = await signMediaBatch(
+        createServiceClient(),
+        withCover.map((item) => item.cover),
+      );
+      for (const { postId, cover } of withCover) {
+        const url = signed.get(cover.path);
+        // Sin URL firmada no se pinta nada: un hueco roto es peor que la
+        // fila sin miniatura, que es como se ven los contenidos sin portada.
+        if (url) coverUrls.set(postId, url);
+      }
+    }
+  }
+
+  /*
+   * Las reacciones de las filas que se van a pintar, y sólo ésas.
+   *
+   * No se usa `content_reaction_summary`, que agrega TODO el espacio: en la
+   * página 1 de un cliente con mil contenidos se traería mil grupos para
+   * enseñar veinte números. Filtrando por los grupos visibles, la consulta
+   * crece con la página, no con el histórico.
+   *
+   * La papelera se queda fuera: ahí lo que se decide es qué restaurar, y un
+   * contador de aplausos no ayuda a decidirlo.
+   */
+  const reactionsAddon = isTrash ? null : await getTenantAddon(tenant.id, "reactions");
+  const reactionTotals = new Map<string, number>();
+
+  if (reactionsAddon?.isEnabled && rows.length > 0) {
+    const { data: reactions } = await supabase
+      .from("content_reactions")
+      .select("translation_group_id, total")
+      .in(
+        "translation_group_id",
+        rows.map((r) => r.translationGroupId).filter((id): id is string => Boolean(id)),
+      );
+
+    // Se suman los gestos: en el listado cabe un número, y "43" dice lo mismo
+    // que "12 me gusta y 31 aplausos" para decidir qué contenido abrir. El
+    // desglose está en la pantalla del complemento.
+    for (const row of reactions ?? []) {
+      reactionTotals.set(
+        row.translation_group_id,
+        (reactionTotals.get(row.translation_group_id) ?? 0) + Number(row.total),
+      );
+    }
+  }
 
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
   const canCreate = user.isSuperadmin || can(role, "content.create");
@@ -104,8 +249,8 @@ export default async function ContentListPage({
   };
 
   return (
-    <div className="p-8">
-      <header className="mb-6 flex items-center justify-between gap-4">
+    <div className="mx-auto max-w-6xl p-4 md:p-8">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Contenido</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -122,8 +267,8 @@ export default async function ContentListPage({
         )}
       </header>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <nav className="flex gap-1">
+      <div className="mb-4 flex flex-col md:flex-row md:items-center gap-3">
+        <nav className="flex flex-wrap gap-1">
           {STATUS_TABS.map((tab) => (
             <Link
               key={tab.value}
@@ -149,56 +294,22 @@ export default async function ContentListPage({
           </Link>
         </nav>
 
-        <form action={`/${tenantSlug}/content`} className="relative ml-auto">
-          {status && <input type="hidden" name="status" value={status} />}
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            name="q"
-            defaultValue={q}
-            placeholder="Buscar por título…"
-            className="w-56 pl-8"
-          />
-        </form>
-
-        {tenant.locales.length > 1 && (
-          <form action={`/${tenantSlug}/content`}>
-            {status && <input type="hidden" name="status" value={status} />}
-            <select
-              name="locale"
-              defaultValue={locale ?? ""}
-              className="h-9 rounded-[var(--radius)] border bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-            >
-              <option value="">Todos los idiomas</option>
-              {tenant.locales.map((code) => (
-                <option key={code} value={code}>
-                  {localeLabel(code)}
-                </option>
-              ))}
-            </select>
-          </form>
-        )}
-
-        {(categories ?? []).length > 0 && (
-          <form action={`/${tenantSlug}/content`}>
-            {status && <input type="hidden" name="status" value={status} />}
-            <select
-              name="category"
-              defaultValue={category}
-              className="h-9 rounded-[var(--radius)] border bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-            >
-              <option value="">Todas las categorías</option>
-              {(categories ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </form>
-        )}
+        <ContentFilters
+          tenantSlug={tenantSlug}
+          current={{ status, q, category, locale: localeFilter ?? "", view: view ?? "" }}
+          locales={tenant.locales}
+          categories={categories ?? []}
+        />
       </div>
 
       <div className="divide-y rounded-[var(--radius)] border bg-card">
-        {(posts ?? []).length === 0 && (
+        {postsError && (
+          <p className="p-8 text-center text-sm text-destructive">
+            No se pudo cargar el contenido. Vuelve a intentarlo en un momento.
+          </p>
+        )}
+
+        {!postsError && rows.length === 0 && (
           <p className="p-8 text-center text-sm text-muted-foreground">
             {isTrash
               ? "La papelera está vacía."
@@ -208,12 +319,29 @@ export default async function ContentListPage({
           </p>
         )}
 
-        {(posts ?? []).map((post) => {
-          const cat = post.category as unknown as { name: string } | null;
+        {rows.map((post) => {
+          const { categoryName } = post;
+          // Cero no se pinta: una columna de ceros ocupa sitio y no dice nada
+          // que la ausencia del icono no diga ya.
+          const reactions = post.translationGroupId
+            ? (reactionTotals.get(post.translationGroupId) ?? 0)
+            : 0;
+          const coverUrl = coverUrls.get(post.id) ?? null;
 
           if (isTrash) {
             return (
               <div key={post.id} className="flex items-center gap-4 p-4">
+                {coverUrl && (
+                  <div className="relative size-12 shrink-0 overflow-hidden rounded-[var(--radius)] border bg-muted">
+                    <Image
+                      src={coverUrl}
+                      alt=""
+                      fill
+                      sizes="48px"
+                      className="object-cover"
+                    />
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
                   <Link
                     href={`/${tenantSlug}/content/${post.id}`}
@@ -222,7 +350,8 @@ export default async function ContentListPage({
                     {post.title}
                   </Link>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {cat?.name ? `${cat.name} · ` : ""}/{post.slug}
+                    {categoryName ? `${categoryName} · ` : ""}
+                    {localeLabel(post.locale)} · /{post.slug}
                   </p>
                 </div>
                 <TrashActions
@@ -241,13 +370,34 @@ export default async function ContentListPage({
               href={`/${tenantSlug}/content/${post.id}`}
               className="flex items-start gap-4 p-4 transition-colors hover:bg-accent"
             >
+              {/* Sin portada no se reserva el hueco: una columna de recuadros
+                  vacíos pesa más en la lectura que la desalineación. */}
+              {coverUrl && (
+                <div className="relative size-14 shrink-0 overflow-hidden rounded-[var(--radius)] border bg-muted">
+                  <Image
+                    src={coverUrl}
+                    alt=""
+                    fill
+                    sizes="56px"
+                    className="object-cover"
+                  />
+                </div>
+              )}
               <div className="min-w-0 flex-1">
+                {/* Junto al título va lo que describe el contenido: en qué
+                    idiomas existe y cuánto se ha reaccionado a él. El estado
+                    se fue a la derecha, con la fecha: las dos cosas dicen en
+                    qué punto de su ciclo está, no de qué trata. */}
                 <div className="flex items-center gap-2">
                   <span className="truncate font-medium">{post.title}</span>
-                  <StatusBadge status={post.status} />
-                  {tenant.locales.length > 1 && (
-                    <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                      {post.locale}
+                  <LocaleBadges versions={post.versions} originalLocale={post.locale} />
+                  {reactions > 0 && (
+                    <span
+                      className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
+                      title={`${reactions} ${reactions === 1 ? "reacción" : "reacciones"}`}
+                    >
+                      <Heart className="size-4" />
+                      <span className="tabular-nums">{reactions}</span>
                     </span>
                   )}
                 </div>
@@ -257,16 +407,34 @@ export default async function ContentListPage({
                   </p>
                 )}
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {cat?.name ? `${cat.name} · ` : ""}
+                  {categoryName ? `${categoryName} · ` : ""}
                   /{post.slug}
                 </p>
               </div>
-              <time className="shrink-0 text-xs text-muted-foreground">
-                {new Date(post.updated_at).toLocaleDateString("es-ES", {
-                  day: "numeric",
-                  month: "short",
-                })}
-              </time>
+              {/* Estado y fecha comparten columna, alineados al borde
+                  derecho: leídos en vertical forman una sola lectura —qué es
+                  y de cuándo— en vez de dos datos sueltos por la fila.
+
+                  De lo publicado se enseña cuándo salió, que es la fecha por
+                  la que se pregunta. De lo que aún no ha salido no existe esa
+                  fecha, así que se enseña la de edición: dejar el hueco vacío
+                  o poner un guion haría creer que la fila está incompleta. El
+                  `title` dice cuál de las dos es en cada caso. */}
+              <div className="flex shrink-0 flex-col items-end gap-1.5">
+                <StatusBadge status={post.status} />
+                <time
+                  dateTime={post.publishedAt ?? post.updatedAt}
+                  title={`${post.publishedAt ? "Publicado" : "Editado"} el ${new Date(
+                    post.publishedAt ?? post.updatedAt,
+                  ).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}`}
+                  className="text-xs text-muted-foreground"
+                >
+                  {new Date(post.publishedAt ?? post.updatedAt).toLocaleDateString("es-ES", {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </time>
+              </div>
             </Link>
           );
         })}

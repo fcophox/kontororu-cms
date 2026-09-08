@@ -2,13 +2,18 @@ import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/tenant-context";
 import { createServerClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/guards";
-import { asJsonContent, asRecord, asSeo } from "@/lib/content/json";
+import { asJsonContent, asSeo } from "@/lib/content/json";
+import { alignFields, unionFieldKeys } from "@/lib/content/custom-fields";
 import { refreshContentMedia } from "@/lib/api/content-media";
+import { signMediaBatch } from "@/lib/api/serializers";
 import { createServiceClient } from "@/lib/supabase/server";
 import { PostEditor } from "@/components/editor/post-editor";
 import { PostSidebarActions } from "@/components/editor/post-sidebar-actions";
 import { PostHistory } from "@/components/editor/post-history";
 import { PostTranslations } from "@/components/editor/post-translations";
+import { ContentLocaleTabs } from "@/components/editor/content-locale-tabs";
+import { PostReactions } from "@/components/editor/post-reactions";
+import { getTenantAddon } from "@/lib/addons/queries";
 import {
   saveContent,
   publishContent,
@@ -19,6 +24,7 @@ import {
   updateSlug,
   restoreRevision,
   createTranslation,
+  retranslateContent,
   type ActionState,
   type SlugState,
 } from "../actions";
@@ -27,10 +33,15 @@ type Props = { params: Promise<{ tenantSlug: string; postId: string }> };
 
 export async function generateMetadata({ params }: Props) {
   const { tenantSlug, postId } = await params;
-  await getTenantContext(tenantSlug);
+  const { tenant } = await getTenantContext(tenantSlug);
 
   const supabase = await createServerClient();
-  const { data } = await supabase.from("posts").select("title").eq("id", postId).maybeSingle();
+  const { data } = await supabase
+    .from("posts")
+    .select("title")
+    .eq("id", postId)
+    .eq("tenant_id", tenant.id)
+    .maybeSingle();
 
   return { title: data?.title ?? "Editar" };
 }
@@ -45,11 +56,12 @@ export default async function EditContentPage({ params }: Props) {
     supabase
       .from("posts")
       .select(
-        "id, slug, title, excerpt, category_id, content_json, content_html, custom_fields, seo, status, author_id, deleted_at, locale, translation_group_id",
+        "id, slug, title, excerpt, category_id, content_json, content_html, custom_fields, seo, status, author_id, deleted_at, locale, translation_group_id, cover_media_id, published_at, cover:media(id, bucket, path, provider, alt_text, width, height)",
       )
       .eq("id", postId)
+      .eq("tenant_id", tenant.id)
       .maybeSingle(),
-    supabase.from("categories").select("id, name").order("position"),
+    supabase.from("categories").select("id, name").eq("tenant_id", tenant.id).order("position"),
   ]);
 
   // El historial se pide aparte porque sólo interesa en edición, y así el
@@ -68,7 +80,9 @@ export default async function EditContentPage({ params }: Props) {
   // Hermanas de este contenido: mismo grupo, otros idiomas.
   const { data: siblings } = await supabase
     .from("posts")
-    .select("id, locale, status")
+    // `custom_fields` viaja para alinear las claves al abrir: un campo añadido
+    // en otro idioma tiene que verse aquí aunque este post aún no lo tenga.
+    .select("id, locale, status, custom_fields")
     .eq("translation_group_id", post.translation_group_id)
     .neq("id", postId)
     .is("deleted_at", null)
@@ -88,6 +102,13 @@ export default async function EditContentPage({ params }: Props) {
     html: "",
     json: asJsonContent(post.content_json),
   });
+
+  let coverUrl: string | null = null;
+  const coverMedia = post.cover as Parameters<typeof signMediaBatch>[1][number];
+  if (coverMedia) {
+    const signed = await signMediaBatch(createServiceClient(), [coverMedia]);
+    coverUrl = signed.get(coverMedia.path) ?? null;
+  }
 
   const save = async (prev: ActionState, formData: FormData) => {
     "use server";
@@ -121,10 +142,54 @@ export default async function EditContentPage({ params }: Props) {
     "use server";
     await restoreRevision(tenantSlug, postId, revisionId);
   };
-  const translate = async (locale: string) => {
+  // Crear un idioma nuevo traduce el original: copiarlo tal cual dejaba una
+  // entrada "en inglés" con el texto en español, y alguien tenía que traducirla
+  // fuera del CMS y pegarla de vuelta.
+  const translateInto = async (locale: string) => {
     "use server";
     await createTranslation(tenantSlug, postId, locale);
   };
+  const retranslate = async () => {
+    "use server";
+    await retranslateContent(tenantSlug, postId);
+  };
+
+  /*
+   * Reacciones del contenido, si el complemento está activo.
+   *
+   * Se piden por `translation_group_id` y no por `post.id`: el contador es del
+   * contenido, así que abrir la versión inglesa enseña el mismo número que
+   * abrir la española. Va después del `notFound()` para no consultar los
+   * contadores de algo que no se va a pintar.
+   */
+  const reactionsAddon = await getTenantAddon(tenant.id, "reactions");
+  let reactionTotals: { key: string; total: number }[] = [];
+
+  if (reactionsAddon?.isEnabled) {
+    const { data } = await supabase
+      .from("content_reactions")
+      .select("reaction_key, total")
+      .eq("tenant_id", tenant.id)
+      .eq("translation_group_id", post.translation_group_id)
+      .order("total", { ascending: false });
+
+    reactionTotals = (data ?? []).map((r) => ({
+      key: r.reaction_key,
+      total: Number(r.total),
+    }));
+  }
+
+  // Pestañas de idioma del cuerpo: el idioma actual primero, y detrás el resto
+  // de los que el espacio tiene activados. Un espacio monolingüe no las ve.
+  const localeTabs = [
+    { locale: post.locale, postId: post.id },
+    ...tenant.locales
+      .filter((l) => l !== post.locale)
+      .map((locale) => ({
+        locale,
+        postId: (siblings ?? []).find((s) => s.locale === locale)?.id ?? null,
+      })),
+  ];
 
   return (
     <PostEditor
@@ -135,8 +200,9 @@ export default async function EditContentPage({ params }: Props) {
       saveAction={save}
       onPublish={publish}
       onUnpublish={unpublish}
-      lifecycle={
+      slugEditor={
         <PostSidebarActions
+          mode="slug"
           slug={post.slug}
           status={post.status}
           isPublished={post.status === "PUBLISHED"}
@@ -147,6 +213,58 @@ export default async function EditContentPage({ params }: Props) {
           archiveAction={archive}
           trashAction={trash}
           restoreAction={restore}
+        />
+      }
+      lifecycle={
+        <PostSidebarActions
+          mode="lifecycle"
+          slug={post.slug}
+          status={post.status}
+          isPublished={post.status === "PUBLISHED"}
+          canEditSlug={user.isSuperadmin || can(role, "content.editAny")}
+          canDelete={user.isSuperadmin || can(role, "content.delete")}
+          isTrashed={post.deleted_at !== null}
+          updateSlugAction={changeSlug}
+          archiveAction={archive}
+          trashAction={trash}
+          restoreAction={restore}
+        />
+      }
+      // Publicar alcanza al grupo entero menos lo archivado.
+      publishLocales={[
+        post.locale,
+        ...(siblings ?? []).filter((s) => s.status !== "ARCHIVED").map((s) => s.locale),
+      ]}
+      /*
+       * Idiomas del contenido que aún no están publicados.
+       *
+       * Con esto el botón habla del contenido y no de la fila abierta: desde
+       * el español ya publicado sigue diciendo "Publicar" mientras el inglés
+       * siga en borrador, en vez de ofrecer "Despublicar" y dejar el otro
+       * idioma sin salida.
+       */
+      pendingLocales={[
+        ...(post.status === "PUBLISHED" ? [] : [post.locale]),
+        ...(siblings ?? [])
+          .filter((s) => s.status === "DRAFT")
+          .map((s) => s.locale),
+      ]}
+      localeTabs={
+        <ContentLocaleTabs
+          currentLocale={post.locale}
+          tabs={localeTabs}
+          tenantSlug={tenantSlug}
+          canTranslate={user.isSuperadmin || can(role, "content.create")}
+          // Traducir hereda el estado: desde un publicado, la versión nueva
+          // sale publicada, y la pestaña lo avisa antes de pulsarla.
+          isPublished={post.status === "PUBLISHED"}
+          createTranslatedAction={translateInto}
+          // Sólo tiene sentido retraducir si hay un original del que partir.
+          retranslateAction={
+            post.locale !== tenant.defaultLocale && (siblings ?? []).length > 0
+              ? retranslate
+              : undefined
+          }
         />
       }
       translations={
@@ -160,8 +278,17 @@ export default async function EditContentPage({ params }: Props) {
           availableLocales={tenant.locales}
           tenantSlug={tenantSlug}
           canCreate={user.isSuperadmin || can(role, "content.create")}
-          createAction={translate}
+          createAction={translateInto}
         />
+      }
+      reactions={
+        reactionsAddon?.isEnabled ? (
+          <PostReactions
+            totals={reactionTotals}
+            href={`/${tenantSlug}/addons/reactions`}
+            isTranslated={(siblings ?? []).length > 0}
+          />
+        ) : undefined
       }
       history={
         <PostHistory
@@ -190,10 +317,21 @@ export default async function EditContentPage({ params }: Props) {
         slug: post.slug,
         excerpt: post.excerpt ?? "",
         categoryId: post.category_id,
+        coverMediaId: post.cover_media_id,
+        coverUrl,
         contentJson: asJsonContent(content.json),
-        customFields: asRecord(post.custom_fields),
+        /*
+         * Los campos personalizados son del contenido, no de un idioma: se
+         * muestran los de todas sus versiones, con las que aquí faltan vacías
+         * para rellenar. Guardar las persiste y las propaga al resto.
+         */
+        customFields: alignFields(
+          post.custom_fields,
+          unionFieldKeys(post.custom_fields, ...(siblings ?? []).map((s) => s.custom_fields)),
+        ),
         seo: asSeo(post.seo),
         status: post.status,
+        publishedAt: post.published_at,
       }}
     />
   );

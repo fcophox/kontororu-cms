@@ -27,3 +27,48 @@ export function localeLabel(code: string): string {
 export function isKnownLocale(code: string): boolean {
   return AVAILABLE_LOCALES.some((l) => l.code === code);
 }
+
+/** Una versión de un contenido: qué idioma es y si está viva en la web. */
+export type LocaleVersion = {
+  id: string;
+  locale: string;
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+};
+
+/**
+ * Los idiomas de un contenido llegan del inventario como `jsonb`, así que
+ * Postgres los entrega sin tipo. Se validan en lugar de castearse: una fila
+ * con la agregación a medias reventaría el render de todo el listado.
+ */
+export function asLocaleVersions(value: unknown): LocaleVersion[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((row) => {
+    if (row === null || typeof row !== "object") return [];
+
+    const v = row as { id?: unknown; locale?: unknown; status?: unknown };
+    const isValid =
+      typeof v.id === "string" &&
+      typeof v.locale === "string" &&
+      (v.status === "DRAFT" || v.status === "PUBLISHED" || v.status === "ARCHIVED");
+
+    return isValid ? [{ id: v.id as string, locale: v.locale as string, status: v.status as LocaleVersion["status"] }] : [];
+  });
+}
+
+/**
+ * El original primero; el resto en el orden que trae la consulta.
+ *
+ * Importa porque el listado lee de izquierda a derecha: el primer badge dice
+ * en qué idioma se escribió el contenido, y los siguientes qué traducciones
+ * tiene.
+ */
+export function orderVersions(
+  versions: LocaleVersion[],
+  originalLocale: string,
+): LocaleVersion[] {
+  return [
+    ...versions.filter((v) => v.locale === originalLocale),
+    ...versions.filter((v) => v.locale !== originalLocale),
+  ];
+}

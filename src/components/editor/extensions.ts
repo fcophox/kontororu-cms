@@ -1,10 +1,11 @@
 import StarterKit from "@tiptap/starter-kit";
-import Image from "@tiptap/extension-image";
+import Image, { type ImageOptions } from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import Youtube from "@tiptap/extension-youtube";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { Node, mergeAttributes } from "@tiptap/core";
+import type { DOMOutputSpec } from "@tiptap/pm/model";
 import { createLowlight } from "lowlight";
 import bash from "highlight.js/lib/languages/bash";
 import css from "highlight.js/lib/languages/css";
@@ -66,40 +67,117 @@ export const Callout = Node.create({
   },
 });
 
+/*
+ * `mediaId` es lo que hace que las imágenes no caduquen.
+ *
+ * El `src` de una imagen es una URL FIRMADA con caducidad. Guardarla en el
+ * documento significa que, pasado su plazo, todas las imágenes de todo el
+ * contenido publicado dejan de cargar en la web del cliente — sin ningún
+ * error visible desde el CMS.
+ *
+ * Guardando además el id, el `src` pasa a ser desechable: la API vuelve a
+ * firmar cada imagen en el momento de servirla.
+ */
+type KntrImageOptions = ImageOptions & { tenantId: string };
+
+export const ImageBase = Image.extend<KntrImageOptions>({
+  addOptions() {
+    return {
+      ...this.parent?.(),
+      /*
+       * El nodeview necesita saber a qué tenant sube el reemplazo. Viaja como
+       * opción de la extensión porque el editor la conoce al crearse y el
+       * nodeview no tiene otra vía hasta el árbol de React.
+       */
+      tenantId: "",
+    };
+  },
+
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      mediaId: {
+        default: null,
+        parseHTML: (el) => el.getAttribute("data-media-id"),
+        renderHTML: (attrs) =>
+          attrs.mediaId ? { "data-media-id": attrs.mediaId as string } : {},
+      },
+      /*
+       * El pie no es un atributo del `img`: sale como `<figcaption>` en
+       * `renderHTML`. Aquí se anula su serialización para que no acabe
+       * también como `caption="…"` dentro de la etiqueta.
+       */
+      caption: {
+        default: null,
+        parseHTML: (el) => el.getAttribute("data-caption"),
+        renderHTML: () => ({}),
+      },
+    };
+  },
+
+  /*
+   * Al pegar HTML ya publicado, el pie viene como `<figcaption>` y no como
+   * atributo. Sin esta regla la imagen se recupera pero el pie se pierde.
+   */
+  parseHTML() {
+    return [
+      {
+        tag: 'figure[data-type="image"]',
+        contentElement: "img",
+        getAttrs: (el) => {
+          const figure = el as HTMLElement;
+          const img = figure.querySelector("img");
+          if (!img) return false;
+          return {
+            src: img.getAttribute("src"),
+            alt: img.getAttribute("alt"),
+            title: img.getAttribute("title"),
+            mediaId: img.getAttribute("data-media-id"),
+            caption: figure.querySelector("figcaption")?.textContent?.trim() || null,
+          };
+        },
+      },
+      ...(this.parent?.() ?? []),
+    ];
+  },
+
+  renderHTML({ HTMLAttributes, node }) {
+    const img: DOMOutputSpec = [
+      "img",
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
+    ];
+    const caption = node.attrs.caption as string | null;
+    if (!caption) return img;
+
+    return [
+      "figure",
+      { "data-type": "image", class: "kntr-figure" },
+      img,
+      ["figcaption", { class: "kntr-caption" }, caption],
+    ];
+  },
+});
+
+/** Opciones compartidas por la versión de servidor y la del editor. */
+export const imageOptions = {
+  inline: false,
+  allowBase64: false, // todo pasa por Storage: nada de data: URIs en la BD
+  HTMLAttributes: { class: "kntr-image", loading: "lazy" },
+} as const;
+
+/**
+ * Versión sin nodeview: es la que usa el render a HTML en servidor, que sólo
+ * necesita el esquema. La del editor vive en `client-extensions.ts`.
+ */
+export const KntrImage = ImageBase.configure(imageOptions);
+
 export const editorExtensions = [
   StarterKit.configure({
     codeBlock: false, // lo reemplaza CodeBlockLowlight
     heading: { levels: [2, 3, 4] },
   }),
   CodeBlockLowlight.configure({ lowlight, defaultLanguage: "typescript" }),
-  /*
-   * `mediaId` es lo que hace que las imágenes no caduquen.
-   *
-   * El `src` de una imagen es una URL FIRMADA con caducidad. Guardarla en el
-   * documento significa que, pasado su plazo, todas las imágenes de todo el
-   * contenido publicado dejan de cargar en la web del cliente — sin ningún
-   * error visible desde el CMS.
-   *
-   * Guardando además el id, el `src` pasa a ser desechable: la API vuelve a
-   * firmar cada imagen en el momento de servirla.
-   */
-  Image.extend({
-    addAttributes() {
-      return {
-        ...this.parent?.(),
-        mediaId: {
-          default: null,
-          parseHTML: (el) => el.getAttribute("data-media-id"),
-          renderHTML: (attrs) =>
-            attrs.mediaId ? { "data-media-id": attrs.mediaId as string } : {},
-        },
-      };
-    },
-  }).configure({
-    inline: false,
-    allowBase64: false, // todo pasa por Storage: nada de data: URIs en la BD
-    HTMLAttributes: { class: "kntr-image", loading: "lazy" },
-  }),
+  KntrImage,
   Link.configure({
     openOnClick: false,
     autolink: true,

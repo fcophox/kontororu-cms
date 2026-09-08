@@ -17,3 +17,6 @@ supabase/.branches/
 .DS_Store
 *.log
 coverage/
+.claude/
+.next-fontcheck/
+

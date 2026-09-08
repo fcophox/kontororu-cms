@@ -21,14 +21,22 @@ export default async function CategoriesPage({
   // `requirePermission` incluye el bypass de SuperAdmin: repetir
   // `!user.isSuperadmin && …` en cada página es una comprobación que
   // basta olvidar una vez para dejar a Rukma Studio sin soporte.
-  const {  } = await requirePermission(tenantSlug, "taxonomy.manage");
+  const { tenant } = await requirePermission(tenantSlug, "taxonomy.manage");
 
   const supabase = await createServerClient();
 
   // Conteo de posts por categoría: sin él, borrar es una decisión a ciegas.
   const [{ data: categories }, { data: posts }] = await Promise.all([
-    supabase.from("categories").select("id, name, slug, kind, description").order("position"),
-    supabase.from("posts").select("category_id").is("deleted_at", null),
+    supabase
+      .from("categories")
+      .select("id, name, slug, kind, description")
+      .eq("tenant_id", tenant.id)
+      .order("position"),
+    supabase
+      .from("posts")
+      .select("category_id")
+      .eq("tenant_id", tenant.id)
+      .is("deleted_at", null),
   ]);
 
   const counts = new Map<string, number>();
@@ -46,7 +54,7 @@ export default async function CategoriesPage({
   };
 
   return (
-    <div className="p-8">
+    <div className="mx-auto max-w-6xl p-4 md:p-8">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Categorías</h1>
         <p className="mt-1 text-sm text-muted-foreground">

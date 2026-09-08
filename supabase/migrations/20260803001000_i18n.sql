@@ -82,13 +82,13 @@ alter table public.categories add constraint categories_tenant_locale_slug_key
 
 -- Un grupo no puede tener dos veces el mismo idioma: sería ambiguo cuál es
 -- "la versión en inglés".
-create unique index posts_group_locale_key
+create unique index if not exists posts_group_locale_key
   on public.posts (translation_group_id, locale);
-create unique index categories_group_locale_key
+create unique index if not exists categories_group_locale_key
   on public.categories (translation_group_id, locale);
 
-create index posts_tenant_locale_idx on public.posts (tenant_id, locale, status);
-create index categories_tenant_locale_idx on public.categories (tenant_id, locale);
+create index if not exists posts_tenant_locale_idx on public.posts (tenant_id, locale, status);
+create index if not exists categories_tenant_locale_idx on public.categories (tenant_id, locale);
 
 -- ---------------------------------------------------------------------
 -- Coherencia
@@ -117,10 +117,12 @@ begin
 end;
 $$;
 
+drop trigger if exists posts_assert_locale on public.posts;
 create trigger posts_assert_locale
   before insert or update of locale on public.posts
   for each row execute function public.tg_assert_locale_enabled();
 
+drop trigger if exists categories_assert_locale on public.categories;
 create trigger categories_assert_locale
   before insert or update of locale on public.categories
   for each row execute function public.tg_assert_locale_enabled();
@@ -151,6 +153,7 @@ begin
 end;
 $$;
 
+drop trigger if exists posts_assert_category_locale on public.posts;
 create trigger posts_assert_category_locale
   before insert or update on public.posts
   for each row execute function public.tg_assert_category_locale();

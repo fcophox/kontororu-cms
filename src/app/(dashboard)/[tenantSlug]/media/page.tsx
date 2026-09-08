@@ -30,6 +30,7 @@ export default async function MediaPage({
     .select("id, bucket, path, provider, mime_type, size_bytes, width, height, alt_text, created_at", {
       count: "exact",
     })
+    .eq("tenant_id", tenant.id)
     .order("created_at", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
 
@@ -69,7 +70,7 @@ export default async function MediaPage({
   };
 
   return (
-    <div className="p-8">
+    <div className="mx-auto max-w-6xl p-4 md:p-8">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Medios</h1>
         <p className="mt-1 text-sm text-muted-foreground">

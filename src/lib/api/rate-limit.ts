@@ -26,6 +26,21 @@ export const PLAN_RATE_LIMITS: Record<TenantPlan, number> = {
  */
 export const ANONYMOUS_LIMIT = 30;
 
+/**
+ * Cupo del endpoint de reacciones, que tampoco lleva credenciales.
+ *
+ * Va en su PROPIO cubo, no en el anónimo. El cubo anónimo mide intentos de
+ * adivinar una clave; las reacciones son tráfico legítimo sin clave. Si
+ * compartieran cubo, una persona leyendo un blog y pulsando "me gusta" en
+ * varios artículos se quedaría sin margen para las peticiones que sí
+ * importan —y al revés, un ataque de fuerza bruta dejaría a esa web sin
+ * poder contar reacciones.
+ *
+ * 60 por minuto y origen: nadie lee y aprecia un artículo por segundo
+ * durante un minuto entero, así que llegar al tope es un script.
+ */
+export const REACTION_LIMIT = 60;
+
 export const WINDOW_SECONDS = 60;
 
 export type RateVerdict = {
@@ -49,7 +64,7 @@ function hashIp(ip: string): string {
 }
 
 export function clientIp(req: Request): string {
-  // Vercel y la mayoría de proxies ponen la IP real como primer valor.
+  // Render y la mayoría de proxies ponen la IP real como primer valor.
   const forwarded = req.headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0]!.trim();
   return req.headers.get("x-real-ip") ?? "desconocida";
@@ -111,6 +126,11 @@ export function consumeForKey(
 /** Cupo de intentos sin credenciales válidas, por origen. */
 export function consumeForAnonymous(req: Request): Promise<RateVerdict> {
   return consume(`ip:${hashIp(clientIp(req))}`, ANONYMOUS_LIMIT);
+}
+
+/** Cupo del endpoint público de reacciones, por origen. */
+export function consumeForReactions(req: Request): Promise<RateVerdict> {
+  return consume(`react:${hashIp(clientIp(req))}`, REACTION_LIMIT);
 }
 
 export function rateLimitHeaders(verdict: RateVerdict): Record<string, string> {

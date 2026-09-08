@@ -13,24 +13,27 @@ export type UploadedMedia = {
 /**
  * Sube al Storage del tenant vía route handler (nunca directo desde el
  * cliente: el servidor valida MIME, tamaño, cuota y registra en `media`).
- *
+ */
+export async function uploadMedia(file: File, tenantId: string): Promise<UploadedMedia> {
+  const body = new FormData();
+  body.append("file", file);
+  body.append("tenantId", tenantId);
+
+  const res = await fetch("/api/media/upload", { method: "POST", body });
+  if (!res.ok) {
+    const { error } = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(error ?? "Error al subir el archivo");
+  }
+  return res.json();
+}
+
+/**
  * Inserta primero un placeholder optimista y lo sustituye por la URL final,
  * para que pegar/arrastrar una imagen se sienta instantáneo.
  */
 export function useMediaUpload(editor: Editor | null, tenantId: string) {
   const upload = useCallback(
-    async (file: File): Promise<UploadedMedia> => {
-      const body = new FormData();
-      body.append("file", file);
-      body.append("tenantId", tenantId);
-
-      const res = await fetch("/api/media/upload", { method: "POST", body });
-      if (!res.ok) {
-        const { error } = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(error ?? "Error al subir el archivo");
-      }
-      return res.json();
-    },
+    (file: File) => uploadMedia(file, tenantId),
     [tenantId],
   );
 

@@ -23,11 +23,40 @@ const nextConfig: NextConfig = {
   },
 
   images: {
+    /*
+     * Las imágenes del panel se sirven con URL firmada, y el optimizador
+     * cachea su versión optimizada indexada por esa URL. Al revalidar vuelve a
+     * pedir la MISMA URL, así que este valor tiene que quedar por debajo del
+     * TTL de la firma más corta en juego — la de Medios, 1 h. Si lo igualara,
+     * la revalidación caería justo cuando el token acaba de caducar y el
+     * usuario vería un hueco roto sin que nada hubiera fallado.
+     *
+     * Media hora es también la ventana de caché de firma de
+     * `lib/storage/factory`: cada URL se optimiza una vez por ventana.
+     */
+    minimumCacheTTL: 1800,
+
     remotePatterns: [
       // Logos y medios servidos desde el Storage del tenant.
       { protocol: "https", hostname: supabaseHost, pathname: "/storage/v1/object/**" },
       { protocol: "http", hostname: "127.0.0.1", port: "54321", pathname: "/storage/v1/object/**" },
     ],
+  },
+
+  /*
+   * Marca e Idiomas colgaban de `/settings/`, pero en el panel viven en
+   * Administración, no en Configuración. Al subirlas un nivel, los enlaces
+   * antiguos —marcadores del cliente, enlaces compartidos— quedarían en 404:
+   * estas redirecciones los mantienen vivos.
+   */
+  async redirects() {
+    return [
+      { source: "/:tenantSlug/settings/branding", destination: "/:tenantSlug/branding", permanent: true },
+      { source: "/:tenantSlug/settings/locales", destination: "/:tenantSlug/locales", permanent: true },
+      { source: "/:tenantSlug/settings/api-keys", destination: "/:tenantSlug/api-keys", permanent: true },
+      { source: "/:tenantSlug/settings/webhooks", destination: "/:tenantSlug/webhooks", permanent: true },
+      { source: "/:tenantSlug/settings/profile", destination: "/:tenantSlug/profile", permanent: true },
+    ];
   },
 
   async headers() {

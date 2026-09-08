@@ -27,6 +27,9 @@ revócala y crea otra.
 La clave es **secreta**: úsala desde el servidor (Server Component, Route
 Handler, `getStaticProps`), nunca desde el navegador.
 
+La única excepción es `/reactions`, que no lleva clave porque lo llama el
+navegador de quien lee. Está explicado en su propia sección.
+
 ---
 
 ## `GET /posts`
@@ -38,6 +41,7 @@ Listado de contenido publicado, del más reciente al más antiguo.
 | `limit` | 1–100 | Elementos por página (20 por defecto) |
 | `cursor` | ISO 8601 | `pagination.nextCursor` de la respuesta anterior |
 | `locale` | código | Idioma; por defecto, el principal del espacio |
+| `fallback` | `none` | Desactiva el respaldo al idioma principal (ver [Idiomas](#idiomas)) |
 | `category` | slug | Filtra por categoría |
 | `tag` | slug | Filtra por etiqueta |
 | `q` | texto | Busca en el título |
@@ -94,6 +98,11 @@ Igual que un elemento del listado, más el cuerpo:
 Un borrador devuelve **404**, igual que un slug inexistente: que exista un
 borrador con ese nombre no es información pública.
 
+Acepta `?locale=` y `?fallback=none` con el mismo significado que el listado:
+si el contenido no está traducido al idioma pedido, recibes la versión que sí
+existe —mira su campo `locale`— en vez de un 404. El slug puede venir en
+cualquier idioma: la respuesta trae el canónico del que se sirve.
+
 ## `GET /categories`
 
 ```json
@@ -109,6 +118,11 @@ borrador con ese nombre no es información pública.
 
 Filtra con `?kind=BLOG|CASE_STUDY|SERVICE|CUSTOM`. `postCount` cuenta sólo
 entradas publicadas — sirve para no enlazar categorías vacías en tu menú.
+
+Las categorías no tienen idioma, pero `?locale=` sí acota el conteo, y lo hace
+igual que el listado: cuenta los contenidos que `/posts?locale=…` devolvería,
+respaldo incluido, para que el menú no diga "0" junto a una categoría con
+entradas. `?fallback=none` lo vuelve estricto.
 
 ## `GET /media`
 
@@ -131,6 +145,170 @@ qué poder enumerar todo lo subido, incluido lo que aún no se ha publicado.
 
 Filtra con `?type=image|video|document`. Paginación por cursor, igual que en
 `/posts`.
+
+## `GET /reactions` y `POST /reactions`
+
+> **Este endpoint NO lleva clave**, y es el único. Lo llama el navegador de
+> quien lee el artículo para pulsar el gesto de "me gusta", así que una clave
+> viviría dentro del bundle de la web y la vería cualquiera. Como el espacio no
+> se puede deducir de una clave que no existe, aquí sí viaja en la petición
+> (`tenant`), y es el slug público del espacio, no un secreto.
+>
+> Requiere el complemento **Reacciones** activo en el espacio. Sin él, el
+> `POST` devuelve 404.
+
+Leer los contadores:
+
+```
+GET /api/v1/reactions?tenant=mi-espacio&slug=mi-articulo
+```
+
+```json
+{ "data": { "slug": "mi-articulo", "totals": { "like": 12, "clap": 31 } } }
+```
+
+Sumar una:
+
+```
+POST /api/v1/reactions
+{ "tenant": "mi-espacio", "slug": "mi-articulo", "reaction": "like" }
+```
+
+```json
+{ "data": { "slug": "mi-articulo", "reaction": "like", "total": 13 } }
+```
+
+Devuelve el total ya incrementado: no hace falta un segundo `GET`.
+
+`reaction` es opcional (por defecto `like`) y admite `^[a-z][a-z0-9_-]{1,39}$`.
+El gesto no se declara en ninguna parte — el primer clic lo da de alta, igual
+que los formularios del complemento Contactos.
+
+**El contador es del contenido, no de la traducción.** Todas las versiones de
+idioma de un artículo suman al mismo número: quien pulse en la inglesa y quien
+pulse en la española están aplaudiendo lo mismo.
+
+**Un contenido sin reacciones devuelve `{}` con un 200**, igual que un slug
+inexistente. No uses este endpoint para saber si un artículo existe.
+
+**El cupo aquí es por IP, 60/min**, no por clave — no hay clave. Por eso el
+`POST` debe salir del navegador de cada lector y no de tu servidor: proxiándolo,
+toda tu web comparte una sola IP y agota el cupo entre todos. El `GET` sí puede
+ir por servidor.
+
+No existe forma de retirar una reacción: el contador sólo sube. Ponerlo a cero
+se hace desde el panel, en **Complementos → Reacciones**.
+
+---
+
+## `GET /addons/calendar/availability`
+
+> Requiere el complemento **Calendario** activo en el espacio. Sin él, `404`.
+
+La disponibilidad semanal que el cliente ha configurado en **Complementos →
+Calendario**, para que el formulario de agenda de tu web sólo ofrezca tramos
+que existen. Scope `content:read`.
+
+Se devuelve la **semana**, no fechas concretas: la configuración es un patrón
+semanal. Tú ya sabes qué día de la semana cae cada fecha.
+
+```json
+{
+  "data": {
+    "timezone": "America/Santiago",
+    "startTime": "09:00",
+    "endTime": "18:00",
+    "slotMinutes": 30,
+    "slots": [{ "start": "09:00", "end": "09:30" }],
+    "week": [
+      {
+        "weekday": 1,
+        "label": "Lunes",
+        "isClosed": false,
+        "available": [{ "start": "10:00", "end": "10:30" }]
+      }
+    ]
+  }
+}
+```
+
+`slots` es la rejilla completa del día antes de aplicar bloqueos; `available`
+es lo que de verdad se ofrece ese día. **Usa `available`** — `slots` sólo
+sirve si quieres pintar en gris los tramos cerrados.
+
+`weekday` usa el mismo índice que `Date#getDay()`: 0 = domingo, 6 = sábado.
+
+⚠️ **Si cacheas esta respuesta, suscríbete al evento `addon.updated`** (ver
+*Webhooks*) y revalida con él. Sin esa suscripción, no la caches más de lo que
+dice su cabecera: tu web seguiría ofreciendo horas que el cliente ya cerró.
+
+---
+
+## `GET /addons/portfolio`
+
+> Requiere el complemento **Portfolio** activo **y** su interruptor «Visible en
+> la web» encendido. Sin cualquiera de las dos cosas, `404`.
+
+Los trabajos que el cliente ha creado en **Complementos → Portfolio**, para
+pintarlos como tarjetas. Scope `content:read`.
+
+```json
+{
+  "data": {
+    "gallery": "gallery-1",
+    "layout": {
+      "columns": 3,
+      "aspect": "4/3",
+      "textPlacement": "below",
+      "showsDescription": true
+    },
+    "items": [
+      {
+        "id": "0f1c…",
+        "title": "Identidad para Ferretería Sur",
+        "description": "Texto largo, puede venir vacío",
+        "category": "Identidad",
+        "externalUrl": "https://ejemplo.cl/caso",
+        "image": { "id": "9a2b…", "url": "https://…", "alt": null, "width": 1600, "height": 900 },
+        "createdAt": "2026-08-20T10:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+Los elementos llegan **en el orden en que deben pintarse**, del más reciente al
+más antiguo. `category` y `externalUrl` son `null` cuando el cliente no los
+rellenó, y `image` es `null` cuando el elemento no tiene foto o su archivo ya
+no está: maqueta la tarjeta igualmente en vez de ocultarla.
+
+`gallery` es la plantilla elegida en el panel y `layout` es lo que esa
+plantilla significa, para que no tengas que mantener tu propia tabla de
+equivalencias:
+
+| `gallery` | Columnas | Imagen | Texto | Descripción |
+|---|---|---|---|---|
+| `gallery-1` | 3 | recortada a `4/3` | debajo | sí |
+| `gallery-2` | 2 | sin recortar (`original`) | encima | no |
+| `gallery-3` | 1 | recortada a `16/9` | al lado | sí |
+
+En móvil, las tres van a una columna.
+
+**Monta las tres y decide con lo que llega en la respuesta.** El cliente cambia
+de galería desde el panel, sin avisarte y sin que nadie toque tu código: si la
+fijas, el cambio no se nota o rompe la sección. Puedes ramificar por `gallery`
+con tres componentes, o leer `layout` y montarlo genérico.
+
+⚠️ **El `404` no es un error que debas mostrar.** Significa que el cliente ha
+apagado la visibilidad; oculta la sección de portfolio y su enlace en el menú,
+sin ningún mensaje.
+
+Las URLs de imagen vienen firmadas y **caducan a las 24 horas**: no las guardes
+en tu propio almacenamiento ni las sirvas más allá de ese plazo, vuelve a pedir
+el endpoint. Como con el calendario, suscríbete a `addon.updated` para revalidar
+en cuanto el cliente toque algo.
+
+---
 
 ## `GET /media/{id}`
 
@@ -230,6 +408,27 @@ empieza a mostrar cada artículo por duplicado.
 Pedir un idioma no activado devuelve **400**, no una lista vacía — un 200 con
 cero resultados se confunde con "aún no hay contenido".
 
+### Lo que no está traducido
+
+Un contenido puede no existir en el idioma que pides. En ese caso **recibes la
+versión que sí existe**, empezando por la del idioma principal, y no un hueco:
+`/posts?locale=en` devuelve el artículo español que todavía nadie ha traducido,
+en lugar de dejar la sección inglesa a medias sin que nada falle.
+
+El campo `locale` de cada elemento dice **en qué idioma viene de verdad**, así
+que puedes marcarlo, ocultarlo o enlazarlo como prefieras:
+
+```tsx
+{post.locale !== "en" && <p>Disponible sólo en {post.locale}</p>}
+```
+
+Un contenido nunca aparece dos veces: si existe en los dos idiomas, sólo viaja
+el que pediste. Lo mismo vale para `postCount` en `/categories`, que cuenta
+contenidos y no filas.
+
+Si prefieres el comportamiento estricto —nada en el listado, 404 en el
+detalle— añade **`?fallback=none`**.
+
 Cada elemento trae sus hermanas:
 
 ```json
@@ -298,8 +497,23 @@ Siempre la misma forma:
 
 ## Caché
 
-Las respuestas llevan `Cache-Control: public, s-maxage=60, stale-while-revalidate=600`.
-Puedes cachear con tranquilidad: el webhook te avisa en cuanto cambia algo.
+**Contenido** (`/posts`, `/categories`, `/media`) —
+`Cache-Control: public, s-maxage=60, stale-while-revalidate=600`. Puedes
+cachear con tranquilidad: el webhook te avisa en cuanto cambia algo, así que
+la ventana sólo cubre el hueco entre la publicación y el aviso.
+
+**Configuración de complementos** (`/addons/calendar/availability`,
+`/addons/portfolio`) —
+`Cache-Control: public, s-maxage=30, must-revalidate`. Ventana más corta y sin
+servir obsoleto, porque aquí **no hay webhook que avise**: los eventos se
+emiten sobre el contenido, no sobre la configuración. Si la cacheas por tu
+cuenta más allá de esos 30 s, un horario que el cliente acaba de corregir
+seguirá apareciendo mal en tu web y no habrá nada que lo despierte.
+
+Si te suscribes al evento `addon.updated` (ver *Webhooks*) puedes cachear esa
+respuesta todo lo que quieras y revalidar cuando te avisemos, que es lo que
+recomendamos. Sin suscripción, respeta la cabecera y no fijes un `revalidate`
+propio más largo.
 
 ## Límite de peticiones
 
@@ -364,7 +578,41 @@ que la consulta llegue a ejecutarse. El esquema real no pasa de cuatro.
 ## Webhooks: mantener la web al día
 
 Configura en **Ajustes → Webhooks** un endpoint de tu web. Te llamamos al
-publicar, actualizar o despublicar contenido.
+publicar, actualizar o despublicar contenido, y al cambiar la configuración de
+un complemento.
+
+### `addon.updated`
+
+Se emite cuando el cliente activa, apaga o reconfigura un complemento — por
+ejemplo, al cambiar su disponibilidad en **Complementos → Calendario**.
+
+```json
+{
+  "event": "addon.updated",
+  "tenantId": "…",
+  "occurredAt": "2026-08-18T19:28:43Z",
+  "data": { "addon": "calendar", "isEnabled": true }
+}
+```
+
+El payload **no trae la configuración**, igual que el de contenido no trae el
+cuerpo del artículo: es un aviso de "esto cambió, vuelve a pedirlo". Revalida
+la etiqueta con la que cacheaste `/addons/calendar/availability` y vuelve a
+leer el endpoint.
+
+`isEnabled: false` significa que el complemento ya no responde: su endpoint
+devuelve `404` y conviene que retires de tu web la sección que lo usa, en vez
+de dejarla pidiendo algo que ya no existe.
+
+Suscribirse es opcional. Si no lo haces, los cambios siguen llegando por la
+caché corta del endpoint (30 s); con el evento llegan en el acto.
+
+> **Si tu webhook ya existía**, lo suscribimos nosotros al desplegar este
+> evento: no tienes que tocar nada, pero **empezarás a recibir entregas con
+> `event: "addon.updated"`**. Comparten forma y firma con las demás, así que
+> un receptor que mire `event` antes de actuar las ignora sin más. Si el tuyo
+> revalida a ciegas, hará alguna revalidación de sobra — y si prefieres no
+> recibirlas, desmarca el evento en **Ajustes → Webhooks**.
 
 Cabeceras de cada entrega:
 
@@ -410,8 +658,16 @@ export async function POST(req: Request) {
 }
 ```
 
+La entrega sale **en el momento de publicar**, no en un turno periódico: entre
+que el editor pulsa Publicar y tu endpoint recibe el POST pasan segundos.
+
 Si tu endpoint falla, reintentamos con espera creciente —1, 2, 4, 8, 16 y 32
 minutos— y verás cada intento en el panel, con opción de reintentar a mano.
+
+**Tu endpoint debe ser idempotente.** Recibir dos veces el mismo evento es
+posible —un reintento tras un timeout en el que la entrega sí llegó— y
+revalidar dos veces no cuesta nada; procesar un cobro o enviar un email desde
+aquí, sí.
 
 ### Cambios de URL
 

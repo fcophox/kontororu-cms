@@ -1,0 +1,96 @@
+name: Worker de webhooks
+
+# =====================================================================
+# Red de seguridad de la cola de webhooks.
+#
+# El camino normal ya no pasa por aquí: publicar dispara el drenado en el acto
+# desde la propia Server Action (`dispatchNow`, en lib/content/webhook-dispatch).
+# Este cron es lo que recoge lo que aquel no pudo — los reintentos con backoff,
+# lo encolado mientras la app estaba caída — y lo que purga `api_rate_limits`.
+# Quitarlo deja las entregas fallidas sin reintentar nunca.
+#
+# El repo traía un `vercel.json` que programaba
+# /api/internal/webhooks/dispatch cada minuto, pero ese fichero sólo lo lee
+# Vercel: nadie invocaba el worker y la cola llevaba desde el 7 de agosto sin
+# drenarse — 315 entregas encoladas y ninguna enviada. El endpoint también
+# purga `api_rate_limits`, así que esa tabla tampoco se limpiaba.
+# El `vercel.json` ya no está en el repo; este workflow es el único disparador.
+#
+# Cinco minutos, no uno: es el intervalo mínimo de los cron de GitHub Actions, y
+# además se ejecutan cuando hay hueco, no puntuales. Para reintentos con backoff
+# de 1 a 32 minutos sobra — la publicación en caliente ya no depende de esto.
+#
+# ⚠️ GitHub desactiva los workflows programados tras 60 días sin actividad en el
+# repositorio. Si esto se apaga, publicar sigue funcionando pero los reintentos
+# dejan de ejecutarse en silencio. El sustituto robusto es el cron nativo de
+# Render, que está escrito y comentado en `render.yaml`: el plan gratuito no
+# tiene cron jobs, así que se activa al pasar a `starter` — y entonces hay que
+# BORRAR este workflow, no dejar los dos.
+# =====================================================================
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  # Para drenar a mano sin esperar al turno.
+  workflow_dispatch:
+
+# Si un drenado se alarga, el siguiente no se solapa: el worker coge lotes
+# de 50 y dos a la vez se pisarían intentando entregar las mismas filas.
+concurrency:
+  group: webhooks-drain
+  cancel-in-progress: false
+
+jobs:
+  drain:
+    name: Drenar la cola de entregas
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invocar el worker
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.APP_URL || 'https://kontororu-cms.onrender.com' }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Falta el secreto CRON_SECRET del repositorio."
+            echo "Debe valer lo mismo que la variable CRON_SECRET del servicio en Render."
+            exit 1
+          fi
+
+          code=$(curl -sS --max-time 120 \
+                   -o /tmp/salida.json -w '%{http_code}' \
+                   -H "Authorization: Bearer $CRON_SECRET" \
+                   "$APP_URL/api/internal/webhooks/dispatch")
+
+          echo "HTTP $code"
+          cat /tmp/salida.json || true
+          echo
+
+          # Un 401 aquí significa secreto desalineado, no una entrega fallida:
+          # se distingue porque si no, el worker parece "funcionando" mientras
+          # la cola sigue creciendo — que es justo el fallo que esto arregla.
+          if [ "$code" = "401" ]; then
+            echo "::error::CRON_SECRET no coincide con el del servicio en Render."
+            exit 1
+          fi
+          if [ "$code" != "200" ]; then
+            echo "::error::El worker respondió $code."
+            exit 1
+          fi
+
+          # Un 200 no significa que las entregas hayan llegado: el worker
+          # responde bien aunque la web del cliente devuelva 404 en todas.
+          # Sin mirar el cuerpo, este job saldría verde con la cola intacta.
+          procesadas=$(jq -r '.processed // 0' /tmp/salida.json)
+          entregadas=$(jq -r '.delivered // 0' /tmp/salida.json)
+          fallidas=$(jq -r '.failed // 0' /tmp/salida.json)
+
+          resumen="procesadas=$procesadas entregadas=$entregadas fallidas=$fallidas"
+          echo "$resumen"
+          echo "$resumen" >> "$GITHUB_STEP_SUMMARY"
+
+          # Aviso, no error: que la web de un cliente falle un rato es normal
+          # y el backoff ya lo cubre. Ponerse rojo por eso convertiría este
+          # cron en ruido diario, y entonces nadie miraría el día que importe.
+          if [ "$fallidas" -gt 0 ]; then
+            echo "::warning::$fallidas entregas no llegaron a su destino. Si se repite en cada turno, el destino está roto, no saturado."
+          fi

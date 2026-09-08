@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/tenant-context";
 import { PLANS, TENANT_STATUSES } from "@/lib/auth/plans";
+import { asLimits } from "@/lib/content/json";
 import { slugify } from "@/lib/content/slug";
 import type { Json } from "@/lib/supabase/types";
 
@@ -181,6 +182,308 @@ export async function setTenantStatus(tenantId: string, status: string) {
 
   revalidatePath("/admin");
   revalidatePath(`/admin/${tenantId}`);
+}
+
+// ---------------------------------------------------------------------
+// Colaboradores de un cliente
+//
+// Rukma Studio actúa aquí en nombre del cliente: alguien pierde el acceso a
+// su cuenta, se va de la empresa, o hay que cortar de urgencia. Todo pasa
+// por el cliente con sesión —no service_role— para que RLS y los triggers
+// sigan siendo la barrera real y quede rastro en audit_logs.
+// ---------------------------------------------------------------------
+
+/**
+ * Estas acciones devuelven el error en vez de lanzarlo.
+ *
+ * Un `throw` dentro de un Server Action llega al navegador como "an error
+ * occurred in the Server Components render" en producción: el motivo real
+ * —"es el último propietario"— se pierde justo cuando explica por qué el
+ * botón no hizo nada.
+ */
+const MEMBER_ROLES = ["OWNER", "ADMIN", "EDITOR", "CONTRIBUTOR"] as const;
+
+/**
+ * Un espacio sin ningún OWNER activo queda huérfano: nadie puede invitar,
+ * cambiar roles ni tocar la facturación, y recuperarlo exige entrar por SQL.
+ * Pausar o degradar al último propietario provoca exactamente eso, así que
+ * se bloquea igual que eliminarlo.
+ */
+async function lastOwnerBlock(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  tenantId: string,
+  memberId: string,
+  verb: string,
+): Promise<string | null> {
+  const { data: target } = await supabase
+    .from("tenant_users")
+    .select("role")
+    .eq("id", memberId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+
+  if (!target) return "Ese colaborador ya no está en el espacio.";
+  if (target.role !== "OWNER") return null;
+
+  const { count } = await supabase
+    .from("tenant_users")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .eq("role", "OWNER")
+    .is("suspended_at", null);
+
+  return (count ?? 0) <= 1
+    ? `No puedes ${verb} al último propietario activo del espacio.`
+    : null;
+}
+
+export async function setMemberRole(
+  tenantId: string,
+  memberId: string,
+  role: string,
+): Promise<PlatformState> {
+  const actor = await requireSuperadmin();
+
+  if (!(MEMBER_ROLES as readonly string[]).includes(role)) {
+    return { error: "Rol no válido." };
+  }
+
+  const supabase = await createServerClient();
+
+  // Degradar al último OWNER deja el espacio sin propietario igual que
+  // borrarlo, sólo que en silencio.
+  if (role !== "OWNER") {
+    const blocked = await lastOwnerBlock(supabase, tenantId, memberId, "degradar");
+    if (blocked) return { error: blocked };
+  }
+
+  const { error } = await supabase
+    .from("tenant_users")
+    .update({ role: role as never })
+    .eq("id", memberId)
+    .eq("tenant_id", tenantId);
+
+  if (error) return { error: "No se pudo cambiar el rol." };
+
+  await supabase.from("audit_logs").insert({
+    tenant_id: tenantId,
+    actor_id: actor.id,
+    action: "member.role",
+    entity: "tenant_users",
+    entity_id: memberId,
+    metadata: { role },
+  });
+
+  revalidatePath(`/admin/${tenantId}`);
+  return { ok: "Rol actualizado." };
+}
+
+/**
+ * Pausa o reactiva a un colaborador.
+ *
+ * `suspended_at` no es una etiqueta: los helpers de RLS ignoran las
+ * membresías pausadas, así que el acceso se corta en la base de datos —
+ * también para sus llamadas directas a la API, no sólo en el panel.
+ */
+export async function setMemberSuspended(
+  tenantId: string,
+  memberId: string,
+  suspended: boolean,
+): Promise<PlatformState> {
+  const actor = await requireSuperadmin();
+  const supabase = await createServerClient();
+
+  if (suspended) {
+    const blocked = await lastOwnerBlock(supabase, tenantId, memberId, "pausar");
+    if (blocked) return { error: blocked };
+  }
+
+  const { error } = await supabase
+    .from("tenant_users")
+    .update({ suspended_at: suspended ? new Date().toISOString() : null })
+    .eq("id", memberId)
+    .eq("tenant_id", tenantId);
+
+  if (error) return { error: "No se pudo cambiar el acceso del colaborador." };
+
+  await supabase.from("audit_logs").insert({
+    tenant_id: tenantId,
+    actor_id: actor.id,
+    action: suspended ? "member.suspend" : "member.restore",
+    entity: "tenant_users",
+    entity_id: memberId,
+    metadata: {},
+  });
+
+  revalidatePath("/admin");
+  revalidatePath(`/admin/${tenantId}`);
+  return { ok: suspended ? "Acceso pausado." : "Acceso restablecido." };
+}
+
+const CreateMemberInput = z.object({
+  email: z.string().trim().toLowerCase().email("Email no válido"),
+  fullName: z.string().trim().max(80).optional().or(z.literal("")),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  role: z.enum(MEMBER_ROLES),
+});
+
+/**
+ * Alta directa de un colaborador desde el panel de plataforma.
+ *
+ * Crea la cuenta ya confirmada —`email_confirm: true`— con una contraseña que
+ * fija Rukma Studio, así que la persona entra por /login al instante y no
+ * depende de recibir ningún correo. Existe porque el correo es justo lo que
+ * falla en los casos de soporte: dominios corporativos que filtran los emails
+ * del sistema, o un cliente que perdió el acceso y necesita volver a entrar
+ * hoy, no cuando su equipo de IT desbloquee el remitente.
+ *
+ * Sólo SuperAdmin. Fijarle la contraseña a otra persona es una capacidad que
+ * no debe tener quien administra un espacio: durante un rato hay dos que la
+ * conocen, y aquí queda registrado en `audit_logs` quién la puso.
+ */
+export async function createMemberAccount(
+  tenantId: string,
+  _prev: PlatformState,
+  formData: FormData,
+): Promise<PlatformState> {
+  const actor = await requireSuperadmin();
+
+  const parsed = CreateMemberInput.safeParse({
+    email: formData.get("email"),
+    fullName: formData.get("fullName") ?? "",
+    password: formData.get("password"),
+    role: formData.get("role"),
+  });
+
+  if (!parsed.success) {
+    const issues = z.flattenError(parsed.error).fieldErrors;
+    return { error: Object.values(issues).flat()[0] ?? "Datos no válidos" };
+  }
+
+  const { email, password, role } = parsed.data;
+  const fullName = parsed.data.fullName?.trim() || null;
+
+  const admin = createServiceClient();
+
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("id, limits")
+    .eq("id", tenantId)
+    .maybeSingle();
+
+  if (!tenant) return { error: "Ese espacio ya no existe." };
+
+  // El límite del plan se respeta también desde plataforma: si hace falta
+  // saltárselo, se amplía el límite del cliente y queda constancia, en vez
+  // de que el contador mienta.
+  const { count } = await admin
+    .from("tenant_users")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId);
+
+  const maxUsers = asLimits(tenant.limits).maxUsers;
+  if ((count ?? 0) >= maxUsers) {
+    return {
+      error: `El plan de este cliente permite ${maxUsers} colaboradores. Amplía el límite antes de añadir a nadie más.`,
+    };
+  }
+
+  // Una persona puede colaborar con varios clientes: si ya tiene cuenta se
+  // reutiliza. NO se le cambia la contraseña — eso le rompería el acceso a
+  // los demás espacios donde ya trabaja.
+  const { data: existingProfile } = await admin
+    .from("users_profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+
+  let userId = existingProfile?.id ?? null;
+  const reused = Boolean(userId);
+
+  if (!userId) {
+    const { data, error } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: fullName ? { full_name: fullName } : {},
+    });
+    if (error) return { error: `No se pudo crear la cuenta: ${error.message}` };
+    userId = data.user.id;
+  }
+
+  const { error: linkError } = await admin.from("tenant_users").insert({
+    tenant_id: tenantId,
+    user_id: userId,
+    role,
+    invited_by: actor.id,
+    // Nada que aceptar: no se ha enviado ningún correo.
+    accepted_at: new Date().toISOString(),
+  });
+
+  if (linkError) {
+    // La cuenta recién creada se queda sin espacio al que entrar: se deshace
+    // en vez de dejar un usuario huérfano que bloquea ese email para siempre.
+    if (!reused) await admin.auth.admin.deleteUser(userId);
+
+    if (linkError.message.includes("tenant_users_tenant_id_user_id_key")) {
+      return { error: "Esa persona ya forma parte de este espacio." };
+    }
+    return { error: "No se pudo añadir al colaborador." };
+  }
+
+  await admin.from("audit_logs").insert({
+    tenant_id: tenantId,
+    actor_id: actor.id,
+    action: "member.create",
+    entity: "tenant_users",
+    metadata: { email, role, reused },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath(`/admin/${tenantId}`);
+
+  return {
+    ok: reused
+      ? `${email} ya tenía cuenta: se ha añadido al espacio y conserva su contraseña actual.`
+      : `Cuenta creada para ${email}. Ya puede entrar con la contraseña que has definido.`,
+  };
+}
+
+/**
+ * Saca a alguien del espacio. Borra la membresía, no la cuenta: la misma
+ * persona puede colaborar con otros clientes, y eliminar su usuario de
+ * `auth` desde aquí les dejaría fuera de todos.
+ */
+export async function removeMember(
+  tenantId: string,
+  memberId: string,
+): Promise<PlatformState> {
+  const actor = await requireSuperadmin();
+  const supabase = await createServerClient();
+
+  const blocked = await lastOwnerBlock(supabase, tenantId, memberId, "eliminar");
+  if (blocked) return { error: blocked };
+
+  const { error } = await supabase
+    .from("tenant_users")
+    .delete()
+    .eq("id", memberId)
+    .eq("tenant_id", tenantId);
+
+  if (error) return { error: "No se pudo eliminar al colaborador." };
+
+  await supabase.from("audit_logs").insert({
+    tenant_id: tenantId,
+    actor_id: actor.id,
+    action: "member.remove",
+    entity: "tenant_users",
+    entity_id: memberId,
+    metadata: {},
+  });
+
+  revalidatePath("/admin");
+  revalidatePath(`/admin/${tenantId}`);
+  return { ok: "Colaborador eliminado del espacio." };
 }
 
 const LimitsInput = z.object({

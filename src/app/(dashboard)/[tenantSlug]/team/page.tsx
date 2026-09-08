@@ -1,7 +1,7 @@
 import { requirePermission } from "@/lib/auth/guards";
 import { createServerClient } from "@/lib/supabase/server";
 import { TeamList } from "./team-list";
-import { inviteMember, changeRole, removeMember, type TeamState } from "./actions";
+import { addMember, changeRole, removeMember, type TeamState } from "./actions";
 import type { TenantRole } from "@/lib/auth/tenant-context";
 
 export const metadata = { title: "Equipo" };
@@ -24,7 +24,7 @@ export default async function TeamPage({
   const { data: members, error } = await supabase
     .from("tenant_users")
     .select(
-      "id, role, accepted_at, created_at, profile:users_profiles!tenant_users_user_id_fkey(id, email, full_name)",
+      "id, role, accepted_at, suspended_at, created_at, profile:users_profiles!tenant_users_user_id_fkey(id, email, full_name)",
     )
     .eq("tenant_id", tenant.id)
     .order("created_at");
@@ -47,12 +47,16 @@ export default async function TeamPage({
       isSelf: profile?.id === user.id,
       // Sin `accepted_at`, la invitación se envió pero nadie la aceptó.
       pending: m.accepted_at === null,
+      // La pausa la aplica Rukma Studio desde el panel de plataforma. Se
+      // muestra aquí porque, si no, esta lista presenta como activo a quien
+      // no puede entrar y el espacio parece tener más gente de la que tiene.
+      suspended: m.suspended_at !== null,
     };
   });
 
-  const invite = async (prev: TeamState, formData: FormData) => {
+  const add = async (prev: TeamState, formData: FormData) => {
     "use server";
-    return inviteMember(tenantSlug, prev, formData);
+    return addMember(tenantSlug, prev, formData);
   };
   const setRole = async (memberId: string, next: TenantRole) => {
     "use server";
@@ -64,7 +68,7 @@ export default async function TeamPage({
   };
 
   return (
-    <div className="p-8">
+    <div className="mx-auto max-w-6xl p-4 md:p-8">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Equipo</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -77,7 +81,8 @@ export default async function TeamPage({
         members={rows}
         actorRole={user.isSuperadmin ? "OWNER" : role}
         atLimit={rows.length >= tenant.limits.maxUsers}
-        inviteAction={invite}
+        canCreateDirectly={user.isSuperadmin}
+        addAction={add}
         changeRoleAction={setRole}
         removeAction={remove}
       />

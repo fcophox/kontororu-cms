@@ -9,6 +9,7 @@
 
 grant update on public.webhook_deliveries to authenticated;
 
+drop policy if exists webhook_deliveries_retry on public.webhook_deliveries;
 create policy webhook_deliveries_retry on public.webhook_deliveries
   for update to authenticated
   using ( (select public.is_superadmin()) or public.is_tenant_manager(tenant_id) )
@@ -39,6 +40,7 @@ begin
 end;
 $$;
 
+drop trigger if exists webhook_deliveries_protect_columns on public.webhook_deliveries;
 create trigger webhook_deliveries_protect_columns
   before update on public.webhook_deliveries
   for each row execute function public.tg_protect_delivery_columns();

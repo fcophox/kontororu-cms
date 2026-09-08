@@ -50,12 +50,53 @@ export type Page<T> = {
 
 export type ListPostsParams = {
   locale?: string | null;
+  /**
+   * Servir el idioma principal del espacio cuando falte la traducción.
+   *
+   * Sin esto, una entrada sin traducir simplemente desaparece del listado en
+   * `?locale=en`, y la web del cliente muestra un hueco donde hay contenido.
+   */
+  fallback?: boolean | null;
   limit?: unknown;
   cursor?: string | null;
   category?: string | null;
   tag?: string | null;
   q?: string | null;
 };
+
+/**
+ * Idiomas a consultar, por orden de preferencia.
+ *
+ * Uno solo si no hay respaldo o si el pedido ya es el principal; en ese caso
+ * pedir los dos traería las mismas filas dos veces.
+ */
+function preferredLocales(locale: string, defaultLocale: string, fallback?: boolean | null) {
+  return fallback && locale !== defaultLocale ? [locale, defaultLocale] : [locale];
+}
+
+/**
+ * Deja UNA fila por contenido: la del idioma pedido si existe, si no la otra.
+ *
+ * El orden de las claves de un Map es el de su primera inserción, así que
+ * sustituir el español por el inglés no mueve el contenido de sitio en el
+ * feed: sigue donde lo puso su `published_at`.
+ */
+function collapseByGroup(
+  rows: Record<string, unknown>[],
+  preferred: string,
+): Record<string, unknown>[] {
+  const byGroup = new Map<string, Record<string, unknown>>();
+
+  for (const row of rows) {
+    const group = String(row.translation_group_id);
+    const current = byGroup.get(group);
+    if (!current || (current.locale !== preferred && row.locale === preferred)) {
+      byGroup.set(group, row);
+    }
+  }
+
+  return [...byGroup.values()];
+}
 
 /**
  * Listado de contenido publicado del tenant dueño de la API Key.
@@ -74,6 +115,16 @@ export async function listPosts(
 
   const limit = clampLimit(params.limit);
   const { cursor, category, tag, q } = params;
+
+  /*
+   * Con respaldo se piden los dos idiomas y se colapsa después por grupo.
+   *
+   * No hay forma de decirle a PostgREST "el inglés de este contenido y, si no
+   * lo hay, el español": eso es un DISTINCT ON por grupo, y la API REST no lo
+   * expone. Traer las dos filas y quedarse con una en memoria cuesta como
+   * mucho el doble de filas en una página; una consulta por grupo sería N+1.
+   */
+  const localeSet = preferredLocales(locale.locale, ctx.defaultLocale, params.fallback);
 
   /*
    * `!inner` NO es opcional en los embeds que se filtran.
@@ -102,12 +153,15 @@ export async function listPosts(
     )
     // Filtro de tenant explícito: el service role no aplica RLS.
     .eq("tenant_id", ctx.tenantId)
-    .eq("locale", locale.locale)
+    .in("locale", localeSet)
     .eq("status", "PUBLISHED")
     .is("deleted_at", null)
     .lte("published_at", new Date().toISOString())
     .order("published_at", { ascending: false })
-    .limit(limit + 1);
+    // Cada grupo aporta como mucho una fila por idioma pedido, así que pedir el
+    // doble garantiza que tras colapsar sigue habiendo `limit + 1` contenidos
+    // distintos con los que decidir si hay página siguiente.
+    .limit((limit + 1) * localeSet.length);
 
   if (cursor) query = query.lt("published_at", cursor);
   if (category) query = query.eq("categories.slug", category);
@@ -120,8 +174,13 @@ export async function listPosts(
     return fail("server_error", "No se pudo recuperar el contenido.");
   }
 
-  const hasMore = data.length > limit;
-  const rows = (hasMore ? data.slice(0, limit) : data) as unknown as Record<string, unknown>[];
+  const collapsed = collapseByGroup(
+    data as unknown as Record<string, unknown>[],
+    locale.locale,
+  );
+
+  const hasMore = collapsed.length > limit;
+  const rows = hasMore ? collapsed.slice(0, limit) : collapsed;
 
   const [urls, byGroup] = await Promise.all([
     signMediaBatch(db, collectMedia(rows)),
@@ -142,21 +201,30 @@ export async function listPosts(
 }
 
 /**
- * Detalle con el cuerpo del contenido.
+ * Cuántas filas de más se traen al buscar por grupo sin filtrar idioma.
  *
- * Es lo que necesita una página de artículo: `content.html` para inyectar
- * directamente, `content.json` para quien prefiera recorrer el documento y
- * renderizar sus propios componentes.
+ * Un grupo tiene una fila por idioma activo del espacio, que son pocos. El
+ * tope existe para que la consulta de respaldo no crezca sin límite si algún
+ * día alguien activa veinte.
  */
-export async function getPost(
-  db: SupabaseClient,
-  ctx: ApiContext,
-  params: { slug: string; locale?: string | null },
-): Promise<QueryResult<ApiPost>> {
-  const locale = resolveLocale(params.locale, ctx);
-  if ("error" in locale) return fail("bad_request", locale.error);
+const MAX_FALLBACK_LOCALES = 10;
 
-  const { data, error } = await db
+/**
+ * Trae UNA entrada publicada de un idioma, buscada por slug o por grupo.
+ *
+ * Las dos búsquedas comparten el mismo `select` y las mismas condiciones de
+ * visibilidad. Tenerlas en una sola función evita que la vía de respaldo
+ * —resolver por grupo— se relaje con el tiempo y acabe sirviendo un borrador.
+ */
+async function fetchPublishedPost(
+  db: SupabaseClient,
+  tenantId: string,
+  /** Idiomas por orden de preferencia: el pedido primero. */
+  prefer: string[],
+  by: { slug: string } | { groupId: string },
+  opts: { anyLocale?: boolean } = {},
+): Promise<{ data: unknown } | { error: unknown }> {
+  let query = db
     .from("posts")
     .select(
       `id, slug, locale, translation_group_id, title, excerpt, content_html, content_json, custom_fields,
@@ -167,19 +235,103 @@ export async function getPost(
     )
     // El tenant sale de la clave, nunca de la petición: dos clientes pueden
     // tener el mismo slug y cada uno debe recibir el suyo.
-    .eq("tenant_id", ctx.tenantId)
-    // El mismo slug puede existir en varios idiomas: sin este filtro,
-    // `maybeSingle()` fallaría en cuanto hubiera una traducción homónima.
-    .eq("locale", locale.locale)
-    .eq("slug", params.slug)
+    .eq("tenant_id", tenantId)
     .eq("status", "PUBLISHED")
     .is("deleted_at", null)
-    .lte("published_at", new Date().toISOString())
-    .maybeSingle();
+    .lte("published_at", new Date().toISOString());
 
-  if (error) {
-    reportError(error, { scope: "api.getPost" });
+  // El mismo slug puede existir en varios idiomas, así que la consulta puede
+  // traer varias filas: se ordenan por preferencia aquí abajo en vez de
+  // dejárselo a un `maybeSingle()` que fallaría con una traducción homónima.
+  if (!opts.anyLocale) query = query.in("locale", prefer);
+
+  query = "slug" in by
+    ? query.eq("slug", by.slug)
+    : query.eq("translation_group_id", by.groupId);
+
+  const { data, error } = await query.limit(prefer.length + MAX_FALLBACK_LOCALES);
+  if (error) return { error };
+
+  const rows = (data ?? []) as { locale: string }[];
+  const match = prefer.map((l) => rows.find((r) => r.locale === l)).find(Boolean);
+
+  return { data: match ?? rows[0] ?? null };
+}
+
+export type GetPostParams = {
+  slug: string;
+  locale?: string | null;
+  fallback?: boolean | null;
+};
+
+/**
+ * Detalle con el cuerpo del contenido.
+ *
+ * Es lo que necesita una página de artículo: `content.html` para inyectar
+ * directamente, `content.json` para quien prefiera recorrer el documento y
+ * renderizar sus propios componentes.
+ */
+export async function getPost(
+  db: SupabaseClient,
+  ctx: ApiContext,
+  params: GetPostParams,
+): Promise<QueryResult<ApiPost>> {
+  const locale = resolveLocale(params.locale, ctx);
+  if ("error" in locale) return fail("bad_request", locale.error);
+
+  /*
+   * Orden de preferencia: el idioma pedido y, si el contenido no está
+   * traducido, el principal del espacio. Sin respaldo la lista tiene un solo
+   * idioma y una traducción que falta vuelve a ser un 404.
+   */
+  const prefer = preferredLocales(locale.locale, ctx.defaultLocale, params.fallback);
+
+  const first = await fetchPublishedPost(db, ctx.tenantId, prefer, { slug: params.slug });
+  if ("error" in first) {
+    reportError(first.error, { scope: "api.getPost" });
     return fail("server_error", "No se pudo recuperar el contenido.");
+  }
+
+  /*
+   * Segundo intento: el slug puede venir en otro idioma.
+   *
+   * El visitante está en /blog/mi-articulo y pulsa "EN". Su navegador sólo
+   * conoce el slug español, y el inglés es otro. Sin esto, cambiar de idioma
+   * en la web devolvía 404 salvo que el front hubiera guardado antes el mapa
+   * de traducciones.
+   *
+   * Se paga sólo cuando la primera consulta no encuentra nada. La respuesta
+   * lleva el slug real del contenido, así que el front puede redirigir a su
+   * URL canónica.
+   */
+  let data = first.data;
+  if (!data) {
+    const { data: sibling } = await db
+      .from("posts")
+      .select("translation_group_id")
+      .eq("tenant_id", ctx.tenantId)
+      .eq("slug", params.slug)
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle();
+
+    if (sibling) {
+      const retry = await fetchPublishedPost(
+        db,
+        ctx.tenantId,
+        prefer,
+        { groupId: sibling.translation_group_id },
+        // Resuelto ya el grupo, el respaldo se estira a CUALQUIER idioma
+        // publicado: un contenido que sólo existe en francés se sirve en
+        // francés antes que devolver un 404 por algo que sí está publicado.
+        { anyLocale: Boolean(params.fallback) },
+      );
+      if ("error" in retry) {
+        reportError(retry.error, { scope: "api.getPost" });
+        return fail("server_error", "No se pudo recuperar el contenido.");
+      }
+      data = retry.data;
+    }
   }
 
   // Un borrador y un slug inexistente devuelven lo mismo: que exista un
@@ -219,8 +371,11 @@ export async function getPost(
 export const CATEGORY_KINDS = ["BLOG", "CASE_STUDY", "SERVICE", "CUSTOM"] as const;
 export type CategoryKind = (typeof CATEGORY_KINDS)[number];
 
+/**
+ * Las categorías ya no llevan idioma: son transversales al espacio. Lo que
+ * `locale` acota aquí es el CONTEO, no el listado.
+ */
 export type ApiCategoryWithCount = NonNullable<ApiCategory> & {
-  locale: string;
   parentId: string | null;
   postCount: number;
 };
@@ -234,7 +389,7 @@ export type ApiCategoryWithCount = NonNullable<ApiCategory> & {
 export async function listCategories(
   db: SupabaseClient,
   ctx: ApiContext,
-  params: { locale?: string | null; kind?: string | null },
+  params: { locale?: string | null; fallback?: boolean | null; kind?: string | null },
 ): Promise<QueryResult<ApiCategoryWithCount[]>> {
   // Se estrecha al enum antes de tocar la consulta: así el tipo generado
   // valida el filtro y un `kind` inventado da 400 en vez de un 500 opaco.
@@ -244,14 +399,29 @@ export async function listCategories(
   }
   const kind = rawKind as CategoryKind | null;
 
+  /*
+   * Las categorías ya no tienen idioma, pero `locale` se sigue admitiendo:
+   * acota el CONTEO de entradas. "Cuántos artículos publicados en inglés hay
+   * en esta categoría" sigue siendo una pregunta con sentido, y devolver el
+   * total mezclando idiomas descuadraría cualquier portada.
+   */
   const locale = resolveLocale(params.locale, ctx);
   if ("error" in locale) return fail("bad_request", locale.error);
 
+  /*
+   * El conteo cuenta lo mismo que devuelve el listado.
+   *
+   * Con respaldo, `/posts?locale=en` sirve el español de lo que no está
+   * traducido; si aquí se contara sólo el inglés, el menú diría "0" junto a
+   * una categoría que al abrirla tiene entradas. Se cuentan CONTENIDOS, no
+   * filas: el grupo que existe en los dos idiomas vale uno.
+   */
+  const localeSet = preferredLocales(locale.locale, ctx.defaultLocale, params.fallback);
+
   let query = db
     .from("categories")
-    .select("id, slug, name, kind, description, position, parent_id, locale")
+    .select("id, slug, name, kind, description, position, parent_id")
     .eq("tenant_id", ctx.tenantId)
-    .eq("locale", locale.locale)
     .order("position");
 
   if (kind) query = query.eq("kind", kind);
@@ -262,9 +432,9 @@ export async function listCategories(
     // una subconsulta por categoría sería N+1 contra la base.
     db
       .from("posts")
-      .select("category_id")
+      .select("category_id, translation_group_id")
       .eq("tenant_id", ctx.tenantId)
-      .eq("locale", locale.locale)
+      .in("locale", localeSet)
       .eq("status", "PUBLISHED")
       .is("deleted_at", null)
       .lte("published_at", new Date().toISOString()),
@@ -276,15 +446,18 @@ export async function listCategories(
   }
 
   const counts = new Map<string, number>();
+  const seen = new Set<string>();
   for (const p of posts ?? []) {
-    if (p.category_id) counts.set(p.category_id, (counts.get(p.category_id) ?? 0) + 1);
+    if (!p.category_id) continue;
+    if (seen.has(p.translation_group_id)) continue;
+    seen.add(p.translation_group_id);
+    counts.set(p.category_id, (counts.get(p.category_id) ?? 0) + 1);
   }
 
   return {
     ok: true,
     data: (categories ?? []).map((c) => ({
       ...serializeCategory(c)!,
-      locale: c.locale,
       parentId: c.parent_id,
       postCount: counts.get(c.id) ?? 0,
     })),

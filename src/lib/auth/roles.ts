@@ -34,6 +34,9 @@ export const PERMISSIONS = {
   "branding.manage": "ADMIN",
   "apiKeys.manage": "ADMIN",
   "webhooks.manage": "ADMIN",
+  // Activar un complemento será facturable: lo decide quien administra el
+  // espacio, no quien escribe en él.
+  "addons.manage": "ADMIN",
   "billing.manage": "OWNER",
 } as const satisfies Record<string, TenantRole>;
 

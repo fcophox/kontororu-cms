@@ -257,10 +257,12 @@ kontororu-cms/
 │   │   │       ├── categories/page.tsx
 │   │   │       ├── media/page.tsx
 │   │   │       ├── team/page.tsx        # ADMIN+
-│   │   │       └── settings/
-│   │   │           ├── branding/page.tsx
-│   │   │           ├── api-keys/page.tsx
-│   │   │           └── webhooks/page.tsx
+│   │   │       ├── branding/page.tsx
+│   │   │       ├── locales/page.tsx
+│   │   │       ├── addons/page.tsx
+│   │   │       ├── profile/page.tsx
+│   │   │       ├── api-keys/page.tsx
+│   │   │       └── webhooks/page.tsx
 │   │   │
 │   │   └── api/
 │   │       ├── v1/                      # ── API Headless pública ──
@@ -270,7 +272,7 @@ kontororu-cms/
 │   │       │   └── graphql/route.ts     # Fase 3
 │   │       ├── media/upload/route.ts
 │   │       └── internal/
-│   │           └── webhooks/dispatch/route.ts   # Vercel Cron
+│   │           └── webhooks/dispatch/route.ts   # worker periódico (red de seguridad del cron)
 │   │
 │   ├── components/
 │   │   ├── ui/                          # Shadcn — NO editar a mano
@@ -384,7 +386,7 @@ export default async function TenantLayout({
 
 ### Previsualización en vivo (pantalla de branding)
 
-En `settings/branding` el usuario debe ver el cambio *mientras* mueve el color picker.
+En `branding` el usuario debe ver el cambio *mientras* mueve el color picker.
 Ahí sí se usa un `useEffect` que escribe sobre `document.getElementById("tenant-scope").style`,
 y al guardar se persiste el JSONB — el server-render toma el relevo en la siguiente navegación.
 
@@ -472,11 +474,50 @@ GraphQL (Fase 3) se expone en `/api/v1/graphql` sobre el mismo `authenticate.ts`
 ```
 UPDATE posts SET status='PUBLISHED'
    → trigger posts_enqueue_events        INSERT en webhook_deliveries  (no hace HTTP)
-   → Vercel Cron (1 min, **GET**) → /api/internal/webhooks/dispatch
+   → dos disparadores sobre el MISMO worker (`lib/content/webhook-dispatch.ts`):
+       a) la propia Server Action, en `after()` → entrega en segundos
+       b) GitHub Actions · webhooks-cron.yml (cada 5 min, **GET**) → /api/internal/webhooks/dispatch
    → POST firmado al endpoint del cliente
    → backoff exponencial: 1m 2m 4m 8m 16m 32m, 6 intentos
      (`webhook_deliveries.next_attempt_at`; el worker sólo pide lo vencido)
 ```
+
+**El camino normal es (a).** Publicar dispara el drenado del propio espacio en
+`after()`, así que la web del cliente se entera en el mismo segundo. Con sólo el
+cron, el editor pulsaba Publicar y su web tardaba hasta cinco minutos en
+cambiar — y como los cron de Actions se ejecutan cuando hay hueco, a veces más.
+Esa espera se leía desde fuera como "el CMS no ha guardado".
+
+Va en `after()` y no en la transacción por lo mismo que el trigger no hace
+HTTP: la web caída de un cliente no puede hacer que Publicar falle ni que se
+quede colgado. `dispatchNow` se traga el error y lo registra; la entrega
+sobrevive en la cola.
+
+**(b) sigue siendo imprescindible**, ahora como red de seguridad: es lo único
+que ejecuta los reintentos con backoff, lo encolado mientras la app estaba
+caída, y las entregas de un drenado inmediato que no llegó a completarse.
+
+El disparador periódico es un workflow de GitHub Actions, no la plataforma de
+despliegue: el servicio corre en **Render**, y su plan gratuito no incluye cron
+jobs. Hubo un `vercel.json` que programaba este mismo endpoint cada minuto,
+pero ese fichero sólo lo lee Vercel: confiar en él dejó la cola sin drenar diez
+días, y por eso se borró del repo — una configuración que nadie ejecuta sólo
+sirve para que alguien la dé por buena. Por esa misma razón se borró el
+`railway.json` al migrar, en vez de dejarlo "por si acaso".
+
+⚠️ GitHub **desactiva los workflows programados tras 60 días sin actividad en el
+repositorio**. Con (a) en su sitio eso ya no congela las publicaciones, pero sí
+deja los reintentos sin ejecutar. El sustituto está escrito y comentado en
+`render.yaml`: un servicio `cron` nativo de Render, que exige el plan `starter`.
+Al activarlo hay que **borrar** `webhooks-cron.yml` — mantener los dos
+disparadores no rompe nada (`deliver()` reserva la fila antes de salir a la
+red), pero paga dos veces por el mismo drenado.
+
+Con dos disparadores hay drenados solapados, así que `deliver()` **reserva** la
+fila antes de salir a la red: mueve `next_attempt_at` condicionando el UPDATE al
+valor que leyó. El que no encuentra la fila con ese valor se retira y la cuenta
+como `deferred`. Sin esa reserva, cron y publicación entregarían el mismo evento
+dos veces.
 
 El trigger **no** hace la llamada HTTP. Si lo hiciera (`pg_net`, `http`), la web caída de
 un cliente convertiría cada publicación en un timeout de 30 segundos dentro de una
@@ -553,10 +594,10 @@ export async function POST(req: Request) {
 - [x] Tests unitarios de las funciones puras (22 aserciones)
 - [x] Pantalla de tenant suspendido (sin redirect, sin bucle)
 - [x] Boundaries de UI: error, 404, 403, loading, global-error
-- [x] Cron de Vercel para el worker de webhooks + backoff real
+- [x] Cron del worker de webhooks (GitHub Actions) + backoff real
 - [x] Papelera reversible, archivado y cambio de URL desde el editor
 - [ ] Autoguardado con `useOptimistic` en lugar de botón manual
-- [x] Pantallas de settings: marca (con preview en vivo), API keys, webhooks
+- [x] Pantallas de configuración: marca (con preview en vivo), API keys, webhooks
 - [x] Validación anti-SSRF de destinos de webhook, con tests
 
 > **Criterio de salida:** dos tenants seed; el tenant A no ve *ni una fila* del tenant B

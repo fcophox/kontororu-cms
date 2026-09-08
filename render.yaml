@@ -1,0 +1,101 @@
+# =====================================================================
+# Despliegue en Render.
+#
+# Sustituye al `railway.json` que había aquí. Render construye y arranca la
+# app; NO toca la base de datos — las migraciones las sigue aplicando el job
+# `migrate` de .github/workflows/ci.yml, con aprobación en el Environment
+# `production`. Cambiar de proveedor no mueve esa frontera.
+#
+# El plan es `free` a propósito: mientras no haya clientes, un servicio que se
+# duerme a los 15 minutos no le rompe nada a nadie. El coste de subir a
+# `starter` (7 $/mes, sin dormirse, con ancho de banda incluido) es cambiar esa
+# línea. Ojo con el resto del plan gratuito: son 750 horas de instancia al mes
+# por espacio de trabajo y un mes son 744, así que da para UN servicio
+# despierto, no dos.
+# =====================================================================
+services:
+  - type: web
+    name: kontororu-cms
+    runtime: node
+    plan: free
+
+    # Emparejada con la región del proyecto de Supabase
+    # (glepekbxevoowijfzywe, us-east-1): `virginia` es el equivalente en
+    # Render. Cada consulta del dashboard es un salto de red, y tenerlos en
+    # continentes distintos se paga en latencia en cada carga.
+    #
+    # Cambiarla después obliga a recrear el servicio, y al recrearlo cambia la
+    # URL — de la que cuelgan NEXT_PUBLIC_APP_URL, los enlaces de invitación y
+    # la variable APP_URL del cron de webhooks.
+    region: virginia
+
+    branch: main
+
+    # `npm ci` y no `npm install`: respeta el package-lock y falla si está
+    # desincronizado, en vez de resolver versiones nuevas en el servidor de
+    # build y desplegar algo que nadie ha probado en local.
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+
+    # `next start` toma el puerto de $PORT, que Render inyecta.
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+
+      # `sync: false` = Render la pide al crear el servicio y la guarda cifrada;
+      # el valor NO vive en el repositorio. Hay que rellenarlas las cinco o el
+      # build falla.
+      #
+      # Las NEXT_PUBLIC_* hacen falta en BUILD, no sólo en ejecución:
+      # next.config.ts lee NEXT_PUBLIC_SUPABASE_URL para construir el
+      # `remotePatterns` de las imágenes. Sin ella durante el build, el
+      # optimizador rechaza todas las imágenes del Storage en producción.
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+      # Debe valer lo mismo que el secreto CRON_SECRET del repositorio, o el
+      # worker de webhooks responde 401 y la cola no se drena.
+      - key: CRON_SECRET
+        sync: false
+
+      # URL pública del CMS: la usan los enlaces de los correos de invitación.
+      # Se rellena a mano con la URL completa del servicio una vez creado
+      # (https://kontororu-cms.onrender.com, o el dominio propio si lo hay).
+      # No se deriva con `fromService` porque eso devuelve el host sin
+      # esquema, y un enlace de invitación sin `https://` no es un enlace.
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+
+# ---------------------------------------------------------------------
+# Cron del worker de webhooks.
+#
+# El plan gratuito NO tiene cron jobs, así que de momento el disparador sigue
+# siendo .github/workflows/webhooks-cron.yml. Al pasar a `starter`, descomentar
+# esto y BORRAR ese workflow — dos disparadores a la vez no rompen nada
+# (deliver() reserva la fila antes de salir a la red), pero duplican el gasto
+# sin duplicar la entrega.
+#
+# Moverlo aquí cierra el riesgo que documenta docs/ARCHITECTURE.md: GitHub
+# desactiva los workflows programados tras 60 días sin actividad en el repo, y
+# cuando eso pasa los reintentos dejan de ejecutarse en silencio.
+# ---------------------------------------------------------------------
+# - type: cron
+#   name: kontororu-webhooks-drain
+#   runtime: node
+#   plan: starter
+#   region: virginia
+#   schedule: "*/5 * * * *"
+#   buildCommand: "echo sin build"
+#   startCommand: >
+#     curl -sS --fail --max-time 120
+#     -H "Authorization: Bearer $CRON_SECRET"
+#     "https://kontororu-cms.onrender.com/api/internal/webhooks/dispatch"
+#   envVars:
+#     - key: CRON_SECRET
+#       sync: false

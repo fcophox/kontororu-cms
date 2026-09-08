@@ -177,14 +177,12 @@ export type Database = {
           description: string | null
           id: string
           kind: Database["public"]["Enums"]["category_kind"]
-          locale: string
           name: string
           parent_id: string | null
           position: number
           seo: Json
           slug: string
           tenant_id: string
-          translation_group_id: string
           updated_at: string
         }
         Insert: {
@@ -192,14 +190,12 @@ export type Database = {
           description?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["category_kind"]
-          locale?: string
           name: string
           parent_id?: string | null
           position?: number
           seo?: Json
           slug: string
           tenant_id: string
-          translation_group_id?: string
           updated_at?: string
         }
         Update: {
@@ -207,14 +203,12 @@ export type Database = {
           description?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["category_kind"]
-          locale?: string
           name?: string
           parent_id?: string | null
           position?: number
           seo?: Json
           slug?: string
           tenant_id?: string
-          translation_group_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -234,6 +228,111 @@ export type Database = {
           },
           {
             foreignKeyName: "categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_reactions: {
+        Row: {
+          created_at: string
+          id: string
+          reaction_key: string
+          tenant_id: string
+          total: number
+          translation_group_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reaction_key: string
+          tenant_id: string
+          total?: number
+          translation_group_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reaction_key?: string
+          tenant_id?: string
+          total?: number
+          translation_group_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_reactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "platform_tenant_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_reactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_submissions: {
+        Row: {
+          created_at: string
+          email: string | null
+          form_key: string
+          id: string
+          is_archived: boolean
+          message: string | null
+          name: string | null
+          payload: Json
+          source_url: string | null
+          status: Database["public"]["Enums"]["form_submission_status"]
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          form_key: string
+          id?: string
+          is_archived?: boolean
+          message?: string | null
+          name?: string | null
+          payload?: Json
+          source_url?: string | null
+          status?: Database["public"]["Enums"]["form_submission_status"]
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          form_key?: string
+          id?: string
+          is_archived?: boolean
+          message?: string | null
+          name?: string | null
+          payload?: Json
+          source_url?: string | null
+          status?: Database["public"]["Enums"]["form_submission_status"]
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_submissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "platform_tenant_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_submissions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -378,6 +477,13 @@ export type Database = {
             foreignKeyName: "post_revisions_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
+            referencedRelation: "content_index"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_revisions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
             referencedRelation: "posts"
             referencedColumns: ["id"]
           },
@@ -411,6 +517,13 @@ export type Database = {
           tag_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "post_tags_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "content_index"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "post_tags_post_id_fkey"
             columns: ["post_id"]
@@ -577,6 +690,64 @@ export type Database = {
           },
         ]
       }
+      tenant_addons: {
+        Row: {
+          addon_key: string
+          created_at: string
+          enabled_at: string | null
+          enabled_by: string | null
+          id: string
+          is_enabled: boolean
+          settings: Json
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          addon_key: string
+          created_at?: string
+          enabled_at?: string | null
+          enabled_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          settings?: Json
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          addon_key?: string
+          created_at?: string
+          enabled_at?: string | null
+          enabled_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          settings?: Json
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_addons_enabled_by_fkey"
+            columns: ["enabled_by"]
+            isOneToOne: false
+            referencedRelation: "users_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_addons_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "platform_tenant_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_addons_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_users: {
         Row: {
           accepted_at: string | null
@@ -584,6 +755,7 @@ export type Database = {
           id: string
           invited_by: string | null
           role: Database["public"]["Enums"]["tenant_role"]
+          suspended_at: string | null
           tenant_id: string
           user_id: string
         }
@@ -593,6 +765,7 @@ export type Database = {
           id?: string
           invited_by?: string | null
           role?: Database["public"]["Enums"]["tenant_role"]
+          suspended_at?: string | null
           tenant_id: string
           user_id: string
         }
@@ -602,6 +775,7 @@ export type Database = {
           id?: string
           invited_by?: string | null
           role?: Database["public"]["Enums"]["tenant_role"]
+          suspended_at?: string | null
           tenant_id?: string
           user_id?: string
         }
@@ -904,6 +1078,56 @@ export type Database = {
           },
         ]
       }
+      content_index: {
+        Row: {
+          author_id: string | null
+          category_id: string | null
+          created_at: string | null
+          deleted_at: string | null
+          excerpt: string | null
+          id: string | null
+          locale: string | null
+          locales: string[] | null
+          published_at: string | null
+          slug: string | null
+          status: Database["public"]["Enums"]["content_status"] | null
+          tenant_id: string | null
+          title: string | null
+          translation_group_id: string | null
+          updated_at: string | null
+          versions: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "platform_tenant_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_tenant_overview: {
         Row: {
           api_keys_count: number | null
@@ -970,12 +1194,35 @@ export type Database = {
           reset_at: string
         }[]
       }
+      content_reaction_summary: {
+        Args: { p_tenant: string }
+        Returns: {
+          gestures: number
+          total: number
+          translation_group_id: string
+        }[]
+      }
+      content_reaction_totals: {
+        Args: { p_locale?: string; p_slug: string; p_tenant_slug: string }
+        Returns: {
+          reaction_key: string
+          total: number
+        }[]
+      }
       create_api_key: {
         Args: { p_name: string; p_scopes?: string[]; p_tenant: string }
         Returns: {
           id: string
           key_prefix: string
           plain_key: string
+        }[]
+      }
+      form_submission_types: {
+        Args: { p_archived: boolean; p_tenant: string }
+        Returns: {
+          form_key: string
+          total: number
+          unread: number
         }[]
       }
       has_tenant_role: {
@@ -991,6 +1238,15 @@ export type Database = {
       is_tenant_member: { Args: { p_tenant: string }; Returns: boolean }
       locales_are_valid: { Args: { p_locales: string[] }; Returns: boolean }
       prune_rate_limits: { Args: never; Returns: number }
+      register_reaction: {
+        Args: {
+          p_locale?: string
+          p_reaction: string
+          p_slug: string
+          p_tenant_slug: string
+        }
+        Returns: number
+      }
       resolve_api_key: {
         Args: { p_prefix: string; p_secret: string }
         Returns: {
@@ -1010,6 +1266,7 @@ export type Database = {
     Enums: {
       category_kind: "BLOG" | "CASE_STUDY" | "SERVICE" | "CUSTOM"
       content_status: "DRAFT" | "PUBLISHED" | "ARCHIVED"
+      form_submission_status: "NEW" | "READ"
       storage_provider: "SUPABASE" | "S3" | "R2"
       tenant_db_mode: "SHARED" | "DEDICATED"
       tenant_plan: "FREE" | "PRO" | "ENTERPRISE"
@@ -1023,6 +1280,7 @@ export type Database = {
         | "post.deleted"
         | "category.updated"
         | "media.deleted"
+        | "addon.updated"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1155,6 +1413,7 @@ export const Constants = {
     Enums: {
       category_kind: ["BLOG", "CASE_STUDY", "SERVICE", "CUSTOM"],
       content_status: ["DRAFT", "PUBLISHED", "ARCHIVED"],
+      form_submission_status: ["NEW", "READ"],
       storage_provider: ["SUPABASE", "S3", "R2"],
       tenant_db_mode: ["SHARED", "DEDICATED"],
       tenant_plan: ["FREE", "PRO", "ENTERPRISE"],
@@ -1168,6 +1427,7 @@ export const Constants = {
         "post.deleted",
         "category.updated",
         "media.deleted",
+        "addon.updated",
       ],
     },
   },

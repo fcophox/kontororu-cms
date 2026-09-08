@@ -20,6 +20,7 @@ export default async function NewContentPage({
   const { data: categories } = await supabase
     .from("categories")
     .select("id, name")
+    .eq("tenant_id", tenant.id)
     .order("position");
 
   // Se ata el tenantSlug a la acción en servidor. Si viajara como campo del
@@ -41,10 +42,13 @@ export default async function NewContentPage({
         title: "",
         excerpt: "",
         categoryId: null,
+        coverMediaId: null,
+        coverUrl: null,
         contentJson: { type: "doc", content: [] },
         customFields: {},
         seo: {},
         status: "DRAFT",
+        publishedAt: null,
       }}
     />
   );

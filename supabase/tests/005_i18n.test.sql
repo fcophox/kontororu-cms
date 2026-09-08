@@ -2,9 +2,8 @@
 -- TEST: multi-idioma
 --
 -- Las invariantes de i18n fallan de forma cara: un slug duplicado entre
--- idiomas bloquea publicar, una categoría cruzada produce breadcrumbs
--- mezclados en la web del cliente, y un grupo con dos veces el mismo idioma
--- hace ambiguo cuál es "la versión en inglés".
+-- idiomas bloquea publicar, y un grupo con dos veces el mismo idioma hace
+-- ambiguo cuál es "la versión en inglés".
 -- =====================================================================
 \ir helpers.psql
 
@@ -101,25 +100,44 @@ select throws_ok(
 );
 
 -- =====================================================================
--- 5. Categoría y contenido comparten idioma
+-- 5. La categoría es transversal a los idiomas
 -- =====================================================================
-insert into public.categories (tenant_id, slug, name, locale)
-values ((select v from fx where k='tenantA'), 'blog-es', 'Blog', 'es');
+-- Hasta `categories_transversal` cada categoría tenía idioma y un trigger
+-- impedía cruzarlos. Se quitó: "Blog" es la misma sección en toda la web, y
+-- duplicarla por idioma obligaba al cliente a mantener dos árboles paralelos.
+insert into public.categories (tenant_id, slug, name)
+values ((select v from fx where k='tenantA'), 'blog', 'Blog');
 
-select throws_ok(
+-- Acotado por tenant: el seed ya tiene su propia categoría 'blog' y el slug
+-- sólo es único dentro de un espacio.
+select lives_ok(
   format(
-    'update public.posts set category_id = (select id from public.categories where slug = ''blog-es'')
-     where slug = ''sobre-nosotros'' and locale = ''en''',
-    ''
+    'update public.posts set category_id =
+       (select id from public.categories where slug = ''blog'' and tenant_id = %L)
+     where slug = ''sobre-nosotros'' and locale = ''es'' and tenant_id = %L',
+    (select v from fx where k='tenantA'), (select v from fx where k='tenantA')
   ),
-  '23514', null,
-  'un contenido en inglés no puede colgar de una categoría en español'
+  'una categoría acoge contenido en español'
 );
 
 select lives_ok(
-  'update public.posts set category_id = (select id from public.categories where slug = ''blog-es'')
-   where slug = ''sobre-nosotros'' and locale = ''es''',
-  'y sí de una de su propio idioma'
+  format(
+    'update public.posts set category_id =
+       (select id from public.categories where slug = ''blog'' and tenant_id = %L)
+     where slug = ''sobre-nosotros'' and locale = ''en'' and tenant_id = %L',
+    (select v from fx where k='tenantA'), (select v from fx where k='tenantA')
+  ),
+  'y la MISMA acoge su traducción al inglés'
+);
+
+select is(
+  (select count(distinct locale) from public.posts
+   where tenant_id = (select v from fx where k='tenantA')
+     and category_id = (select id from public.categories
+                         where slug = 'blog'
+                           and tenant_id = (select v from fx where k='tenantA'))),
+  2::bigint,
+  'una sola categoría sirve a los dos idiomas a la vez'
 );
 
 -- =====================================================================

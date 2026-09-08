@@ -1,8 +1,8 @@
 "use client";
 
 import { useEditor, EditorContent, type JSONContent } from "@tiptap/react";
-import { useEffect, useRef } from "react";
-import { editorExtensions } from "./extensions";
+import { useEffect, useMemo, useRef } from "react";
+import { buildEditorExtensions } from "./client-extensions";
 import { useMediaUpload } from "./use-media-upload";
 import { EditorToolbar } from "./editor-toolbar";
 
@@ -24,9 +24,10 @@ export function TiptapEditor({
   onChange?: (payload: EditorPayload) => void;
 }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const extensions = useMemo(() => buildEditorExtensions(tenantId), [tenantId]);
 
   const editor = useEditor({
-    extensions: editorExtensions,
+    extensions,
     content: initialContent ?? { type: "doc", content: [] },
     editable,
     // Evita el mismatch de hidratación en App Router.

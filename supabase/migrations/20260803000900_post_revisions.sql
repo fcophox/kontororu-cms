@@ -32,8 +32,8 @@ create table public.post_revisions (
   unique (post_id, version)
 );
 
-create index post_revisions_post_idx on public.post_revisions (post_id, version desc);
-create index post_revisions_tenant_idx on public.post_revisions (tenant_id);
+create index if not exists post_revisions_post_idx on public.post_revisions (post_id, version desc);
+create index if not exists post_revisions_tenant_idx on public.post_revisions (tenant_id);
 
 comment on table public.post_revisions is
   'Instantánea del contenido en cada guardado. La escribe un trigger, nunca la aplicación.';
@@ -96,6 +96,7 @@ begin
 end;
 $$;
 
+drop trigger if exists posts_capture_revision on public.posts;
 create trigger posts_capture_revision
   after insert or update on public.posts
   for each row execute function public.tg_capture_post_revision();
@@ -108,6 +109,7 @@ alter table public.post_revisions force row level security;
 
 grant select on public.post_revisions to authenticated;
 
+drop policy if exists post_revisions_select on public.post_revisions;
 create policy post_revisions_select on public.post_revisions for select to authenticated
   using (
     (select public.is_superadmin())
