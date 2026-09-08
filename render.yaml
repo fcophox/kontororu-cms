@@ -19,10 +19,15 @@ services:
     runtime: node
     plan: free
 
-    # Confírmala contra la región del proyecto de Supabase
-    # (glepekbxevoowijfzywe). Cada consulta del dashboard es un salto de red:
-    # tenerlos en continentes distintos se paga en latencia en cada carga.
-    region: frankfurt
+    # Emparejada con la región del proyecto de Supabase
+    # (glepekbxevoowijfzywe, us-east-1): `virginia` es el equivalente en
+    # Render. Cada consulta del dashboard es un salto de red, y tenerlos en
+    # continentes distintos se paga en latencia en cada carga.
+    #
+    # Cambiarla después obliga a recrear el servicio, y al recrearlo cambia la
+    # URL — de la que cuelgan NEXT_PUBLIC_APP_URL, los enlaces de invitación y
+    # la variable APP_URL del cron de webhooks.
+    region: virginia
 
     branch: main
 
@@ -84,7 +89,7 @@ services:
 #   name: kontororu-webhooks-drain
 #   runtime: node
 #   plan: starter
-#   region: frankfurt
+#   region: virginia
 #   schedule: "*/5 * * * *"
 #   buildCommand: "echo sin build"
 #   startCommand: >
