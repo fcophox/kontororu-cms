@@ -9,6 +9,13 @@
 -- Sin esto, exponer GraphQL habría sido abrir un agujero en el limitador que
 -- ya existía: bastaba con mover el tráfico a `/graphql` para multiplicar por
 -- cien lo que un plan permite.
+--
+-- ⚠️ Renumerada de 20260803001100 a 20260908000000. Aquella versión colisionaba
+-- con `20260803001100_content_index.sql`, creada en paralelo en `main` y ya
+-- aplicada en producción. `db push` compara la VERSIÓN, no el nombre del
+-- fichero: con el número viejo esta migración se habría saltado en silencio,
+-- dejando `consume_rate_limit` con 3 argumentos mientras el código la llama
+-- con 4 — y el agujero del limitador abierto. No devolver el número atrás.
 -- =====================================================================
 
 drop function if exists public.consume_rate_limit(text, integer, integer);
