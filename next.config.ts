@@ -1,9 +1,37 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
-const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
-  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
-  : "localhost";
+/**
+ * Host de Supabase para el `remotePatterns` de las imágenes.
+ *
+ * Sin la variable se asume desarrollo local a propósito: el build tiene que
+ * poder correr sin credenciales — CI compila sin ellas y no hay motivo para
+ * exigir un proyecto real sólo para comprobar que el código compila.
+ *
+ * Pero si la variable ESTÁ y no es una URL, esto revienta. Antes lo hacía con
+ * un `TypeError: Invalid URL` lanzado desde dentro de `next.config.compiled.js`,
+ * sin decir qué variable venía mal: costó un despliegue entero averiguar que
+ * llevaba la referencia del proyecto en vez de su URL, que es un error fácil
+ * de cometer porque el panel de Supabase muestra las dos cosas juntas.
+ */
+function resolveSupabaseHost(): string {
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!raw) return "localhost";
+
+  try {
+    return new URL(raw).hostname;
+  } catch {
+    throw new Error(
+      `NEXT_PUBLIC_SUPABASE_URL debe ser una URL completa con esquema, ` +
+        `del tipo "https://<referencia>.supabase.co". Recibido: ${JSON.stringify(raw)}.` +
+        (raw.includes("://")
+          ? ""
+          : ` Parece la referencia del proyecto: la URL entonces es "https://${raw}.supabase.co".`),
+    );
+  }
+}
+
+const supabaseHost = resolveSupabaseHost();
 
 const nextConfig: NextConfig = {
   /*
