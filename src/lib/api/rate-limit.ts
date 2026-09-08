@@ -63,7 +63,7 @@ function hashIp(ip: string): string {
 }
 
 export function clientIp(req: Request): string {
-  // Railway y la mayoría de proxies ponen la IP real como primer valor.
+  // Render y la mayoría de proxies ponen la IP real como primer valor.
   const forwarded = req.headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0]!.trim();
   return req.headers.get("x-real-ip") ?? "desconocida";

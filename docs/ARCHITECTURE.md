@@ -498,16 +498,20 @@ que ejecuta los reintentos con backoff, lo encolado mientras la app estaba
 caída, y las entregas de un drenado inmediato que no llegó a completarse.
 
 El disparador periódico es un workflow de GitHub Actions, no la plataforma de
-despliegue: el servicio corre en **Railway**, que no trae cron. Hubo un
-`vercel.json` que programaba este mismo endpoint cada minuto, pero ese fichero
-sólo lo lee Vercel: confiar en él dejó la cola sin drenar diez días, y por eso
-se borró del repo — una configuración que nadie ejecuta sólo sirve para que
-alguien la dé por buena.
+despliegue: el servicio corre en **Render**, y su plan gratuito no incluye cron
+jobs. Hubo un `vercel.json` que programaba este mismo endpoint cada minuto,
+pero ese fichero sólo lo lee Vercel: confiar en él dejó la cola sin drenar diez
+días, y por eso se borró del repo — una configuración que nadie ejecuta sólo
+sirve para que alguien la dé por buena. Por esa misma razón se borró el
+`railway.json` al migrar, en vez de dejarlo "por si acaso".
 
 ⚠️ GitHub **desactiva los workflows programados tras 60 días sin actividad en el
 repositorio**. Con (a) en su sitio eso ya no congela las publicaciones, pero sí
-deja los reintentos sin ejecutar. Si el repo va a estar quieto largas
-temporadas, el sustituto es un servicio cron en Railway.
+deja los reintentos sin ejecutar. El sustituto está escrito y comentado en
+`render.yaml`: un servicio `cron` nativo de Render, que exige el plan `starter`.
+Al activarlo hay que **borrar** `webhooks-cron.yml` — mantener los dos
+disparadores no rompe nada (`deliver()` reserva la fila antes de salir a la
+red), pero paga dos veces por el mismo drenado.
 
 Con dos disparadores hay drenados solapados, así que `deliver()` **reserva** la
 fila antes de salir a la red: mueve `next_attempt_at` condicionando el UPDATE al
