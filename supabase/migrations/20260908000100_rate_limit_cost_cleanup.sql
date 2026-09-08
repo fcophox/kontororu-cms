@@ -1,0 +1,23 @@
+-- =====================================================================
+-- Coste variable en el limitador de cupo — PASO 2 de 2 (retirar).
+--
+-- ⚠️ NO FUSIONAR HASTA QUE EL CÓDIGO DE 20260908000000 ESTÉ DESPLEGADO.
+--
+-- El paso 1 añadió `consume_rate_limit(text,int,int,int)` y dejó la firma de
+-- 3 argumentos como envoltorio, para que el código viejo siguiera funcionando
+-- mientras el despliegue terminaba. Esto retira ese envoltorio.
+--
+-- Aplicarlo antes de tiempo reproduce exactamente el problema que el paso 1
+-- vino a evitar: el código en producción llamando a una función que ya no
+-- existe, y el limitador caído en TODAS las rutas /api/v1.
+--
+-- Cómo saber que es seguro: en Render, que el despliegue del PR de GraphQL
+-- figure como `live` — no `building` ni `deploying`. A partir de ahí nadie
+-- llama con 3 argumentos, porque `lib/api/rate-limit.ts` pasa siempre
+-- `p_cost`.
+--
+-- Si hiciera falta volver atrás, el envoltorio se restaura reaplicando
+-- 20260908000000: por eso se escribió para poder reaplicarse.
+-- =====================================================================
+
+drop function if exists public.consume_rate_limit(text, integer, integer);
