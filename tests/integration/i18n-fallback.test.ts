@@ -21,6 +21,18 @@ let apiKey: string;
 const get = (path: string) =>
   fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${apiKey}` } });
 
+const gql = async (query: string) => {
+  const res = await fetch(`${API}/api/v1/graphql`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query }),
+  });
+  return res.json();
+};
+
 beforeAll(async () => {
   const { data: tenant } = await admin
     .from("tenants")
@@ -142,5 +154,57 @@ describe("respaldo al idioma principal", () => {
     const blog = body.data.find((c: { slug: string }) => c.slug === "blog");
     // Dos contenidos: el traducido y el que va de respaldo.
     expect(blog.postCount).toBe(2);
+  });
+});
+
+/**
+ * Paridad entre transportes.
+ *
+ * GraphQL se anunció como envoltorio de la API que ya existe, así que una web
+ * no puede ver contenido distinto según por dónde pregunte. Estas pruebas
+ * existen porque eso ya se rompió una vez: al reintegrar GraphQL, `fallback`
+ * quedó con `false` por defecto mientras REST respaldaba salvo `?fallback=none`,
+ * y el contenido sin traducir desaparecía sólo por GraphQL. Ningún test lo
+ * detectó — todos comprobaban REST.
+ */
+describe("el respaldo se comporta igual por REST y por GraphQL", () => {
+  it("el listado por defecto incluye lo que sólo existe en español", async () => {
+    const body = await gql(`{ posts(locale: "en") { nodes { slug locale } } }`);
+    expect(body.errors).toBeUndefined();
+
+    const nodes = body.data.posts.nodes as { slug: string; locale: string }[];
+    const suplente = nodes.find((p) => p.slug === "sin-traducir");
+    expect(suplente).toBeDefined();
+    expect(suplente!.locale).toBe("es");
+  });
+
+  it("devuelve exactamente los mismos slugs que REST", async () => {
+    const rest = await (await get("/api/v1/posts?locale=en")).json();
+    const body = await gql(`{ posts(locale: "en") { nodes { slug } } }`);
+
+    const porRest = rest.data.map((p: { slug: string }) => p.slug).sort();
+    const porGql = body.data.posts.nodes.map((p: { slug: string }) => p.slug).sort();
+    expect(porGql).toEqual(porRest);
+  });
+
+  it("fallback: false equivale a ?fallback=none", async () => {
+    const body = await gql(`{ posts(locale: "en", fallback: false) { nodes { slug } } }`);
+    const slugs = body.data.posts.nodes.map((p: { slug: string }) => p.slug);
+    expect(slugs).not.toContain("sin-traducir");
+  });
+
+  it("el detalle sirve la versión española cuando no hay traducción", async () => {
+    const body = await gql(`{ post(slug: "sin-traducir", locale: "en") { locale title } }`);
+    expect(body.data.post).not.toBeNull();
+    expect(body.data.post.locale).toBe("es");
+  });
+
+  it("el conteo de categorías coincide con el de REST", async () => {
+    const rest = await (await get("/api/v1/categories?locale=en")).json();
+    const body = await gql(`{ categories(locale: "en") { slug postCount } }`);
+
+    const porRest = rest.data.find((c: { slug: string }) => c.slug === "blog").postCount;
+    const porGql = body.data.categories.find((c: { slug: string }) => c.slug === "blog").postCount;
+    expect(porGql).toBe(porRest);
   });
 });
