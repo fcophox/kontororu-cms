@@ -44,6 +44,14 @@ export async function updateSession(request: NextRequest) {
   const isPublic =
     pathname === "/" ||
     pathname.startsWith("/login") ||
+    // Pedir un enlace de recuperación es, por definición, algo que se hace sin
+    // sesión: exigirla aquí mandaba a /login a quien no puede entrar, que es
+    // justo el único que necesita esta página.
+    //
+    // `/update-password` NO va en esta lista y no es un olvido: allí se llega
+    // desde /auth/callback, que ya ha canjeado el código por una sesión. Quien
+    // caiga sin ella no tiene nada que cambiar.
+    pathname.startsWith("/recover") ||
     pathname.startsWith("/invite") ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/pricing") ||
