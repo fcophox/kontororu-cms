@@ -83,35 +83,45 @@ export function corsPreflight() {
     status: 204,
     headers: {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET,OPTIONS",
+      // POST está aquí por /api/v1/graphql, que es el único endpoint público
+      // que no es GET. Anunciarlo en todas las rutas es inocuo —el método
+      // sigue dando 405 donde no existe— y evita que el preflight de GraphQL
+      // contradiga lo que declara `next.config.ts`.
+      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
       "Access-Control-Allow-Headers": "Authorization,Content-Type",
       "Access-Control-Max-Age": "86400",
     },
   });
 }
 
-/** Lee un entero de la query string, acotado. */
-export function readLimit(url: URL, fallback = 20, max = 100): number {
-  const raw = Number(url.searchParams.get("limit"));
-  if (!Number.isFinite(raw) || raw < 1) return fallback;
-  return Math.min(Math.floor(raw), max);
+/**
+ * Acota el tamaño de página.
+ *
+ * Toma el valor en crudo —query string en REST, argumento en GraphQL— porque
+ * el límite es una regla de la API, no del transporte: si cada capa lo
+ * interpretase por su cuenta, GraphQL acabaría sirviendo páginas que REST
+ * rechaza.
+ */
+export function clampLimit(raw: unknown, fallback = 20, max = 100): number {
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 1) return fallback;
+  return Math.min(Math.floor(value), max);
 }
 
 /**
  * Resuelve el idioma de una petición.
  *
- * Sin `?locale=` se sirve el principal del cliente, nunca "todos": un consumidor
- * que ya existe no debe empezar a ver cada artículo duplicado el día que su
- * cliente active un segundo idioma.
+ * Sin idioma pedido se sirve el principal del cliente, nunca "todos": un
+ * consumidor que ya existe no debe empezar a ver cada artículo duplicado el
+ * día que su cliente active un segundo idioma.
  *
  * Un idioma no activado devuelve error en vez de una lista vacía — un 200 con
  * cero resultados se confunde con "aún no hay contenido" y cuesta horas.
  */
-export function readLocale(
-  url: URL,
+export function resolveLocale(
+  requested: string | null | undefined,
   ctx: { defaultLocale: string; locales: string[] },
 ): { locale: string } | { error: string } {
-  const requested = url.searchParams.get("locale");
   if (!requested) return { locale: ctx.defaultLocale };
 
   if (!ctx.locales.includes(requested)) {

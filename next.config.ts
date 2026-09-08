@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
   ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
@@ -83,4 +84,43 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/*
+ * El envoltorio de Sentry sólo se aplica si hay DSN.
+ *
+ * Sin esa condición, el plugin se mete en TODOS los builds —también los
+ * locales y los de CI, que no tienen ni DSN ni token— y avisa por cada
+ * compilación de que no puede subir los source maps. Un aviso que sale
+ * siempre y que nadie puede resolver acaba siendo un aviso que nadie lee, y
+ * el día que salga uno de verdad tampoco se leerá.
+ */
+const sentryEnabled = Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN ?? process.env.SENTRY_DSN);
+
+export default sentryEnabled
+  ? withSentryConfig(nextConfig, {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      // Sin token no se suben los source maps, pero el build sigue adelante:
+      // preferimos un despliegue con trazas ilegibles a un despliegue caído.
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+
+      silent: true,
+
+      /*
+       * Los source maps se suben y se BORRAN del bundle público.
+       *
+       * Publicarlos deja a la vista la lógica del servidor —los guards, la
+       * forma de las consultas, los nombres de las tablas— a cualquiera que
+       * abra las devtools.
+       */
+      sourcemaps: { deleteSourcemapsAfterUpload: true },
+
+      // Túnel propio para los eventos del navegador: sin él, los bloqueadores
+      // de anuncios se comen los errores del panel y parece que no hay ninguno.
+      tunnelRoute: "/monitoring",
+
+      // Quita los logs de depuración del SDK del bundle del navegador.
+      webpack: { treeshake: { removeDebugLogging: true } },
+
+      telemetry: false,
+    })
+  : nextConfig;

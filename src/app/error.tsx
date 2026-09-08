@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { AlertTriangle } from "lucide-react";
 import { StatusScreen, HomeButton } from "@/components/shared/status-screen";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,10 @@ export default function AppError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // En producción, aquí va el reporte a Sentry/Logflare (Fase 3).
+    // El `digest` es lo que ve la persona en pantalla; mandarlo como etiqueta
+    // es lo que permite que un aviso de "me sale la referencia abc123" lleve
+    // directo al evento en vez de a una búsqueda a ciegas por los logs.
+    Sentry.captureException(error, { tags: { digest: error.digest } });
     console.error(error);
   }, [error]);
 

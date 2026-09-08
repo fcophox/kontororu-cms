@@ -239,6 +239,65 @@ describe("cupo", () => {
   });
 });
 
+describe("graphql", () => {
+  it("consulta con variables y devuelve datos tipados", async () => {
+    const { data, errors } = await client.graphql<{
+      posts: { nodes: { slug: string; title: string }[] };
+    }>(
+      `query Portada($limit: Int) {
+         posts(limit: $limit) { nodes { slug title } }
+       }`,
+      { limit: 5 },
+    );
+
+    expect(errors).toBeUndefined();
+    expect(data!.posts.nodes.length).toBeGreaterThan(0);
+    expect(typeof data!.posts.nodes[0].title).toBe("string");
+  });
+
+  /**
+   * Lo que justifica devolver `{ data, errors }` en vez de lanzar: la clave de
+   * este cliente sólo lee contenido, así que la misma consulta trae los posts
+   * y deniega los medios. Un método que lanzase tiraría la mitad que sí llegó.
+   */
+  it("conserva lo que sí llegó cuando un campo se deniega", async () => {
+    // Una clave sólo de contenido: la del resto de la suite también lee
+    // medios, y con ella no habría nada que denegar.
+    const { data: soloContenido } = await admin.rpc("create_api_key", {
+      p_tenant: tenantId,
+      p_name: "sdk-solo-contenido",
+      p_scopes: ["content:read"],
+    });
+
+    const limitado = new KontororuClient({
+      url: API,
+      apiKey: (soloContenido as { plain_key: string }[])[0].plain_key,
+    });
+
+    const { data, errors } = await limitado.graphql<{
+      posts: { nodes: unknown[] } | null;
+      media: unknown;
+    }>(`{ posts { nodes { slug } } media { nodes { id } } }`);
+
+    expect(data!.posts!.nodes.length).toBeGreaterThan(0);
+    expect(data!.media).toBeNull();
+    expect(errors?.[0].extensions?.code).toBe("forbidden");
+  });
+
+  it("un fallo de credenciales sí lanza, como en el resto del cliente", async () => {
+    const impostor = new KontororuClient({ url: API, apiKey: "kntr_live_falsa.inventada" });
+
+    await expect(impostor.graphql(`{ posts { nodes { slug } } }`)).rejects.toMatchObject({
+      code: "unauthorized",
+    });
+  });
+
+  it("descuenta cupo y lo anuncia igual que REST", async () => {
+    await client.graphql(`{ posts { nodes { slug } } }`);
+    expect(client.lastRateLimit).not.toBeNull();
+  });
+});
+
 describe("webhooks", () => {
   const secret = "secreto-de-prueba";
 

@@ -1182,7 +1182,12 @@ export type Database = {
     }
     Functions: {
       consume_rate_limit: {
-        Args: { p_bucket: string; p_limit: number; p_window_seconds: number }
+        Args: {
+          p_bucket: string
+          p_cost?: number
+          p_limit: number
+          p_window_seconds: number
+        }
         Returns: {
           allowed: boolean
           remaining: number

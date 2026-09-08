@@ -2,6 +2,8 @@ export { KontororuClient, createClient, type ClientOptions } from "./client.js";
 export { KontororuError, type KontororuErrorCode } from "./errors.js";
 export type {
   Category,
+  GraphQLError,
+  GraphQLResult,
   ListCategoriesOptions,
   ListMediaOptions,
   ListPostsOptions,

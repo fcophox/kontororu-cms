@@ -318,6 +318,83 @@ ids no.
 
 ---
 
+## `POST /graphql`
+
+La misma API con otra forma de pedirla. Mismos permisos, mismo aislamiento,
+mismos datos: no hay nada accesible por aquí que no lo esté por REST.
+
+Sirve para lo que REST hace incómodo — traerte una portada entera en una sola
+llamada, o pedir exactamente los campos que pintas y no el resto.
+
+```bash
+curl -X POST https://tu-cms.com/api/v1/graphql \
+  -H "Authorization: Bearer kntr_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ posts(limit: 5) { nodes { slug title cover { url } } } }"}'
+```
+
+```json
+{
+  "data": {
+    "posts": {
+      "nodes": [
+        { "slug": "primer-articulo", "title": "El primero", "cover": { "url": "https://..." } }
+      ],
+      "pageInfo": { "hasMore": false, "nextCursor": null }
+    }
+  }
+}
+```
+
+**Sólo POST.** Las consultas por GET acabarían en los logs de acceso y en el
+historial del navegador, y tu cabecera `Authorization` lleva una clave que
+abre todo tu contenido. En desarrollo, un GET sin `?query=` te sirve el IDE
+para explorar el esquema.
+
+### Qué puedes pedir
+
+| Campo | Equivale a | Permiso |
+|---|---|---|
+| `posts(limit, cursor, locale, category, tag, q)` | `GET /posts` | `content:read` |
+| `post(slug, locale)` | `GET /posts/{slug}` | `content:read` |
+| `categories(locale, kind)` | `GET /categories` | `content:read` |
+| `media(limit, cursor, type)` | `GET /media` | `media:read` |
+| `mediaAsset(id)` | `GET /media/{id}` | `media:read` |
+
+El esquema completo está en la introspección: apunta cualquier cliente de
+GraphQL al endpoint con tu clave y lo tienes.
+
+**`content` sólo llega en `post`.** En `posts` viene `null` aunque lo pidas, y
+es a propósito: resolver el cuerpo de cada entrada convertiría una portada de
+100 elementos en 100 lecturas de HTML completo que nadie va a pintar.
+
+### Errores y respuestas parciales
+
+Los errores viajan en `errors` con **el mismo código** que usa REST, en
+`extensions.code`:
+
+```json
+{
+  "data": { "posts": { "nodes": [...] }, "media": null },
+  "errors": [
+    { "message": "Esta clave no tiene el permiso \"media:read\".",
+      "extensions": { "code": "forbidden" } }
+  ]
+}
+```
+
+Fíjate en que `data` **no** viene vacío. Una consulta puede tocar permisos
+distintos, y lo que falla se anula solo: recibes el contenido y el error de los
+medios. Agrupar consultas no te sale más caro que hacerlas por separado.
+
+Lo que no existe no es un error: `post(slug: "lo-que-sea")` devuelve `null`
+limpio, sin `errors`, igual que un 404 de REST pero sin obligarte a mirarlo.
+
+Las credenciales sí cortan antes de ejecutar nada: sin clave válida recibes un
+**401 con el cuerpo de error de REST**, no un 200 con `errors`.
+
+---
+
 ## Idiomas
 
 Cada idioma es un **contenido completo**: su propia URL, su SEO y su estado de
@@ -467,6 +544,34 @@ afecta.
 En la práctica cuesta llegar: si cacheas las respuestas —o usas ISR, que es lo
 normal— una reconstrucción entera son unas pocas peticiones. Tocar el techo
 suele significar un bucle en el código, no tráfico real.
+
+### Cuánto gasta una consulta GraphQL
+
+Una regla, y sólo una: **cada campo raíz gasta lo mismo que su llamada REST**.
+
+```graphql
+{
+  posts { nodes { title } }   # 1, como GET /posts
+  categories { slug }         # 1, como GET /categories
+}                             # total: 2
+```
+
+El tamaño de página no entra en el precio, igual que en REST: `posts(limit:
+100)` gasta 1, exactamente lo mismo que `GET /posts?limit=100`. Pedir el
+cuerpo con `content` duplica el coste, porque es lo único que hace trabajo
+extra por elemento —volver a firmar las imágenes del cuerpo, una a una—.
+
+Los alias cuentan por separado: `a: posts` y `b: posts` son dos lecturas y
+gastan dos. Es la misma cuenta que si hubieras hecho dos peticiones.
+
+Cada respuesta te dice lo que acabas de gastar:
+
+```
+X-GraphQL-Cost: 2
+```
+
+Y hay un tope de anidamiento de 8 niveles: por encima recibes un **400** sin
+que la consulta llegue a ejecutarse. El esquema real no pasa de cuatro.
 
 ---
 

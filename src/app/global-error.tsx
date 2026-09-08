@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
+
 /**
  * Último recurso: sólo salta si el propio root layout falla, así que
  * reemplaza a <html> y <body> por completo. Por eso no usa StatusScreen
@@ -12,6 +15,12 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    // El único boundary que hay que reportar sí o sí: si salta, el panel no
+    // ha llegado ni a montarse y nadie va a poder contar qué vio.
+    Sentry.captureException(error, { tags: { digest: error.digest } });
+  }, [error]);
+
   return (
     <html lang="es">
       <body

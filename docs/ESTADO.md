@@ -3,7 +3,7 @@
 Punto de continuación. Lo que está hecho, lo que falta y las decisiones que no
 se ven leyendo el código.
 
-**Última sesión:** agosto 2026 · Fase 1, 2 y parte de la 3.
+**Última sesión:** 5 de agosto de 2026 · Fase 1, 2 y parte de la 3.
 
 ---
 
@@ -18,10 +18,11 @@ Detalle completo en **[RUNBOOK-LOCAL.md](RUNBOOK-LOCAL.md)**.
 ## Verificación
 
 ```bash
-npm run test:unit          # 29 · funciones puras, sin red
+npm run test:unit          # 53 · funciones puras, sin red
 supabase test db           # 96 · RLS, RBAC, i18n, historial (BLOQUEANTE)
-npm run test:integration   # 72 · pila real, requiere la app en :3000
+npm run test:integration   # 99 · pila real, requiere la app en :3000
 npm run sdk:build          # compila packages/kontororu-client
+npm run sdk:check          # empaqueta, instala y lo importa desde fuera
 npx tsc --noEmit && npx eslint .
 ```
 
@@ -43,6 +44,8 @@ despliegue: ver **[TESTING-RLS.md](TESTING-RLS.md)**.
 | Marca por tenant con contraste WCAG garantizado | ✅ |
 | API Keys y webhooks con backoff y reintento | ✅ |
 | API headless: posts, categorías, media | ✅ + rate limiting por plan |
+| GraphQL en `/api/v1/graphql` | ✅ con coste por consulta |
+| Observabilidad (Sentry) | ✅ inactiva sin DSN |
 | Panel SuperAdmin: alta de clientes, planes, límites, auditoría | ✅ |
 | Almacenamiento S3/R2 | ✅ migración sin ventana de corte |
 | Multi-idioma | ✅ grupo de traducción |
@@ -52,12 +55,13 @@ despliegue: ver **[TESTING-RLS.md](TESTING-RLS.md)**.
 
 **Fase 3 pendiente**, por orden de dependencia:
 
-1. **GraphQL** en `/api/v1/graphql` — envoltorio sobre la API que ya existe.
-2. **Analítica de contenido** — requiere decidir antes qué se quiere medir.
-3. **Stripe** — sólo tiene sentido con precios reales que cobrar.
-4. **Observabilidad** (Sentry / Logflare).
-5. **Publicar el SDK a npm** — hoy vive en `packages/`, compila y está
-   probado, pero nadie lo ha publicado todavía.
+1. **Analítica de contenido** — requiere decidir antes qué se quiere medir.
+2. **Stripe** — sólo tiene sentido con precios reales que cobrar.
+3. **Publicar el SDK a npm** — el paquete ya está listo (MIT, `access:
+   public`, `sdk:check` en verde). Sólo falta el `npm publish`, que necesita tu
+   sesión de npm: ver **[RELEASE-SDK.md](RELEASE-SDK.md)**.
+4. **Encender Sentry** — el código está puesto y probado; falta crear el
+   proyecto y poner el DSN: ver **[OBSERVABILIDAD.md](OBSERVABILIDAD.md)**.
 
 **Deuda menor conocida:**
 
@@ -104,6 +108,36 @@ cliente active un segundo idioma.
 `tsconfig` y en `vitest`: así un cambio que rompa el contrato de la API falla
 en el acto, sin recompilar el paquete.
 
+**GraphQL y REST comparten la capa de lectura** (`lib/api/queries.ts`). Las
+rutas REST son adaptadores HTTP de esas mismas funciones. Si algún día una
+consulta se reimplementa en los resolvers, dejará de ser un envoltorio y
+aparecerá el primer bug que sólo se da por un transporte.
+
+**Una consulta GraphQL cuesta lo mismo que las llamadas REST equivalentes:**
+una unidad por campo raíz. El tamaño de página no entra en el precio, porque
+en REST tampoco: cobrar por elemento hacía que `posts(limit: 100)` costase 101
+y que un plan FREE —60 por minuto— no pudiera ejecutarlo nunca, cuando por
+REST le costaba 1. Lo que sí se cobra aparte son los alias, que son lecturas
+de verdad, y el `content`, que refirma imágenes una a una.
+
+**Todos los campos de `Query` son anulables, y hay que dejarlos así.** Una
+consulta puede tocar permisos distintos a la vez; con un campo obligatorio,
+GraphQL propaga el null hasta la raíz y un solo permiso ausente vacía la
+respuesta entera. Siendo anulables, lo que falla se anula solo y el resto
+llega.
+
+**El cupo se consume una vez por petición HTTP, no por campo.** Si cada campo
+raíz pasase por el limitador, agrupar tres consultas costaría tres viajes a la
+base sólo para cobrar. El coste se estima antes de ejecutar y se descuenta de
+golpe.
+
+**Sentry no manda cabeceras, ni cookies, ni cuerpos de petición.** No es
+precaución genérica: una cookie de sesión en el panel de errores es una sesión
+de administrador, y el cuerpo de una petición es el borrador sin publicar de un
+cliente. Session Replay y la instrumentación de Postgres están desactivadas por
+lo mismo. Antes de añadir contexto a un evento, leer
+**[OBSERVABILIDAD.md](OBSERVABILIDAD.md)**.
+
 **Los webhooks se encolan, no se envían.** Un trigger escribe en
 `webhook_deliveries`; un worker drena. Llamar por HTTP dentro del `UPDATE`
 convertiría la web caída de un cliente en un timeout dentro de una
@@ -145,3 +179,5 @@ falta MinIO ni una cuenta de AWS; las credenciales salen de
 | [API.md](API.md) | Quien conecta una web al CMS |
 | [TESTING-RLS.md](TESTING-RLS.md) | Antes de tocar RLS o añadir una tabla |
 | [RUNBOOK-LOCAL.md](RUNBOOK-LOCAL.md) | Primera puesta en marcha |
+| [RELEASE-SDK.md](RELEASE-SDK.md) | Antes de publicar el SDK a npm |
+| [OBSERVABILIDAD.md](OBSERVABILIDAD.md) | Antes de tocar nada que se envíe a Sentry |

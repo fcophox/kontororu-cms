@@ -2,7 +2,8 @@
   "name": "@rukma/kontororu-client",
   "version": "0.1.0",
   "description": "Cliente oficial de Kontorōru CMS: contenido tipado y verificación de webhooks.",
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "keywords": ["cms", "headless", "kontororu", "graphql", "webhooks"],
   "type": "module",
   "files": ["dist"],
   "exports": {
@@ -15,6 +16,11 @@
       "default": "./dist/webhooks.js"
     }
   },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "//publishConfig": "Un paquete con ámbito es restringido por defecto y npm rechaza publicarlo sin org de pago. Sin esta línea, el primer `npm publish` falla con un 402 que no menciona el ámbito.",
+  "publishConfig": { "access": "public" },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "prepublishOnly": "npm run build"
