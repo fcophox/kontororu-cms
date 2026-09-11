@@ -2,9 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { resolveLandingPath } from "@/lib/auth/landing";
-import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Quote } from "lucide-react";
+import { SubmitButton } from "./submit-button";
 
 export const metadata = { title: "Acceder" };
 
@@ -86,9 +86,7 @@ export default async function LoginPage({
               </p>
             )}
 
-            <Button type="submit" className="w-full h-10 mt-2">
-              Acceder
-            </Button>
+            <SubmitButton />
           </form>
 
           <p className="mt-8 text-center text-xs text-muted-foreground">
