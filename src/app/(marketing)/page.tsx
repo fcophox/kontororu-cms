@@ -22,6 +22,7 @@ import { CLIENTS, TESTIMONIAL, type Client } from "./_data/clients";
 import { ApiDemo, EditorDemo, LocalesDemo } from "./_components/step-demos";
 import { PanelMock } from "./_components/panel-mock";
 import { TiltCard } from "./_components/tilt-card";
+import { GradualBlur } from "./_components/gradual-blur";
 import { Reveal } from "./_components/reveal";
 import { SiteHeader } from "./_components/site-header";
 
@@ -610,6 +611,8 @@ export default async function LandingPage() {
           </div>
         </div>
       </footer>
+
+      <GradualBlur />
     </div>
   );
 }
