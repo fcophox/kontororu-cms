@@ -145,3 +145,304 @@
 @utility animate-drawer-in {
   animation: drawer-slide-in 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* -------------------------------------------------------------------
+ * Landing de marketing (`/`).
+ * Una sola entrada: opacidad + 8px de desplazamiento. El escalonado lo
+ * pone cada elemento con su `animation-delay`; `backwards` es lo que
+ * mantiene el estado inicial durante esa espera —sin él, el elemento se
+ * ve un instante en su posición final antes de arrancar.
+ * ------------------------------------------------------------------- */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@utility animate-rise-in {
+  animation: rise-in 500ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* La misma entrada para los titulares, con un enfoque encima: el texto llega
+   desenfocado y se resuelve. Es lo que hace que el ojo lo lea como algo que
+   se pone en foco y no como algo que se desliza. Cuesta más de pintar que
+   opacidad y transform —el desenfoque obliga a repintar—, así que va sólo en
+   los pocos elementos que mandan en cada sección, nunca en una rejilla. */
+@keyframes rise-in-blur {
+  from { opacity: 0; transform: translateY(10px); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+
+/* 700ms, más de lo que se permite un desplegable: el desenfoque necesita
+   recorrido para leerse como enfoque. Es una portada, no un menú. */
+@utility animate-rise-in-blur {
+  animation: rise-in-blur 700ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* El mismo enfoque, pero para <Reveal blur>, que lo dispara el scroll y por
+   tanto necesita una transición y no un keyframe.
+ *
+ * En CSS plano y no con las utilidades `blur-*` de Tailwind a propósito:
+ * ésas escriben `filter: var(--tw-blur) …`, y vaciar la variable deja el
+ * `filter` sin valor que interpolar — el desenfoque se queda clavado en vez
+ * de resolverse. Aquí los dos extremos son `blur()`, que sí interpola. */
+.reveal-blur {
+  filter: blur(6px);
+}
+
+.reveal-blur[data-shown] {
+  filter: blur(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-blur,
+  .reveal-blur[data-shown] {
+    filter: none;
+  }
+}
+
+/* Quien pide menos movimiento conserva el fundido —que ayuda a entender
+   que algo ha aparecido— y pierde el desplazamiento, que es lo que marea. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes rise-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes rise-in-blur {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+/* -------------------------------------------------------------------
+ * Demos de «Cómo funciona» — tres animaciones explicativas.
+ *
+ * LA REGLA QUE ORDENA TODO ESTO: el DOM ya está pintado en su estado
+ * FINAL. Los keyframes sólo cuentan el viaje hasta él y todos llevan
+ * `backwards`, que es lo que sostiene el fotograma inicial durante el
+ * retraso. De ahí salen gratis las dos cosas que importan: sin JS la
+ * demo se ve terminada en vez de vacía, y para `prefers-reduced-motion`
+ * basta con apagar las animaciones — lo que queda es la captura del
+ * resultado, que es justo lo que había que enseñar.
+ *
+ * El escalonado no vive aquí: cada elemento pone su `animation-delay`
+ * en línea. Un keyframe por gesto, reutilizado; no uno por elemento.
+ * ------------------------------------------------------------------- */
+
+/* Nada se mueve mientras la demo no esté en pantalla, y se vuelve a parar
+   al salir. Con animaciones infinitas esto deja de ser una optimización:
+   son tres bloques que si no se congelan siguen animándose para siempre
+   mientras se lee el resto de la página. Reglas sin capa: ganan a las
+   utilidades de `@utility`, que Tailwind mete en `@layer utilities`. */
+.demo * {
+  animation-play-state: paused;
+}
+
+.demo[data-playing] * {
+  animation-play-state: running;
+}
+
+/* Envoltura de una vuelta completa. El corte del bucle cae aquí dentro:
+   el contenido se apaga al final del ciclo, React lo vuelve a montar
+   mientras está invisible, y la vuelta siguiente entra fundiéndose. Sin
+   esto el reinicio es un salto de la escena terminada a la pantalla en
+   blanco. La duración la pone cada demo en línea: es su periodo. */
+@keyframes demo-cycle {
+  0% { opacity: 0; }
+  4%, 92% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@utility animate-demo-cycle {
+  animation: demo-cycle linear infinite;
+}
+
+/*
+ * Demo 2 — la única que se toca.
+ *
+ * Transiciones y no keyframes, y no por gusto: se puede pinchar dos veces
+ * en medio segundo. Una transición retoma desde donde está; un keyframe
+ * volvería a empezar de cero en mitad del cambio.
+ */
+.demo-swap {
+  opacity: 0;
+  filter: blur(3px);
+  pointer-events: none;
+  transition:
+    opacity 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.demo-swap[data-active] {
+  opacity: 1;
+  filter: blur(0);
+  pointer-events: auto;
+}
+
+/* Movimiento en pantalla: ease-in-out fuerte. */
+.demo-tab-indicator {
+  transition: transform 380ms cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+/* Escritura. `steps()` es lo que la hace leerse como tecleo y no como
+   un barrido: sin discretizar, el ojo ve una cortina. `clip-path` y no
+   `width` porque el ancho dispara maquetación en cada fotograma. */
+@keyframes demo-type {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@utility animate-demo-type {
+  animation: demo-type 700ms steps(28, end) backwards;
+}
+
+/* El mismo recorte, sin escalones y con curva de movimiento: el cable
+   del webhook dibujándose de un extremo al otro. */
+@utility animate-demo-draw {
+  animation: demo-type 700ms cubic-bezier(0.77, 0, 0.175, 1) backwards;
+}
+
+/* Cuatro parpadeos y se queda quieto. Un cursor parpadeando para
+   siempre en una página de marketing es un tic en el rabillo del ojo. */
+@keyframes demo-caret {
+  0%, 45% { opacity: 1; }
+  50%, 95% { opacity: 0.15; }
+  100% { opacity: 1; }
+}
+
+@utility animate-demo-caret {
+  animation: demo-caret 1s steps(1, end) 3 backwards;
+}
+
+@keyframes demo-pop {
+  from { opacity: 0; transform: translateY(4px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+@utility animate-demo-pop {
+  animation: demo-pop 320ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* Relevo de un texto por otro. El desenfoque de 3px cose la costura:
+   sin él se ven dos frases superpuestas en vez de una convirtiéndose
+   en la otra. El elemento que sale reposa en opacidad 0; el que entra,
+   en 1. Por eso el par no se pisa cuando no hay animación. */
+@keyframes demo-out {
+  from { opacity: 1; filter: blur(0); }
+  to { opacity: 0; filter: blur(3px); }
+}
+
+@utility animate-demo-out {
+  animation: demo-out 260ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes demo-in {
+  from { opacity: 0; filter: blur(3px); }
+  to { opacity: 1; filter: blur(0); }
+}
+
+@utility animate-demo-in {
+  animation: demo-in 320ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* Estado intermedio: asoma y se va. Reposa invisible en los dos extremos,
+   así que no necesita relleno por delante ni por detrás. */
+@keyframes demo-blip {
+  0% { opacity: 0; filter: blur(3px); }
+  18%, 82% { opacity: 1; filter: blur(0); }
+  100% { opacity: 0; filter: blur(3px); }
+}
+
+@utility animate-demo-blip {
+  animation: demo-blip 900ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* El selector de idioma cambiando de pestaña. Movimiento en pantalla,
+   así que ease-in-out fuerte y no ease-out. Parte de -100%, que con
+   pestañas de igual ancho es exactamente una pestaña a la izquierda. */
+@keyframes demo-slide {
+  from { transform: translateX(-100%); }
+  to { transform: none; }
+}
+
+@utility animate-demo-slide {
+  animation: demo-slide 380ms cubic-bezier(0.77, 0, 0.175, 1) backwards;
+}
+
+@keyframes demo-press {
+  0%, 100% { transform: none; }
+  40% { transform: scale(0.97); }
+}
+
+@utility animate-demo-press {
+  animation: demo-press 260ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* El anillo que se expande cuando al otro lado reciben el aviso. */
+@keyframes demo-pulse {
+  0% { opacity: 0; transform: scale(0.92); }
+  30% { opacity: 0.45; }
+  100% { opacity: 0; transform: scale(1.08); }
+}
+
+@utility animate-demo-pulse {
+  animation: demo-pulse 700ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/*
+ * Colores del código de la demo 3.
+ *
+ * Salen de los tokens semánticos con `color-mix`, no de hexadecimales
+ * nuevos: el matiz sigue siendo el del sistema y cambiar `tokens.yml`
+ * los mueve con él. Se aclaran porque los tonos originales están
+ * pensados para acentos e iconos, y sobre `--card` se quedan por debajo
+ * de 4.5:1 — que es el mínimo para algo que hay que LEER.
+ */
+.demo-code {
+  --code-keyword: color-mix(in oklab, var(--brand-secondary) 55%, white);
+  --code-fn: color-mix(in oklab, var(--warn) 75%, white);
+}
+
+/* Menos movimiento: se apaga el viaje y queda el destino. Cada demo ya
+   está escrita para que ese destino se explique solo, y el bucle no llega
+   ni a arrancar —eso lo decide `useDemoLoop`, porque un `setInterval` no
+   se apaga desde una media query—. La demo 2 conserva un fundido corto:
+   sin él, pinchar un idioma no acusa recibo de nada. */
+@media (prefers-reduced-motion: reduce) {
+  .demo * {
+    animation: none;
+  }
+
+  .demo-swap {
+    filter: none;
+    transition-duration: 120ms;
+  }
+
+  .demo-swap[data-active] {
+    filter: none;
+  }
+
+  .demo-tab-indicator {
+    transition: none;
+  }
+}
+
+/* -------------------------------------------------------------------
+ * Inclinación 3D de las maquetas (<TiltCard>).
+ *
+ * El JS fija el destino; el recorrido lo hace la transición, que corre en
+ * el compositor. Los dos tiempos son deliberadamente distintos: mientras
+ * sigue al cursor tiene que ir corto o la tarjeta va por detrás del ratón
+ * y se siente de goma; al salir manda el largo, que es el que la deja
+ * volver a su sitio con calma en vez de pegar un tirón.
+ *
+ * Sin `data-tilting` no hay `transform` escrito, así que en táctil y con
+ * `prefers-reduced-motion` esto es un div quieto: el interruptor de verdad
+ * está en el hook, no aquí.
+ * ------------------------------------------------------------------- */
+.tilt {
+  transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tilt[data-tilting] {
+  transition-duration: 120ms;
+}
