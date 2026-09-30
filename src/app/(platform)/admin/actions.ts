@@ -74,7 +74,7 @@ export async function createTenant(
   const { name, slug, plan, ownerEmail } = parsed.data;
 
   // Estos slugs colisionarían con rutas propias de la aplicación.
-  const RESERVED = ["admin", "api", "auth", "login", "switch", "settings", "_next"];
+  const RESERVED = ["admin", "api", "auth", "login", "switch", "settings", "legal", "_next"];
   if (RESERVED.includes(slug)) {
     return { error: `"${slug}" está reservado: elige otro identificador.` };
   }

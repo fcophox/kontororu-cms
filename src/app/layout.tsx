@@ -18,6 +18,7 @@ const sansation = Sansation({
 export const metadata: Metadata = {
   title: { default: "Kontorōru CMS", template: "%s · Kontorōru" },
   description: "CMS Headless Multi-tenant de Rukma Studio",
+  icons: { icon: { url: "/brand/favicon.svg", type: "image/svg+xml" } },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

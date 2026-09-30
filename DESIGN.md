@@ -21,8 +21,10 @@ npm run tokens
 npm run tokens:watch
 ```
 
-`npm run dev` y `npm run build` ejecutan el generador antes de arrancar, así
-que un `tokens.yml` recién editado nunca queda desincronizado. Los archivos
+`npm run dev` genera al arrancar y **deja el vigilante encendido**: guardar
+`tokens.yml` con el servidor en marcha repinta la pantalla sin reiniciar.
+`npm run build` genera una vez antes de compilar. Así un `tokens.yml` recién
+editado nunca queda desincronizado. Los archivos
 generados **se commitean**: el build de Render no necesita nada extra.
 
 ### La cadena completa

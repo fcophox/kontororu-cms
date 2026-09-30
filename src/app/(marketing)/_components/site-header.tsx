@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -19,10 +20,19 @@ export function SiteHeader({ dashboardPath }: { dashboardPath: string | null }) 
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
         <Link
           href="/"
-          className="flex items-baseline gap-2 rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="flex items-center rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
-          <span className="text-lg font-bold tracking-tight">Kontorōru</span>
-          <span className="hidden whitespace-nowrap text-xs text-muted-foreground lg:inline">by Rukma Studio</span>
+          {/* `unoptimized` por lo mismo que los logotipos de clientes: es SVG.
+              El texto del logotipo es blanco, y la landing siempre va en oscuro. */}
+          <Image
+            src="/brand/kontororu-logotipo.svg"
+            alt="Kontorōru"
+            width={2677}
+            height={733}
+            unoptimized
+            priority
+            className="h-9 w-auto"
+          />
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">

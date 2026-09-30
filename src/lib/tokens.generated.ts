@@ -98,7 +98,7 @@ export const DARK_TOKENS = {
 /** Identidad por defecto de un tenant sin personalizar. */
 export const BRAND_TOKENS = {
   "primary": "#111827",
-  "secondary": "#f59e0b",
+  "secondary": "#6366f1",
   "radius": "0.625rem"
 } as const;
 
