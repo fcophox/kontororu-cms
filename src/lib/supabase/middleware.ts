@@ -55,6 +55,9 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/invite") ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/pricing") ||
+    // Privacidad y cookies se leen ANTES de tener cuenta: exigir sesión para
+    // leer la política que explica esa sesión no tendría sentido.
+    pathname.startsWith("/legal") ||
     // La API headless se autentica con API Key, no con cookie de sesión.
     pathname.startsWith("/api/v1") ||
     pathname.startsWith("/api/internal");

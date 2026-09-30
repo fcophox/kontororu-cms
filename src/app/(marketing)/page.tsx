@@ -3,7 +3,6 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import {
   ArrowRight,
-  Boxes,
   FileText,
   Globe,
   History,
@@ -11,7 +10,6 @@ import {
   KeyRound,
   Palette,
   ShieldCheck,
-  Users,
   Webhook,
 } from "lucide-react";
 
@@ -191,10 +189,10 @@ export default async function LandingPage() {
               es atmósfera, y no debe robar clics al contenido. */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 -top-40 h-[32rem] opacity-40"
+            className="pointer-events-none absolute inset-x-0 -top-[28rem] h-[64rem] opacity-30"
             style={{
               background:
-                "radial-gradient(50% 50% at 50% 50%, var(--brand-secondary) 0%, transparent 70%)",
+                "radial-gradient(50% 50% at 50% 40%, var(--brand-secondary) 0%, transparent 90%)",
             }}
           />
 
@@ -517,10 +515,10 @@ export default async function LandingPage() {
         <section className="relative overflow-hidden">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 -bottom-48 h-96 opacity-30"
+            className="pointer-events-none absolute inset-x-0 -bottom-[28rem] h-[64rem] opacity-30"
             style={{
               background:
-                "radial-gradient(50% 50% at 50% 50%, var(--brand-secondary) 0%, transparent 70%)",
+                "radial-gradient(50% 50% at 50% 60%, var(--brand-secondary) 0%, transparent 90%)",
             }}
           />
           <div className="relative mx-auto max-w-3xl px-6 py-24 text-center">
@@ -572,13 +570,34 @@ export default async function LandingPage() {
       <footer className="border-t">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
           <div className="flex items-center gap-2 text-sm">
-            <Boxes className="size-4 text-muted-foreground" />
+            <Image
+              src="/brand/kontororu-isotipo.svg"
+              alt=""
+              width={733}
+              height={733}
+              unoptimized
+              className="size-5"
+            />
             <span className="font-semibold">Kontorōru</span>
             <span className="text-muted-foreground">· un producto de Rukma Studio</span>
           </div>
-          <div className="flex items-center gap-5 text-sm text-muted-foreground">
+          {/* Parte en dos líneas en móvil: con los enlaces legales ya no cabe
+              en 375px, y sin `flex-wrap` se salía por los dos lados. */}
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
             <Link href="/login" className="transition-colors duration-150 hover:text-foreground">
               Acceder
+            </Link>
+            <Link
+              href="/legal/privacidad"
+              className="transition-colors duration-150 hover:text-foreground"
+            >
+              Privacidad
+            </Link>
+            <Link
+              href="/legal/cookies"
+              className="transition-colors duration-150 hover:text-foreground"
+            >
+              Cookies
             </Link>
             <a
               href="https://rukma.studio"
@@ -588,10 +607,6 @@ export default async function LandingPage() {
             >
               Rukma Studio
             </a>
-            <span className="flex items-center gap-1.5">
-              <Users className="size-3.5" />
-              Alta por invitación
-            </span>
           </div>
         </div>
       </footer>
