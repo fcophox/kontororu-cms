@@ -8,7 +8,7 @@
   "scripts": {
     "tokens": "node scripts/generate-tokens.mjs",
     "tokens:watch": "node scripts/generate-tokens.mjs --watch",
-    "dev": "npm run tokens && NEXT_DIST_DIR=.next-dev next dev --turbopack",
+    "dev": "node scripts/dev.mjs",
     "build": "npm run tokens && next build",
     "start": "next start",
     "lint": "eslint .",

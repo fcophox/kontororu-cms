@@ -525,6 +525,14 @@ export default async function LandingPage() {
           />
           <div className="relative mx-auto max-w-3xl px-6 py-24 text-center">
             <Reveal blur>
+              <Image
+                src="/brand/kontororu-isotipo.svg"
+                alt=""
+                width={733}
+                height={733}
+                unoptimized
+                className="mx-auto mb-6 size-16"
+              />
               <h2 className="text-3xl font-bold tracking-tight text-balance sm:text-4xl">
                 Tu espacio ya te está esperando
               </h2>

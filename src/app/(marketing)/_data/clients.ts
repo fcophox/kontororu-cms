@@ -70,7 +70,7 @@ export const CLIENTS: readonly Client[] = [
  * mezclarlo con los clientes lo haría pasar por uno de ellos.
  */
 export const TESTIMONIAL = {
-  text: "Kontorōru nace de nuestra visión por devolverte el control absoluto de tus contenidos. Una experiencia sin ataduras, diseñada a medida.",
+  text: "Kontorōru nace de nuestra visión por devolver el control absoluto de los contenidos a sus creadores. Una experiencia sin ataduras, diseñada a medida.",
   author: "Equipo de Rukma Studio",
   role: "Creadores de Kontorōru",
 };

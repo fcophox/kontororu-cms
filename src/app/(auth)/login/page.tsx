@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { resolveLandingPath } from "@/lib/auth/landing";
@@ -42,6 +43,14 @@ export default async function LoginPage({
       <div className="flex flex-1 items-center justify-center p-8 sm:p-12">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col space-y-2 text-center lg:text-left">
+            <Image
+              src="/brand/kontororu-isotipo.svg"
+              alt="Kontorōru"
+              width={48}
+              height={48}
+              className="mb-4 h-12 w-auto self-start"
+              priority
+            />
             <h1 className="text-2xl font-semibold tracking-tight">Acceder a tu cuenta</h1>
             <p className="text-sm text-muted-foreground">
               Ingresa tus credenciales para continuar
@@ -63,7 +72,7 @@ export default async function LoginPage({
                 className="h-10 w-full rounded-[var(--radius)] border bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               />
             </div>
-            
+
             <div className="space-y-1.5 text-left">
               <div className="flex items-center justify-between">
                 <label htmlFor="password" className="text-sm font-medium text-foreground">Contraseña</label>
@@ -98,14 +107,21 @@ export default async function LoginPage({
       {/* Lado derecho - Branding */}
       <div className="hidden lg:flex w-1/2 flex-col justify-between bg-zinc-950 p-12 text-zinc-50 relative overflow-hidden">
         <div className="relative z-10 flex items-center gap-2">
-          <span className="text-xl font-bold tracking-tight">Kontorōru</span>
+          <Image
+            src="/brand/kontororu-logotipo.svg"
+            alt="Kontorōru"
+            width={120}
+            height={32}
+            className="h-8 w-auto"
+            priority
+          />
         </div>
 
         <div className="relative z-10 max-w-lg">
           <Quote className="size-10 text-zinc-700 mb-6 rotate-180" />
           <blockquote className="space-y-6">
             <p className="text-3xl font-medium leading-snug">
-              &quot;Kontorōru nace de nuestra visión por devolverte el control absoluto de tus contenidos. Una experiencia sin ataduras, diseñada a medida.&quot;
+              &quot;Kontorōru nace de nuestra visión por devolver el control absoluto de los contenidos a sus creadores. Una experiencia sin ataduras, diseñada a medida.&quot;
             </p>
             <footer className="flex items-center gap-4">
               <div className="flex flex-col">
