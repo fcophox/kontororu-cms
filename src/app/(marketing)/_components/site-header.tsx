@@ -25,10 +25,10 @@ export function SiteHeader({ dashboardPath }: { dashboardPath: string | null }) 
           {/* `unoptimized` por lo mismo que los logotipos de clientes: es SVG.
               El texto del logotipo es blanco, y la landing siempre va en oscuro. */}
           <Image
-            src="/brand/kontororu-logotipo.svg"
-            alt="Kontorōru"
-            width={2677}
-            height={733}
+            src="/brand/kanri-logotipo-negativo.svg"
+            alt="Kanri"
+            width={746}
+            height={200}
             unoptimized
             priority
             className="h-9 w-auto"

@@ -186,16 +186,21 @@ export default async function LandingPage() {
       <main>
         {/* ── Hero ─────────────────────────────────────────────── */}
         <section className="relative overflow-hidden border-b">
-          {/* Halo de marca. `pointer-events-none` porque no es un elemento:
-              es atmósfera, y no debe robar clics al contenido. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 -top-[28rem] h-[64rem] opacity-30"
-            style={{
-              background:
-                "radial-gradient(50% 50% at 50% 40%, var(--brand-secondary) 0%, transparent 90%)",
-            }}
-          />
+          {/* Paisaje de fondo. Es atmósfera, no contenido: `alt` vacío y
+              `pointer-events-none` para que no robe clics. Se ancla a la
+              derecha porque el monte y la pagoda están ahí, y el degradado
+              lo funde con el fondo antes de la siguiente sección. */}
+          <div aria-hidden className="pointer-events-none absolute inset-0">
+            <Image
+              src="/brand/background.png"
+              alt=""
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover object-right opacity-10"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/30 to-background" />
+          </div>
 
           <div className="relative mx-auto max-w-6xl px-6 pt-20 pb-16 sm:pt-28 sm:pb-24">
             <div className="mx-auto max-w-3xl text-center">
@@ -525,10 +530,10 @@ export default async function LandingPage() {
           <div className="relative mx-auto max-w-3xl px-6 py-24 text-center">
             <Reveal blur>
               <Image
-                src="/brand/kontororu-isotipo.svg"
+                src="/brand/kanri-isotipo.svg"
                 alt=""
-                width={733}
-                height={733}
+                width={204}
+                height={200}
                 unoptimized
                 className="mx-auto mb-6 size-16"
               />
@@ -572,10 +577,10 @@ export default async function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
           <div className="flex items-center gap-2 text-sm">
             <Image
-              src="/brand/kontororu-isotipo.svg"
+              src="/brand/kanri-isotipo.svg"
               alt=""
-              width={733}
-              height={733}
+              width={204}
+              height={200}
               unoptimized
               className="size-5"
             />
