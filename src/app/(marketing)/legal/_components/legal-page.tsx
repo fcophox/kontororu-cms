@@ -111,10 +111,10 @@ export function LegalPage({ slug }: { slug: LegalSlug }) {
             className="flex items-center rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
             <Image
-              src="/brand/kontororu-logotipo.svg"
-              alt="Kontorōru"
-              width={2677}
-              height={733}
+              src="/brand/kanri-logotipo-negativo.svg"
+              alt="Kanri"
+              width={746}
+              height={200}
               unoptimized
               priority
               className="h-8 w-auto"

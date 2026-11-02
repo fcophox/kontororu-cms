@@ -44,8 +44,8 @@ export default async function LoginPage({
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col space-y-2 text-center lg:text-left">
             <Image
-              src="/brand/kontororu-isotipo.svg"
-              alt="Kontorōru"
+              src="/brand/kanri-isotipo.svg"
+              alt="Kanri"
               width={48}
               height={48}
               className="mb-4 h-12 w-auto self-start"
@@ -106,10 +106,20 @@ export default async function LoginPage({
 
       {/* Lado derecho - Branding */}
       <div className="hidden lg:flex w-1/2 flex-col justify-between bg-zinc-950 p-12 text-zinc-50 relative overflow-hidden">
+        {/* El mismo paisaje que el hero de la landing, con la misma opacidad. */}
+        <Image
+          src="/brand/background.png"
+          alt=""
+          fill
+          priority
+          sizes="50vw"
+          className="pointer-events-none object-cover object-right opacity-10"
+        />
+
         <div className="relative z-10 flex items-center gap-2">
           <Image
-            src="/brand/kontororu-logotipo.svg"
-            alt="Kontorōru"
+            src="/brand/kanri-logotipo-negativo.svg"
+            alt="Kanri"
             width={120}
             height={32}
             className="h-8 w-auto"
