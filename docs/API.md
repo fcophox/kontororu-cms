@@ -1,9 +1,9 @@
-# API de Kontorōru
+# API de Kanri
 
 Referencia para conectar una web a tu contenido. Escrita para quien monta el
 front-end, no para quien mantiene el CMS.
 
-**Base:** `https://tu-instalacion.kontororu.app/api/v1`
+**Base:** `https://tu-instalacion.kanri.app/api/v1`
 
 ---
 
@@ -617,10 +617,14 @@ caché corta del endpoint (30 s); con el evento llegan en el acto.
 Cabeceras de cada entrega:
 
 ```
-X-Kontororu-Event:     post.published
-X-Kontororu-Timestamp: 1785312000
-X-Kontororu-Signature: sha256=<hmac(secreto, "timestamp.cuerpo")>
+X-Kanri-Event:     post.published
+X-Kanri-Timestamp: 1785312000
+X-Kanri-Signature: sha256=<hmac(secreto, "timestamp.cuerpo")>
 ```
+
+Por compatibilidad con integraciones anteriores al cambio de nombre, cada
+entrega lleva también las mismas tres cabeceras con el prefijo antiguo
+`X-Kontororu-*`. Están deprecadas: lee las `X-Kanri-*`.
 
 **Verifica siempre la firma**: sin ella, cualquiera que conozca tu endpoint
 puede forzarte reconstrucciones.
@@ -632,15 +636,15 @@ import { revalidateTag } from "next/cache";
 
 export async function POST(req: Request) {
   const body = await req.text();
-  const ts = req.headers.get("x-kontororu-timestamp")!;
-  const sig = req.headers.get("x-kontororu-signature")!;
+  const ts = req.headers.get("x-kanri-timestamp")!;
+  const sig = req.headers.get("x-kanri-signature")!;
 
   // El timestamp entra en el HMAC para poder rechazar reenvíos.
   if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) {
     return new Response("stale", { status: 401 });
   }
 
-  const expected = `sha256=${createHmac("sha256", process.env.KONTORORU_WEBHOOK_SECRET!)
+  const expected = `sha256=${createHmac("sha256", process.env.KANRI_WEBHOOK_SECRET!)
     .update(`${ts}.${body}`)
     .digest("hex")}`;
 
@@ -694,16 +698,16 @@ entrar en ella.
 ## Ejemplo completo (Next.js)
 
 ```ts
-// lib/kontororu.ts
-const BASE = process.env.KONTORORU_URL!;
-const KEY = process.env.KONTORORU_API_KEY!; // secreta: sólo en servidor
+// lib/kanri.ts
+const BASE = process.env.KANRI_URL!;
+const KEY = process.env.KANRI_API_KEY!; // secreta: sólo en servidor
 
 async function get<T>(path: string, tags: string[]): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { Authorization: `Bearer ${KEY}` },
     next: { tags }, // los invalida tu endpoint de revalidación
   });
-  if (!res.ok) throw new Error(`Kontorōru ${res.status}: ${path}`);
+  if (!res.ok) throw new Error(`Kanri ${res.status}: ${path}`);
   return res.json();
 }
 

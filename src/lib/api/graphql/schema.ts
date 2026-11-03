@@ -1,5 +1,5 @@
 /**
- * Esquema GraphQL de Kontorōru.
+ * Esquema GraphQL de Kanri.
  *
  * Es la MISMA API que REST con otra forma de pedirla: mismos permisos, mismo
  * aislamiento, mismos datos. No hay nada accesible por aquí que no lo esté

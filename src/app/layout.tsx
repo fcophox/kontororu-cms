@@ -16,7 +16,7 @@ const sansation = Sansation({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Kontorōru CMS", template: "%s · Kontorōru" },
+  title: { default: "Kanri CMS", template: "%s · Kanri" },
   description: "CMS Headless Multi-tenant de Rukma Studio",
   icons: { icon: { url: "/brand/favicon.svg", type: "image/svg+xml" } },
 };

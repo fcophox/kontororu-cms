@@ -49,7 +49,7 @@ const REDACTED = "[redactado]";
  * de un `fetch failed`. Estos tres patrones cubren lo que circula por aquí.
  */
 const SECRET_PATTERNS: RegExp[] = [
-  // API Keys de Kontorōru: kntr_live_<prefijo>.<secreto>
+  // API Keys de Kanri: kntr_live_<prefijo>.<secreto>
   /kntr_(live|test)_[A-Za-z0-9]+\.[A-Za-z0-9._-]+/g,
   // JWT: el service role de Supabase lo es, y bypassea RLS por completo.
   /eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g,

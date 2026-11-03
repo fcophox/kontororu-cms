@@ -43,15 +43,15 @@ export const LEGAL_DOCS: Record<LegalSlug, LegalDoc> = {
   privacidad: {
     title: "Política de privacidad",
     description:
-      "Qué datos personales trata Kontorōru, con qué fin, con quién se comparten y cómo ejercer tus derechos.",
+      "Qué datos personales trata Kanri, con qué fin, con quién se comparten y cómo ejercer tus derechos.",
     intro:
-      "Kontorōru es el CMS headless de Rukma Studio. Esta política explica qué datos personales se tratan cuando visitas esta web o usas el panel, para qué, con quién se comparten y qué derechos tienes sobre ellos.",
+      "Kanri es el CMS headless de Rukma Studio. Esta política explica qué datos personales se tratan cuando visitas esta web o usas el panel, para qué, con quién se comparten y qué derechos tienes sobre ellos.",
     sections: [
       {
         heading: "1. Quién es el responsable",
         blocks: [
           `El responsable de los datos de esta web y de las cuentas del panel es Rukma Studio, con domicilio en Chile. Para cualquier asunto relacionado con tus datos puedes escribir a ${LEGAL_EMAIL}.`,
-          "Hay un matiz importante: el contenido que cada cliente publica en su espacio, y los datos que envían los visitantes de la web de ese cliente (por ejemplo, un formulario de contacto conectado a Kontorōru), pertenecen al cliente. Sobre esos datos el responsable es el cliente, y Rukma Studio actúa sólo como encargado: los guarda y los sirve por su cuenta, sin usarlos para nada más. Si enviaste datos a través de la web de un cliente, dirígete primero a él.",
+          "Hay un matiz importante: el contenido que cada cliente publica en su espacio, y los datos que envían los visitantes de la web de ese cliente (por ejemplo, un formulario de contacto conectado a Kanri), pertenecen al cliente. Sobre esos datos el responsable es el cliente, y Rukma Studio actúa sólo como encargado: los guarda y los sirve por su cuenta, sin usarlos para nada más. Si enviaste datos a través de la web de un cliente, dirígete primero a él.",
         ],
       },
       {
@@ -94,7 +94,7 @@ export const LEGAL_DOCS: Record<LegalSlug, LegalDoc> = {
               ],
             },
           },
-          "Kontorōru no usa analítica de visitas ni publicidad, no vende datos, no elabora perfiles ni toma decisiones automatizadas con efectos jurídicos sobre ti. El servicio no está dirigido a menores de 14 años.",
+          "Kanri no usa analítica de visitas ni publicidad, no vende datos, no elabora perfiles ni toma decisiones automatizadas con efectos jurídicos sobre ti. El servicio no está dirigido a menores de 14 años.",
         ],
       },
       {
@@ -162,14 +162,14 @@ export const LEGAL_DOCS: Record<LegalSlug, LegalDoc> = {
   },
   cookies: {
     title: "Política de cookies",
-    description: "Qué cookies y almacenamiento local usa Kontorōru y cómo gestionarlos.",
+    description: "Qué cookies y almacenamiento local usa Kanri y cómo gestionarlos.",
     intro:
-      "Las cookies y el almacenamiento local son pequeños datos que una web guarda en tu navegador. Aquí se detallan todos los que usa Kontorōru. Son pocos y todos necesarios: no hay cookies de analítica, de publicidad ni de redes sociales, y por eso no te pedimos que aceptes nada.",
+      "Las cookies y el almacenamiento local son pequeños datos que una web guarda en tu navegador. Aquí se detallan todos los que usa Kanri. Son pocos y todos necesarios: no hay cookies de analítica, de publicidad ni de redes sociales, y por eso no te pedimos que aceptes nada.",
     sections: [
       {
         heading: "Estrictamente necesarias",
         blocks: [
-          "Hacen funcionar el panel o recuerdan una elección que tú hiciste. No requieren consentimiento y no sirven para seguirte fuera de Kontorōru.",
+          "Hacen funcionar el panel o recuerdan una elección que tú hiciste. No requieren consentimiento y no sirven para seguirte fuera de Kanri.",
           {
             table: {
               head: ["Nombre", "Tipo", "Finalidad", "Duración"],
@@ -195,7 +195,7 @@ export const LEGAL_DOCS: Record<LegalSlug, LegalDoc> = {
               ],
             },
           },
-          "Si sólo visitas la portada o estas páginas sin iniciar sesión, Kontorōru no guarda ninguna cookie en tu navegador.",
+          "Si sólo visitas la portada o estas páginas sin iniciar sesión, Kanri no guarda ninguna cookie en tu navegador.",
         ],
       },
       {
@@ -216,7 +216,7 @@ export const LEGAL_DOCS: Record<LegalSlug, LegalDoc> = {
         blocks: [
           "Puedes bloquear o borrar las cookies y el almacenamiento local desde la configuración de tu navegador. Si bloqueas la cookie de sesión, no podrás iniciar sesión en el panel; si borras kntr-theme, el panel vuelve al tema por defecto.",
           "Cerrar sesión elimina la cookie de sesión.",
-          "Si algún día Kontorōru incorpora una cookie que no sea estrictamente necesaria, se actualizará esta política y se pedirá tu consentimiento antes de activarla.",
+          "Si algún día Kanri incorpora una cookie que no sea estrictamente necesaria, se actualizará esta política y se pedirá tu consentimiento antes de activarla.",
         ],
       },
     ],

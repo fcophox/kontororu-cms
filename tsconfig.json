@@ -27,7 +27,7 @@
         "./src/*"
       ],
       "@sdk/*": [
-        "./packages/kontororu-client/src/*"
+        "./packages/kanri-client/src/*"
       ]
     }
   },

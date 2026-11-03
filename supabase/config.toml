@@ -1,4 +1,4 @@
-project_id = "kontororu-cms"
+project_id = "kanri-cms"
 
 [api]
 enabled = true

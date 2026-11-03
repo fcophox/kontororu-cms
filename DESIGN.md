@@ -1,6 +1,6 @@
 # DESIGN — Master Control
 
-> Fuente de verdad del diseño visual de Kontorōru CMS.
+> Fuente de verdad del diseño visual de Kanri CMS.
 > Los valores editables viven en [`tokens.yml`](tokens.yml).
 
 ## Cómo funciona

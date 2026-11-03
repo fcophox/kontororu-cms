@@ -371,7 +371,7 @@ export function LocalesDemo() {
 
 /* ─────────────────────────────────────────────────────────────
    3 · Tu web lo recibe
-   El cable se dibuja de Kontorōru a la web, viaja el nombre del
+   El cable se dibuja de Kanri a la web, viaja el nombre del
    evento, al otro lado se enciende un anillo, el estado pasa por
    «revalidando» y aterriza en «actualizado», y entonces se
    escribe la llamada que lo lee todo.
@@ -389,7 +389,7 @@ export function ApiDemo() {
         <div className="flex shrink-0 items-center gap-3">
           <div className="flex w-24 shrink-0 flex-col items-center gap-1.5 rounded-lg border bg-background/40 px-2 py-5">
             <Radio className="size-4 text-muted-foreground" />
-            <span className="text-[10px] font-medium">Kontorōru</span>
+            <span className="text-[10px] font-medium">Kanri</span>
           </div>
 
           <div className="relative min-w-0 flex-1">
@@ -442,7 +442,7 @@ export function ApiDemo() {
             className="animate-demo-pop col-start-1 row-start-2 font-mono text-[10px] text-muted-foreground"
             style={{ animationDelay: "2250ms" }}
           >
-            firma verificada · x-kontororu-signature
+            firma verificada · x-kanri-signature
           </span>
         </div>
 
@@ -452,7 +452,7 @@ export function ApiDemo() {
               <span style={{ color: "var(--code-keyword)" }}>const</span>
               <span className="text-muted-foreground">{" { data } = "}</span>
               <span style={{ color: "var(--code-keyword)" }}>await</span>
-              <span className="text-muted-foreground"> kontororu.</span>
+              <span className="text-muted-foreground"> kanri.</span>
               <span style={{ color: "var(--code-fn)" }}>listPosts</span>
               <span className="text-muted-foreground">()</span>
             </Typed>

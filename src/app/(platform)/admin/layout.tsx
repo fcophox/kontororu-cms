@@ -15,9 +15,9 @@ import { getCurrentUser } from "@/lib/auth/tenant-context";
 export async function generateMetadata() {
   const user = await getCurrentUser();
   // `absolute` evita que la plantilla del layout raíz añada su sufijo y deje
-  // el título repetido ("Kontorōru · Kontorōru").
+  // el título repetido ("Kanri · Kanri").
   return {
-    title: { absolute: user?.isSuperadmin ? "Plataforma · Kontorōru" : "Kontorōru" },
+    title: { absolute: user?.isSuperadmin ? "Plataforma · Kanri" : "Kanri" },
   };
 }
 

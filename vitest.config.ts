@@ -20,7 +20,7 @@ export default defineConfig({
       "server-only": path.resolve(__dirname, "./tests/stubs/server-only.ts"),
       // El SDK se prueba desde su CÓDIGO FUENTE, no desde `dist`: así un
       // cambio que rompa el contrato falla en el acto, sin recompilar.
-      "@sdk": path.resolve(__dirname, "./packages/kontororu-client/src"),
+      "@sdk": path.resolve(__dirname, "./packages/kanri-client/src"),
     },
   },
 });

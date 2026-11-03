@@ -1,4 +1,4 @@
-export type KontororuErrorCode =
+export type KanriErrorCode =
   | "unauthorized"
   | "forbidden"
   | "not_found"
@@ -17,20 +17,20 @@ export type KontororuErrorCode =
  * Distinguirlos parseando el mensaje sería frágil y además rompería el día
  * que se traduzcan.
  */
-export class KontororuError extends Error {
-  readonly code: KontororuErrorCode;
+export class KanriError extends Error {
+  readonly code: KanriErrorCode;
   readonly status: number;
   /** Segundos que pide esperar la API. Sólo en `rate_limited`. */
   readonly retryAfter?: number;
 
   constructor(
-    code: KontororuErrorCode,
+    code: KanriErrorCode,
     message: string,
     status: number,
     retryAfter?: number,
   ) {
     super(message);
-    this.name = "KontororuError";
+    this.name = "KanriError";
     this.code = code;
     this.status = status;
     this.retryAfter = retryAfter;

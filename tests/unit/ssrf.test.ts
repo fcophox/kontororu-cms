@@ -11,7 +11,7 @@ describe("rejectOutboundUrl", () => {
   it("acepta endpoints públicos por HTTPS", () => {
     for (const url of [
       "https://rukma.studio/api/revalidate",
-      "https://api.cliente.com:8443/hooks/kontororu",
+      "https://api.cliente.com:8443/hooks/kanri",
       "https://sub.dominio.co.uk/x?token=abc",
     ]) {
       expect(rejectOutboundUrl(url), url).toBeNull();

@@ -14,7 +14,7 @@
 # =====================================================================
 set -euo pipefail
 
-pkg_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../packages/kontororu-client" && pwd)"
+pkg_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../packages/kanri-client" && pwd)"
 tsc="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/node_modules/.bin/tsc"
 
 work="$(mktemp -d)"
@@ -36,17 +36,17 @@ npm install "$tarball" --silent --no-audit --no-fund
 echo "→ Importando desde fuera…"
 cat > smoke.mjs <<'EOF'
 import assert from "node:assert/strict";
-import { createClient, KontororuClient, KontororuError } from "@rukma/kontororu-client";
+import { createClient, KanriClient, KanriError } from "@rukma/kanri-client";
 import {
   verifyWebhook,
   affectedTags,
   WebhookVerificationError,
-} from "@rukma/kontororu-client/webhooks";
+} from "@rukma/kanri-client/webhooks";
 
 for (const [nombre, valor] of Object.entries({
   createClient,
-  KontororuClient,
-  KontororuError,
+  KanriClient,
+  KanriError,
   verifyWebhook,
   affectedTags,
   WebhookVerificationError,
@@ -79,8 +79,8 @@ node smoke.mjs
 
 echo "→ Comprobando que los tipos resuelven en un consumidor…"
 cat > uso.ts <<'EOF'
-import { createClient, type Post, type GraphQLResult } from "@rukma/kontororu-client";
-import { verifyWebhook } from "@rukma/kontororu-client/webhooks";
+import { createClient, type Post, type GraphQLResult } from "@rukma/kanri-client";
+import { verifyWebhook } from "@rukma/kanri-client/webhooks";
 
 const cms = createClient({ url: "https://x.test", apiKey: "k" });
 

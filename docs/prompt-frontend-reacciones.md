@@ -7,7 +7,7 @@
 
 Necesito un componente de reacción para las páginas de contenido: quien lee un
 artículo puede pulsar un gesto —un me gusta, un aplauso, una carita— y ver
-cuánta gente lo ha pulsado antes. El contador vive en el CMS (Kontorōru), que
+cuánta gente lo ha pulsado antes. El contador vive en el CMS (Kanri), que
 ya expone el endpoint. Falta el lado de la web.
 
 ## Qué hay que construir

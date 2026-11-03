@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createClient as createSupabase } from "@supabase/supabase-js";
 import { createHmac } from "node:crypto";
-import { KontororuClient, KontororuError } from "@sdk/index";
+import { KanriClient, KanriError } from "@sdk/index";
 import { verifyWebhook, affectedTags, WebhookVerificationError } from "@sdk/webhooks";
 
 /**
@@ -20,7 +20,7 @@ const API = process.env.TEST_APP_URL ?? "http://localhost:3000";
 const admin = createSupabase(URL_BASE, SERVICE, { auth: { persistSession: false } });
 const created: string[] = [];
 
-let client: KontororuClient;
+let client: KanriClient;
 let tenantId: string;
 
 beforeAll(async () => {
@@ -96,7 +96,7 @@ beforeAll(async () => {
     p_scopes: ["content:read", "media:read"],
   });
 
-  client = new KontororuClient({
+  client = new KanriClient({
     url: API,
     apiKey: (key as { plain_key: string }[])[0].plain_key,
   });
@@ -109,7 +109,7 @@ afterAll(async () => {
 describe("configuración", () => {
   it("acepta la URL con y sin /api/v1", async () => {
     // Copiar la URL del panel no debería obligar a recordar el sufijo.
-    const conSufijo = new KontororuClient({
+    const conSufijo = new KanriClient({
       url: `${API}/api/v1`,
       apiKey: (client as unknown as { apiKey: string }).apiKey,
     });
@@ -118,7 +118,7 @@ describe("configuración", () => {
   });
 
   it("falla al construirse si falta la clave", () => {
-    expect(() => new KontororuClient({ url: API, apiKey: "" })).toThrow(/API Key/i);
+    expect(() => new KanriClient({ url: API, apiKey: "" })).toThrow(/API Key/i);
   });
 });
 
@@ -177,12 +177,12 @@ describe("errores", () => {
   it("un slug inexistente es un error reconocible, no un throw genérico", async () => {
     // Es el caso que una web convierte en su propio 404 en lugar de romper
     // el build, así que tiene que poder distinguirse sin leer el mensaje.
-    await expect(client.getPost("no-existe")).rejects.toThrow(KontororuError);
+    await expect(client.getPost("no-existe")).rejects.toThrow(KanriError);
 
     try {
       await client.getPost("no-existe");
     } catch (error) {
-      const e = error as KontororuError;
+      const e = error as KanriError;
       expect(e.isNotFound).toBe(true);
       expect(e.isRetryable).toBe(false);
       expect(e.status).toBe(404);
@@ -190,13 +190,13 @@ describe("errores", () => {
   });
 
   it("una clave inválida da unauthorized y NO se reintenta", async () => {
-    const malo = new KontororuClient({ url: API, apiKey: "kntr_live_falsa.inventada", retries: 3 });
+    const malo = new KanriClient({ url: API, apiKey: "kntr_live_falsa.inventada", retries: 3 });
 
     try {
       await malo.listPosts();
       expect.unreachable("debería haber lanzado");
     } catch (error) {
-      const e = error as KontororuError;
+      const e = error as KanriError;
       expect(e.code).toBe("unauthorized");
       // Reintentar una clave mal configurada sólo gasta el cupo por IP.
       expect(e.isRetryable).toBe(false);
@@ -208,12 +208,12 @@ describe("errores", () => {
       await client.listPosts({ locale: "ja" });
       expect.unreachable("debería haber lanzado");
     } catch (error) {
-      expect((error as KontororuError).code).toBe("bad_request");
+      expect((error as KanriError).code).toBe("bad_request");
     }
   });
 
   it("aborta si el servidor no responde a tiempo", async () => {
-    const lento = new KontororuClient({
+    const lento = new KanriClient({
       url: "http://10.255.255.1",
       apiKey: "kntr_live_x.y",
       timeoutMs: 300,
@@ -224,7 +224,7 @@ describe("errores", () => {
       await lento.listPosts();
       expect.unreachable("debería haber lanzado");
     } catch (error) {
-      expect((error as KontororuError).code).toBe("network_error");
+      expect((error as KanriError).code).toBe("network_error");
     }
   }, 15_000);
 });
@@ -269,7 +269,7 @@ describe("graphql", () => {
       p_scopes: ["content:read"],
     });
 
-    const limitado = new KontororuClient({
+    const limitado = new KanriClient({
       url: API,
       apiKey: (soloContenido as { plain_key: string }[])[0].plain_key,
     });
@@ -285,7 +285,7 @@ describe("graphql", () => {
   });
 
   it("un fallo de credenciales sí lanza, como en el resto del cliente", async () => {
-    const impostor = new KontororuClient({ url: API, apiKey: "kntr_live_falsa.inventada" });
+    const impostor = new KanriClient({ url: API, apiKey: "kntr_live_falsa.inventada" });
 
     await expect(impostor.graphql(`{ posts { nodes { slug } } }`)).rejects.toMatchObject({
       code: "unauthorized",
@@ -340,11 +340,24 @@ describe("webhooks", () => {
     const result = verifyWebhook({
       body,
       secret,
-      headers: { "x-kontororu-timestamp": String(ts), "x-kontororu-signature": sign(body, ts) },
+      headers: { "x-kanri-timestamp": String(ts), "x-kanri-signature": sign(body, ts) },
     });
 
     expect(result.event).toBe("post.published");
     expect(result.data.slug).toBe("hola-mundo");
+  });
+
+  it("acepta las cabeceras con el prefijo antiguo x-kontororu-*", () => {
+    const body = payload();
+    const ts = Math.floor(Date.now() / 1000);
+
+    const result = verifyWebhook({
+      body,
+      secret,
+      headers: { "x-kontororu-timestamp": String(ts), "x-kontororu-signature": sign(body, ts) },
+    });
+
+    expect(result.event).toBe("post.published");
   });
 
   it("rechaza una firma alterada", () => {
@@ -356,8 +369,8 @@ describe("webhooks", () => {
         body,
         secret,
         headers: {
-          "x-kontororu-timestamp": String(ts),
-          "x-kontororu-signature": tamper(sign(body, ts)),
+          "x-kanri-timestamp": String(ts),
+          "x-kanri-signature": tamper(sign(body, ts)),
         },
       }),
     ).toThrow(WebhookVerificationError);
@@ -372,7 +385,7 @@ describe("webhooks", () => {
       verifyWebhook({
         body: payload({ slug: "otra-cosa" }),
         secret,
-        headers: { "x-kontororu-timestamp": String(ts), "x-kontororu-signature": firmaValida },
+        headers: { "x-kanri-timestamp": String(ts), "x-kanri-signature": firmaValida },
       }),
     ).toThrow(/firma/i);
   });
@@ -388,8 +401,8 @@ describe("webhooks", () => {
         body,
         secret,
         headers: {
-          "x-kontororu-timestamp": String(viejo),
-          "x-kontororu-signature": sign(body, viejo),
+          "x-kanri-timestamp": String(viejo),
+          "x-kanri-signature": sign(body, viejo),
         },
       });
       expect.unreachable("debería haber lanzado");
@@ -411,8 +424,8 @@ describe("webhooks", () => {
     const body = payload();
     const ts = Math.floor(Date.now() / 1000);
     const headers = new Headers({
-      "x-kontororu-timestamp": String(ts),
-      "x-kontororu-signature": sign(body, ts),
+      "x-kanri-timestamp": String(ts),
+      "x-kanri-signature": sign(body, ts),
     });
 
     expect(verifyWebhook({ body, secret, headers }).data.locale).toBe("es");
@@ -425,7 +438,7 @@ describe("webhooks", () => {
     const result = verifyWebhook({
       body,
       secret,
-      headers: { "x-kontororu-timestamp": String(ts), "x-kontororu-signature": sign(body, ts) },
+      headers: { "x-kanri-timestamp": String(ts), "x-kanri-signature": sign(body, ts) },
     });
 
     const tags = affectedTags(result);

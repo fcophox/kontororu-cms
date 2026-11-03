@@ -1,7 +1,7 @@
 import type { TenantLimits } from "@/lib/content/json";
 
 /**
- * Planes comerciales de Kontorōru.
+ * Planes comerciales de Kanri.
  *
  * Vive en el código y no en una tabla a propósito: los planes cambian con el
  * despliegue, no en caliente, y tenerlos aquí permite que un cambio de precios

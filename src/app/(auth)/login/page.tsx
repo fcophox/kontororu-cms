@@ -131,12 +131,12 @@ export default async function LoginPage({
           <Quote className="size-10 text-zinc-700 mb-6 rotate-180" />
           <blockquote className="space-y-6">
             <p className="text-3xl font-medium leading-snug">
-              &quot;Kontorōru nace de nuestra visión por devolver el control absoluto de los contenidos a sus creadores. Una experiencia sin ataduras, diseñada a medida.&quot;
+              &quot;Kanri nace de nuestra visión por devolver el control absoluto de los contenidos a sus creadores. Una experiencia sin ataduras, diseñada a medida.&quot;
             </p>
             <footer className="flex items-center gap-4">
               <div className="flex flex-col">
                 <span className="font-semibold text-zinc-50">Equipo de Rukma Studio</span>
-                <span className="text-sm text-zinc-400">Creadores de Kontorōru</span>
+                <span className="text-sm text-zinc-400">Creadores de Kanri</span>
               </div>
             </footer>
           </blockquote>

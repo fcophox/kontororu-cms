@@ -35,7 +35,7 @@ export default function GlobalError({
         }}
       >
         <div style={{ maxWidth: 420, padding: 24, textAlign: "center" }}>
-          <h1 style={{ fontSize: 20, fontWeight: 600 }}>Kontorōru no ha podido arrancar</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 600 }}>Kanri no ha podido arrancar</h1>
           <p style={{ marginTop: 8, fontSize: 14, color: "#71717a" }}>
             Ha fallado algo fuera de la aplicación.
             {error.digest ? ` Referencia: ${error.digest}.` : ""}

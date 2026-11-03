@@ -36,7 +36,7 @@ import { SiteHeader } from "./_components/site-header";
 const STEP_DEMOS = [EditorDemo, LocalesDemo, ApiDemo];
 
 export const metadata: Metadata = {
-  title: "Kontorōru · El CMS de tu web, bajo control",
+  title: "Kanri · El CMS de tu web, bajo control",
   description:
     "CMS headless multi-tenant de Rukma Studio. Publica desde un panel con tu marca y tu web recibe el contenido por API en cuanto cambia.",
 };
@@ -224,7 +224,7 @@ export default async function LandingPage() {
                 className="animate-rise-in-blur mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground text-pretty"
                 style={{ animationDelay: "120ms" }}
               >
-                Kontorōru separa lo que escribes de dónde se ve. Tú publicas desde un panel con
+                Kanri separa lo que escribes de dónde se ve. Tú publicas desde un panel con
                 tu marca; tu web recibe el contenido por API en el momento exacto en que cambia.
               </p>
 
@@ -459,7 +459,7 @@ export default async function LandingPage() {
                 Clientes
               </p>
               <h2 className="mt-3 max-w-2xl text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-                Quién publica ya con Kontorōru
+                Quién publica ya con Kanri
               </h2>
             </Reveal>
 
@@ -584,7 +584,7 @@ export default async function LandingPage() {
               unoptimized
               className="size-5"
             />
-            <span className="font-semibold">Kontorōru</span>
+            <span className="font-semibold">Kanri</span>
             <span className="text-muted-foreground">· un producto de Rukma Studio</span>
           </div>
           {/* Parte en dos líneas en móvil: con los enlaces legales ya no cabe

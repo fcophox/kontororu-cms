@@ -1,4 +1,4 @@
-# Kontorōru CMS
+# Kanri CMS
 
 CMS Headless Multi-tenant · producto SaaS de **Rukma Studio**.
 

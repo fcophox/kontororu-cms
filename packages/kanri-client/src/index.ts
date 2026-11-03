@@ -1,5 +1,5 @@
-export { KontororuClient, createClient, type ClientOptions } from "./client.js";
-export { KontororuError, type KontororuErrorCode } from "./errors.js";
+export { KanriClient, createClient, type ClientOptions } from "./client.js";
+export { KanriError, type KanriErrorCode } from "./errors.js";
 export type {
   Category,
   GraphQLError,

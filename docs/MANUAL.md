@@ -1,4 +1,4 @@
-# Manual de Kontorōru
+# Manual de Kanri
 
 Cómo se usa el CMS, en orden: quién es quién, cómo se da de alta un cliente y
 qué hace cada pantalla.
@@ -10,7 +10,7 @@ personas de cada cliente—, no para quien lo programa.
 
 ## 1. Las dos mitades del producto
 
-Kontorōru tiene dos zonas separadas, y conviene no confundirlas:
+Kanri tiene dos zonas separadas, y conviene no confundirlas:
 
 **El panel de plataforma** (`/admin`) es de Rukma Studio. Desde ahí se dan de
 alta clientes, se cambian planes y se suspende el servicio. Tiene una barra
@@ -99,7 +99,7 @@ por email al propietario, y quedas en su ficha.
 > ⚠️ **El identificador no se puede cambiar después.** Es la URL del cliente y
 > viaja en enlaces y en integraciones. Piénsalo antes de darle a crear.
 
-Si el email ya tenía cuenta en Kontorōru —una agencia que lleva varios
+Si el email ya tenía cuenta en Kanri —una agencia que lleva varios
 clientes— se reutiliza en lugar de duplicarla.
 
 **Si la invitación falla, el espacio no se crea.** Es deliberado: un espacio
@@ -215,7 +215,7 @@ contraseña — por eso queda reservada a Rukma Studio y registrada en
 Actividad. Entrégasela por un canal seguro y pídele que la cambie en
 **Configuración → Perfil** al primer acceso.
 
-Si el email ya tiene cuenta en Kontorōru —porque colabora con otro cliente—
+Si el email ya tiene cuenta en Kanri —porque colabora con otro cliente—
 se reutiliza esa cuenta y conserva su contraseña actual; sólo se le añade al
 espacio.
 
@@ -281,7 +281,7 @@ siguiente publicación.
 
 1. **Nuevo webhook** → nombre, dirección (`https://…`) y eventos.
 2. Copia el **secreto**: su web lo necesita para comprobar que el aviso viene
-   de verdad de Kontorōru.
+   de verdad de Kanri.
 
 Sólo se aceptan direcciones públicas por HTTPS. Abajo se ve el registro de
 envíos con su resultado; los fallos se reintentan solos con espera creciente
@@ -340,5 +340,5 @@ no un error.
 ## 7. Para el equipo técnico del cliente
 
 Conectar una web al CMS: **[API.md](API.md)**, o directamente el cliente
-oficial `@rukma/kontororu-client`, que además trae la verificación de firma de
+oficial `@rukma/kanri-client`, que además trae la verificación de firma de
 los webhooks ya resuelta.

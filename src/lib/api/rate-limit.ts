@@ -59,7 +59,7 @@ export type RateVerdict = {
  * revierte con una tabla precalculada en minutos.
  */
 function hashIp(ip: string): string {
-  const salt = process.env.CRON_SECRET ?? "kontororu-dev-salt";
+  const salt = process.env.CRON_SECRET ?? "kanri-dev-salt";
   return createHash("sha256").update(`${ip}:${salt}`).digest("hex").slice(0, 32);
 }
 

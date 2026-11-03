@@ -1,6 +1,6 @@
 # Publicar el SDK
 
-`@rukma/kontororu-client` se publica en **npm público** bajo licencia MIT.
+`@rukma/kanri-client` se publica en **npm público** bajo licencia MIT.
 
 Publicar es irreversible: una versión no se puede sobrescribir, y `npm
 unpublish` sólo está disponible durante 72 h y rompe a quien ya la instaló. De
@@ -27,7 +27,7 @@ i` de un cliente, cuando ya no se puede republicar esa versión.
 
 ## Versión
 
-La versión vive en `packages/kontororu-client/package.json` y se sube a mano.
+La versión vive en `packages/kanri-client/package.json` y se sube a mano.
 
 Lo que sale por el SDK es contrato con las webs de tus clientes, así que el
 criterio es el del consumidor, no el del repo:
@@ -44,7 +44,7 @@ el momento de romper cosas barato; en cuanto se publique `1.0.0` deja de serlo.
 
 ```bash
 npm whoami                      # que la sesión sea la cuenta correcta
-npm --prefix packages/kontororu-client publish
+npm --prefix packages/kanri-client publish
 ```
 
 `prepublishOnly` compila antes, y `publishConfig.access` ya está en `public`:
@@ -56,14 +56,14 @@ Si la cuenta tiene 2FA, npm pedirá el OTP.
 ## Después
 
 ```bash
-npm view @rukma/kontororu-client
+npm view @rukma/kanri-client
 ```
 
 Y una instalación real desde un proyecto cualquiera, que es la única prueba
 que cuenta:
 
 ```bash
-npm i @rukma/kontororu-client
+npm i @rukma/kanri-client
 ```
 
 Etiqueta el commit para poder volver a él:

@@ -1,5 +1,5 @@
 {
-  "name": "kontororu-cms",
+  "name": "kanri-cms",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -13,7 +13,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "sdk:build": "npm --prefix packages/kontororu-client run build",
+    "sdk:build": "npm --prefix packages/kanri-client run build",
     "sdk:check": "./scripts/check-sdk-package.sh",
     "db:reset": "supabase db reset",
     "db:types": "./scripts/gen-types.sh",

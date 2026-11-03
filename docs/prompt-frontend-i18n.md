@@ -6,7 +6,7 @@
 ---
 
 Necesito que la web sirva el contenido en el idioma que el visitante elija.
-El CMS (Kontorōru) ya guarda cada idioma como una entrada independiente y lo
+El CMS (Kanri) ya guarda cada idioma como una entrada independiente y lo
 expone por su API headless. Falta el lado de la web.
 
 ## Cómo funciona el modelo de idiomas

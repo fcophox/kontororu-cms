@@ -1,5 +1,5 @@
 /**
- * Formas públicas de la API de Kontorōru.
+ * Formas públicas de la API de Kanri.
  *
  * Se escriben a mano en vez de generarse desde el esquema de Postgres, y es
  * deliberado: lo que la API devuelve es un CONTRATO, no un reflejo de las
@@ -7,7 +7,7 @@
  * columna rompería a los clientes— y expondría campos que nunca salen.
  */
 
-import type { KontororuErrorCode } from "./errors.js";
+import type { KanriErrorCode } from "./errors.js";
 
 export type Locale = string;
 
@@ -130,7 +130,7 @@ export type RateLimit = {
 export type GraphQLError = {
   message: string;
   path?: (string | number)[];
-  extensions?: { code?: KontororuErrorCode };
+  extensions?: { code?: KanriErrorCode };
 };
 
 /**

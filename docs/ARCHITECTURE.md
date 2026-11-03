@@ -1,4 +1,4 @@
-# Kontorōru CMS — Arquitectura Técnica
+# Kanri CMS — Arquitectura Técnica
 
 > CMS Headless Multi-tenant · Producto SaaS de **Rukma Studio**
 > Stack: Next.js (App Router) · Tailwind CSS · Shadcn/UI · Supabase (Postgres + RLS + Auth + Storage)
@@ -43,7 +43,7 @@ erDiagram
 
     TENANTS {
         uuid id PK
-        citext slug UK "kontororu.app/t/rukma"
+        citext slug UK "kanri.app/t/rukma"
         text name
         enum status "TRIAL|ACTIVE|SUSPENDED|CANCELLED"
         enum plan "FREE|PRO|ENTERPRISE"
@@ -221,7 +221,7 @@ Sin ese matiz, activar S3 en un cliente rompería todas sus imágenes anteriores
 ## 3. Estructura de código (Next.js App Router)
 
 ```
-kontororu-cms/
+kanri-cms/
 ├── src/
 │   ├── app/
 │   │   ├── (marketing)/                 # Landing pública de Rukma Studio
@@ -526,9 +526,9 @@ transacción. La cola desacopla la escritura de la entrega.
 Cabeceras de firma:
 
 ```
-X-Kontororu-Event:     post.published
-X-Kontororu-Timestamp: 1785312000
-X-Kontororu-Signature: sha256=<hmac(secret, "timestamp.body")>
+X-Kanri-Event:     post.published
+X-Kanri-Timestamp: 1785312000
+X-Kanri-Signature: sha256=<hmac(secret, "timestamp.body")>
 ```
 
 El timestamp entra en el HMAC para que el receptor pueda rechazar replays con una
@@ -541,13 +541,13 @@ import { revalidateTag } from "next/cache";
 
 export async function POST(req: Request) {
   const body = await req.text();
-  const ts = req.headers.get("x-kontororu-timestamp")!;
-  const sig = req.headers.get("x-kontororu-signature")!;
+  const ts = req.headers.get("x-kanri-timestamp")!;
+  const sig = req.headers.get("x-kanri-signature")!;
 
   if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) {
     return new Response("stale", { status: 401 });
   }
-  const expected = `sha256=${createHmac("sha256", process.env.KONTORORU_WEBHOOK_SECRET!)
+  const expected = `sha256=${createHmac("sha256", process.env.KANRI_WEBHOOK_SECRET!)
     .update(`${ts}.${body}`).digest("hex")}`;
   if (sig.length !== expected.length ||
       !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
@@ -631,7 +631,7 @@ export async function POST(req: Request) {
 - [ ] Adapter S3/R2 + CDN propio con transformación de imágenes
 - [ ] Facturación (Stripe) ligada a `plan` y `limits`
 - [ ] Enterprise: aprovisionamiento de BD dedicada (`db_mode = 'DEDICATED'`)
-- [ ] SDK oficial `@rukma/kontororu-client` (TS) + plantillas Next.js/Astro
+- [ ] SDK oficial `@rukma/kanri-client` (TS) + plantillas Next.js/Astro
 - [ ] Analítica de contenido y observabilidad (Sentry + Logflare)
 
 **Deuda técnica aceptada en Fase 1, a pagar en Fase 3:** sin versionado de contenido,

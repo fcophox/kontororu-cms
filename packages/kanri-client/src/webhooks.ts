@@ -72,13 +72,19 @@ export function verifyWebhook(options: {
 }): WebhookPayload {
   const { body, secret, toleranceSeconds = DEFAULT_TOLERANCE_SECONDS } = options;
 
-  const timestamp = readHeader(options.headers, "x-kontororu-timestamp");
-  const signature = readHeader(options.headers, "x-kontororu-signature");
+  // `x-kontororu-*` es el nombre anterior de las cabeceras; se acepta para
+  // que una instalación que aún no las haya renombrado no se rompa.
+  const timestamp =
+    readHeader(options.headers, "x-kanri-timestamp") ??
+    readHeader(options.headers, "x-kontororu-timestamp");
+  const signature =
+    readHeader(options.headers, "x-kanri-signature") ??
+    readHeader(options.headers, "x-kontororu-signature");
 
   if (!timestamp || !signature) {
     throw new WebhookVerificationError(
       "missing-headers",
-      "Faltan las cabeceras de firma de Kontorōru.",
+      "Faltan las cabeceras de firma de Kanri.",
     );
   }
 

@@ -88,7 +88,7 @@ export default async function UpdatePasswordPage({
 
       <div className="hidden lg:flex w-1/2 flex-col justify-between bg-zinc-950 p-12 text-zinc-50 relative overflow-hidden">
         <div className="relative z-10 flex items-center gap-2">
-          <span className="text-xl font-bold tracking-tight">Kontorōru</span>
+          <span className="text-xl font-bold tracking-tight">Kanri</span>
         </div>
         <div className="relative z-10 max-w-lg">
           <Quote className="size-10 text-zinc-700 mb-6 rotate-180" />
@@ -99,7 +99,7 @@ export default async function UpdatePasswordPage({
             <footer className="flex items-center gap-4">
               <div className="flex flex-col">
                 <span className="font-semibold text-zinc-50">Equipo de Rukma Studio</span>
-                <span className="text-sm text-zinc-400">Creadores de Kontorōru</span>
+                <span className="text-sm text-zinc-400">Creadores de Kanri</span>
               </div>
             </footer>
           </blockquote>

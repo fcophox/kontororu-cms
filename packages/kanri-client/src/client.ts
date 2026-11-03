@@ -1,4 +1,4 @@
-import { KontororuError, type KontororuErrorCode } from "./errors.js";
+import { KanriError, type KanriErrorCode } from "./errors.js";
 import type {
   GraphQLResult,
   Category,
@@ -45,7 +45,7 @@ type RequestExtras = {
 
 const SLEEP = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export class KontororuClient {
+export class KanriClient {
   private readonly base: string;
   private readonly apiKey: string;
   private readonly timeoutMs: number;
@@ -56,8 +56,8 @@ export class KontororuClient {
   lastRateLimit: RateLimit | null = null;
 
   constructor(options: ClientOptions) {
-    if (!options.apiKey) throw new Error("Falta la API Key de Kontorōru.");
-    if (!options.url) throw new Error("Falta la URL de Kontorōru.");
+    if (!options.apiKey) throw new Error("Falta la API Key de Kanri.");
+    if (!options.url) throw new Error("Falta la URL de Kanri.");
 
     // Se acepta con y sin `/api/v1` para que copiar la URL del panel funcione.
     const trimmed = options.url.replace(/\/+$/, "");
@@ -140,7 +140,7 @@ export class KontororuClient {
    * Un método que lanzase tiraría la mitad que sí llegó.
    *
    * Los fallos de transporte —clave inválida, cupo agotado, 5xx— sí lanzan
-   * `KontororuError`, igual que en el resto del cliente: ahí no hay nada
+   * `KanriError`, igual que en el resto del cliente: ahí no hay nada
    * parcial que conservar.
    *
    * ```ts
@@ -184,13 +184,13 @@ export class KontororuClient {
     init: RequestInit,
     extras: RequestExtras = {},
   ): Promise<T> {
-    let lastError: KontororuError | null = null;
+    let lastError: KanriError | null = null;
 
     for (let attempt = 0; attempt <= this.retries; attempt++) {
       try {
         return await this.attempt<T>(url, init, extras);
       } catch (error) {
-        if (!(error instanceof KontororuError) || !error.isRetryable) throw error;
+        if (!(error instanceof KanriError) || !error.isRetryable) throw error;
 
         lastError = error;
         if (attempt === this.retries) break;
@@ -230,9 +230,9 @@ export class KontororuClient {
       } as RequestInit);
     } catch (error) {
       const aborted = error instanceof Error && error.name === "AbortError";
-      throw new KontororuError(
+      throw new KanriError(
         "network_error",
-        aborted ? `Kontorōru no respondió en ${this.timeoutMs} ms.` : "No se pudo contactar con Kontorōru.",
+        aborted ? `Kanri no respondió en ${this.timeoutMs} ms.` : "No se pudo contactar con Kanri.",
         0,
       );
     } finally {
@@ -256,26 +256,26 @@ export class KontororuClient {
     }
   }
 
-  private async toError(response: Response): Promise<KontororuError> {
+  private async toError(response: Response): Promise<KanriError> {
     const retryAfter = Number(response.headers.get("retry-after")) || undefined;
 
-    let code: KontororuErrorCode = "server_error";
-    let message = `Kontorōru respondió ${response.status}.`;
+    let code: KanriErrorCode = "server_error";
+    let message = `Kanri respondió ${response.status}.`;
 
     try {
       const body = (await response.json()) as { error?: { code?: string; message?: string } };
-      if (body.error?.code) code = body.error.code as KontororuErrorCode;
+      if (body.error?.code) code = body.error.code as KanriErrorCode;
       if (body.error?.message) message = body.error.message;
     } catch {
       // Una respuesta que no es JSON —un 502 del proxy, por ejemplo— sigue
       // siendo un error válido: se conserva el status y se sigue.
     }
 
-    return new KontororuError(code, message, response.status, retryAfter);
+    return new KanriError(code, message, response.status, retryAfter);
   }
 }
 
 /** Atajo para el caso normal: un cliente por proceso. */
-export function createClient(options: ClientOptions): KontororuClient {
-  return new KontororuClient(options);
+export function createClient(options: ClientOptions): KanriClient {
+  return new KanriClient(options);
 }

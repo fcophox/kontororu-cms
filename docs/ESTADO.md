@@ -21,7 +21,7 @@ Detalle completo en **[RUNBOOK-LOCAL.md](RUNBOOK-LOCAL.md)**.
 npm run test:unit          # 53 · funciones puras, sin red
 supabase test db           # 96 · RLS, RBAC, i18n, historial (BLOQUEANTE)
 npm run test:integration   # 99 · pila real, requiere la app en :3000
-npm run sdk:build          # compila packages/kontororu-client
+npm run sdk:build          # compila packages/kanri-client
 npm run sdk:check          # empaqueta, instala y lo importa desde fuera
 npx tsc --noEmit && npx eslint .
 ```
@@ -49,7 +49,7 @@ despliegue: ver **[TESTING-RLS.md](TESTING-RLS.md)**.
 | Panel SuperAdmin: alta de clientes, planes, límites, auditoría | ✅ |
 | Almacenamiento S3/R2 | ✅ migración sin ventana de corte |
 | Multi-idioma | ✅ grupo de traducción |
-| SDK `@rukma/kontororu-client` | ✅ cliente tipado + verificación de webhooks |
+| SDK `@rukma/kanri-client` | ✅ cliente tipado + verificación de webhooks |
 
 ## Qué falta
 

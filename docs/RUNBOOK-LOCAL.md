@@ -1,4 +1,4 @@
-# Levantar Kontorōru en local y verificarlo
+# Levantar Kanri en local y verificarlo
 
 Guía para pasar de "el código compila" a "el aislamiento multi-tenant está
 demostrado contra una base de datos real". Escrita para macOS (Apple Silicon).

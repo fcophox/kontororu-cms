@@ -1,9 +1,9 @@
 {
-  "name": "@rukma/kontororu-client",
+  "name": "@rukma/kanri-client",
   "version": "0.1.0",
-  "description": "Cliente oficial de Kontorōru CMS: contenido tipado y verificación de webhooks.",
+  "description": "Cliente oficial de Kanri CMS: contenido tipado y verificación de webhooks.",
   "license": "MIT",
-  "keywords": ["cms", "headless", "kontororu", "graphql", "webhooks"],
+  "keywords": ["cms", "headless", "kanri", "graphql", "webhooks"],
   "type": "module",
   "files": ["dist"],
   "exports": {

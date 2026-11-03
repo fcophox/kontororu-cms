@@ -62,7 +62,7 @@ export function PanelMock() {
         <span className="size-2.5 rounded-full bg-muted-foreground/30" />
         <span className="size-2.5 rounded-full bg-muted-foreground/30" />
         <div className="ml-3 flex-1 truncate rounded-md bg-muted px-3 py-1 text-center font-mono text-[11px] text-muted-foreground">
-          kontororu.app/tu-estudio/content
+          kanri.app/tu-estudio/content
         </div>
       </div>
 

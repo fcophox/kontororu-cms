@@ -1,5 +1,5 @@
 /**
- * Quién usa Kontorōru, para la portada.
+ * Quién usa Kanri, para la portada.
  *
  * Se mantiene A MANO y no se lee de la tabla `tenants` a propósito: el
  * listado de clientes es información privada del negocio y publicarla sola
@@ -70,7 +70,7 @@ export const CLIENTS: readonly Client[] = [
  * mezclarlo con los clientes lo haría pasar por uno de ellos.
  */
 export const TESTIMONIAL = {
-  text: "Kontorōru nace de nuestra visión por devolver el control absoluto de los contenidos a sus creadores. Una experiencia sin ataduras, diseñada a medida.",
+  text: "Kanri nace de nuestra visión por devolver el control absoluto de los contenidos a sus creadores. Una experiencia sin ataduras, diseñada a medida.",
   author: "Equipo de Rukma Studio",
-  role: "Creadores de Kontorōru",
+  role: "Creadores de Kanri",
 };

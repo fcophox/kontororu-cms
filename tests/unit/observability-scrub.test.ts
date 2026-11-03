@@ -12,7 +12,7 @@ import { redactSecrets, redactUrl, scrubEvent } from "@/lib/observability/scrub"
  */
 
 describe("redactSecrets", () => {
-  it("borra una API Key de Kontorōru", () => {
+  it("borra una API Key de Kanri", () => {
     const texto = "falló GET con Authorization: kntr_live_abc123def456.SUPERSECRETO999";
     const limpio = redactSecrets(texto);
 

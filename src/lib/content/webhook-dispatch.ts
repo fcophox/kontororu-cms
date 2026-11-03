@@ -146,7 +146,13 @@ async function deliver(db: any, row: any): Promise<Outcome> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "User-Agent": "Kontororu-CMS/1.0",
+        "User-Agent": "Kanri-CMS/1.0",
+        "X-Kanri-Event": row.event,
+        "X-Kanri-Timestamp": timestamp,
+        "X-Kanri-Signature": `sha256=${signature}`,
+        // Cabeceras del nombre anterior: las webs integradas antes del cambio
+        // de marca las siguen leyendo. Quitarlas cuando ya no queden clientes
+        // verificando con `x-kontororu-*`.
         "X-Kontororu-Event": row.event,
         "X-Kontororu-Timestamp": timestamp,
         "X-Kontororu-Signature": `sha256=${signature}`,

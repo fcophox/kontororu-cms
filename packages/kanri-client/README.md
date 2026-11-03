@@ -1,10 +1,10 @@
-# @rukma/kontororu-client
+# @rukma/kanri-client
 
-Cliente oficial de **Kontorōru CMS**. Contenido tipado y verificación de
+Cliente oficial de **Kanri CMS**. Contenido tipado y verificación de
 webhooks, sin dependencias.
 
 ```bash
-npm i @rukma/kontororu-client
+npm i @rukma/kanri-client
 ```
 
 **Es un paquete ESM.** Con Next.js, Vite o cualquier bundler moderno no tienes
@@ -15,11 +15,11 @@ partir de Node 22.
 ## Empezar
 
 ```ts
-import { createClient } from "@rukma/kontororu-client";
+import { createClient } from "@rukma/kanri-client";
 
 export const cms = createClient({
-  url: process.env.KONTORORU_URL!,      // con o sin /api/v1
-  apiKey: process.env.KONTORORU_API_KEY!, // SECRETA: sólo en servidor
+  url: process.env.KANRI_URL!,      // con o sin /api/v1
+  apiKey: process.env.KANRI_API_KEY!, // SECRETA: sólo en servidor
 });
 ```
 
@@ -82,7 +82,7 @@ errors[0].extensions.code  // "forbidden"
 ```
 
 Los fallos de transporte —clave inválida, cupo agotado, 5xx— sí lanzan
-`KontororuError`, como en el resto del cliente: ahí no hay nada parcial que
+`KanriError`, como en el resto del cliente: ahí no hay nada parcial que
 conservar.
 
 ## Idiomas
@@ -113,12 +113,12 @@ Si prefieres que falte, pasa `{ fallback: "none" }` — en `listPosts`,
 ## Errores
 
 ```ts
-import { KontororuError } from "@rukma/kontororu-client";
+import { KanriError } from "@rukma/kanri-client";
 
 try {
   return await cms.getPost(slug);
 } catch (error) {
-  if (error instanceof KontororuError && error.isNotFound) notFound();
+  if (error instanceof KanriError && error.isNotFound) notFound();
   throw error;
 }
 ```
@@ -132,7 +132,7 @@ insistir sólo gasta cupo.
 
 ```ts
 // app/api/revalidate/route.ts
-import { verifyWebhook, affectedTags } from "@rukma/kontororu-client/webhooks";
+import { verifyWebhook, affectedTags } from "@rukma/kanri-client/webhooks";
 import { revalidateTag } from "next/cache";
 
 export async function POST(request: Request) {
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
     const payload = verifyWebhook({
       body: await request.text(),   // en CRUDO, sin parsear
       headers: request.headers,
-      secret: process.env.KONTORORU_WEBHOOK_SECRET!,
+      secret: process.env.KANRI_WEBHOOK_SECRET!,
     });
 
     for (const tag of affectedTags(payload)) revalidateTag(tag);
